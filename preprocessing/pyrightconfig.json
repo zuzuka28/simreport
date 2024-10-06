@@ -1,0 +1,6 @@
+{
+    "include": [
+        "srv"
+    ],
+    "venvPath": "/Users/zuzuka28/Documents/pp/simrep/preprocessing/.venv"
+}
