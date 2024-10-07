@@ -1,0 +1,248 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "SimRep Preprocessor",
+        "description": "SimRep Preprocessor",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/preprocess/doc": {
+            "post": {
+                "summary": "Process Item",
+                "operationId": "process_item_preprocess_doc_post",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_process_item_preprocess_doc_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DocumentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Body_process_item_preprocess_doc_post": {
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "title": "File"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file"
+                ],
+                "title": "Body_process_item_preprocess_doc_post"
+            },
+            "DocumentResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "source_bytes": {
+                        "type": "string",
+                        "title": "Source Bytes"
+                    },
+                    "sha256": {
+                        "type": "string",
+                        "title": "Sha256"
+                    },
+                    "text_content": {
+                        "type": "string",
+                        "title": "Text Content"
+                    },
+                    "sbert_text_vector": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Sbert Text Vector"
+                    },
+                    "images": {
+                        "items": {
+                            "$ref": "#/components/schemas/ImageResponse"
+                        },
+                        "type": "array",
+                        "title": "Images",
+                        "default": []
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "source_bytes",
+                    "sha256",
+                    "text_content"
+                ],
+                "title": "DocumentResponse"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "ImageHashesResponse": {
+                "properties": {
+                    "phash": {
+                        "type": "string",
+                        "title": "Phash"
+                    },
+                    "phash_vector": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Phash Vector"
+                    },
+                    "dhash": {
+                        "type": "string",
+                        "title": "Dhash"
+                    },
+                    "dhash_vector": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Dhash Vector"
+                    },
+                    "ahash": {
+                        "type": "string",
+                        "title": "Ahash"
+                    },
+                    "ahash_vector": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Ahash Vector"
+                    },
+                    "whash": {
+                        "type": "string",
+                        "title": "Whash"
+                    },
+                    "whash_vector": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Whash Vector"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "phash",
+                    "phash_vector",
+                    "dhash",
+                    "dhash_vector",
+                    "ahash",
+                    "ahash_vector",
+                    "whash",
+                    "whash_vector"
+                ],
+                "title": "ImageHashesResponse"
+            },
+            "ImageResponse": {
+                "properties": {
+                    "fname": {
+                        "type": "string",
+                        "title": "Fname"
+                    },
+                    "source_bytes": {
+                        "type": "string",
+                        "title": "Source Bytes"
+                    },
+                    "sha256": {
+                        "type": "string",
+                        "title": "Sha256"
+                    },
+                    "hashes": {
+                        "$ref": "#/components/schemas/ImageHashesResponse"
+                    },
+                    "clip_image_vector": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Clip Image Vector"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "fname",
+                    "source_bytes",
+                    "sha256"
+                ],
+                "title": "ImageResponse"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        }
+    }
+}

@@ -1,4 +1,3 @@
-import sys
 import click
 from src.container import Container
 from src.service.parser_service import os

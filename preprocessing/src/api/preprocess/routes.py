@@ -1,5 +1,5 @@
 from dependency_injector.wiring import Provide, inject
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, Depends, File, UploadFile
 from src.container import Container
 
 from src.api.preprocess.model import DocumentResponse, map_document_to_response
@@ -16,7 +16,7 @@ preprocess_router = APIRouter()
 )
 @inject
 async def process_item(
-    file: UploadFile,
+    file: UploadFile = File(...),
     service: DocumentPreprocessorService = Depends(
         Provide[Container.preprocessor_service]
     ),
