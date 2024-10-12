@@ -1,6 +1,6 @@
 package model
 
-type Document struct {
+type DocumentFull struct {
 	ID              string
 	Images          []*Image
 	SbertTextVector []float32

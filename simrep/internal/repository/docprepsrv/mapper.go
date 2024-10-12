@@ -32,7 +32,7 @@ func mapDocToPreprocessRequest(in []byte) (io.Reader, string, error) {
 
 func mapDocResponseToModel(
 	in *client.DocumentResponse,
-) *model.Document {
+) *model.DocumentFull {
 	if in == nil {
 		return nil
 	}
@@ -44,7 +44,7 @@ func mapDocResponseToModel(
 		images = append(images, mapImageToModel(&v))
 	}
 
-	return &model.Document{
+	return &model.DocumentFull{
 		ID:              in.Id,
 		Images:          images,
 		SbertTextVector: zeroOrValue(in.SbertTextVector),

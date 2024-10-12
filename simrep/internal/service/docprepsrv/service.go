@@ -19,7 +19,7 @@ func NewService(r Repository) *Service {
 func (s *Service) PreprocessRawDocument(
 	ctx context.Context,
 	doc []byte,
-) (*model.Document, error) {
+) (*model.DocumentFull, error) {
 	res, err := s.r.PreprocessRawDocument(ctx, doc)
 	if err != nil {
 		return nil, fmt.Errorf("do preprocess raw: %w", err)

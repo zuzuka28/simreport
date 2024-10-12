@@ -1,50 +1,67 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"io"
+	"log/slog"
 	"os"
-	docprepsrvrepo "simrep/internal/repository/docprepsrv"
-	"simrep/internal/service/docprepsrv"
+	"os/signal"
+	"simrep/internal/provider"
+	"syscall"
+
+	"github.com/urfave/cli/v2"
 )
 
-func readFile(fname string) ([]byte, error) {
-	f, err := os.Open(fname)
+func runServer(c *cli.Context) error {
+	cfg, err := provider.InitConfig(c.String("config"))
 	if err != nil {
-		return nil, fmt.Errorf("open file: %w", err)
+		return fmt.Errorf("read config: %w", err)
 	}
 
-	raw, err := io.ReadAll(f)
+	api, err := provider.InitRestAPI(c.Context, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("read file: %w", err)
+		return fmt.Errorf("init api: %w", err)
 	}
 
-	return raw, nil
+	errCh := make(chan error)
+
+	go func() {
+		if err := api.Start(c.Context); err != nil {
+			errCh <- fmt.Errorf("run webserver: %w", err)
+		}
+	}()
+
+	osSignals := make(chan os.Signal, 1)
+	signal.Notify(osSignals, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case err := <-errCh:
+		return err
+
+	case sig := <-osSignals:
+		slog.Warn("got signal", "sig", sig)
+
+		// TODO: Add graceful shutdown logic here
+
+		return nil
+	}
 }
 
 func main() {
-	ctx := context.Background()
-
-	r, err := docprepsrvrepo.NewRepository(docprepsrvrepo.Opts{
-		APIURL:     "http://localhost:8000",
-		HTTPClient: nil,
-	})
-	if err != nil {
-		panic(err)
+	app := &cli.App{ //nolint:exhaustruct
+		Name:  "simrep-service API",
+		Usage: "simrep-service API service",
+		Flags: []cli.Flag{
+			&cli.StringFlag{ //nolint:exhaustruct
+				Name:  "config",
+				Value: "./config.yml",
+				Usage: "path to the config file",
+			},
+		},
+		Action:   runServer,
+		Commands: []*cli.Command{},
 	}
 
-	s := docprepsrv.NewService(r)
-
-	doc, err := readFile("./data/example.docx")
-	if err != nil {
-		panic(err)
+	if err := app.Run(os.Args); err != nil {
+		slog.Error("can't run application: " + err.Error())
 	}
-
-	res, err := s.PreprocessRawDocument(ctx, doc)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("%+v", res)
 }

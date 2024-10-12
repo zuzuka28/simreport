@@ -10,6 +10,6 @@ type (
 		PreprocessRawDocument(
 			ctx context.Context,
 			doc []byte,
-		) (*model.Document, error)
+		) (*model.DocumentFull, error)
 	}
 )

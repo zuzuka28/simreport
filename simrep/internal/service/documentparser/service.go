@@ -1,0 +1,214 @@
+package documentparser
+
+import (
+	"archive/zip"
+	"bytes"
+	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/xml"
+	"errors"
+	"fmt"
+	"io"
+	"regexp"
+	"simrep/internal/model"
+	"strings"
+	"time"
+)
+
+var errEmptyFile = errors.New("file content is empty")
+
+var (
+	mainRegex   = regexp.MustCompile(`word/document.xml`)
+	headerRegex = regexp.MustCompile(`word/header[0-9]*\.xml`)
+	footerRegex = regexp.MustCompile(`word/footer[0-9]*\.xml`)
+	imageRegex  = regexp.MustCompile(`word/media/.*\.(jpg|jpeg|png|bmp)`)
+)
+
+type Service struct{}
+
+func NewService() *Service {
+	return &Service{}
+}
+
+func (s *Service) Parse(
+	_ context.Context,
+	item model.DocumentFile,
+) (model.ParsedDocumentFile, error) {
+	if len(item.Content) == 0 {
+		return model.ParsedDocumentFile{}, errEmptyFile
+	}
+
+	text, images, err := s.processDocx(item.Content)
+	if err != nil {
+		return model.ParsedDocumentFile{}, err
+	}
+
+	return model.ParsedDocumentFile{
+		ID:          item.Sha256,
+		Sha256:      item.Sha256,
+		RawContent:  item.Content,
+		LastUpdated: item.LastUpdated,
+		TextContent: text,
+		Images:      images,
+	}, nil
+}
+
+func (s *Service) processDocx(docx []byte) (string, []model.MediaFile, error) {
+	zipReader, err := zip.NewReader(bytes.NewReader(docx), int64(len(docx)))
+	if err != nil {
+		return "", nil, fmt.Errorf("new zip reader: %w", err)
+	}
+
+	text, err := s.extractText(zipReader)
+	if err != nil {
+		return "", nil, err
+	}
+
+	images, err := s.extractImages(zipReader)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return text, images, nil
+}
+
+func (s *Service) extractText(zipReader *zip.Reader) (string, error) {
+	var builder strings.Builder
+
+	headerFiles := s.filesByRegex(zipReader, headerRegex)
+	mainFiles := s.filesByRegex(zipReader, mainRegex)
+	footerFiles := s.filesByRegex(zipReader, footerRegex)
+
+	raws := make([][]byte, 0, len(headerFiles)+len(mainFiles)+len(footerFiles))
+
+	for _, f := range headerFiles {
+		data, err := readZipFile(f)
+		if err != nil {
+			return "", err
+		}
+
+		raws = append(raws, data)
+	}
+
+	for _, f := range mainFiles {
+		data, err := readZipFile(f)
+		if err != nil {
+			return "", err
+		}
+
+		raws = append(raws, data)
+	}
+
+	for _, f := range footerFiles {
+		data, err := readZipFile(f)
+		if err != nil {
+			return "", err
+		}
+
+		raws = append(raws, data)
+	}
+
+	for _, raw := range raws {
+		builder.WriteString(s.xml2text(raw))
+		builder.WriteString("\n\n")
+	}
+
+	return builder.String(), nil
+}
+
+func (s *Service) extractImages(zipReader *zip.Reader) ([]model.MediaFile, error) {
+	imgFiles := s.filesByRegex(zipReader, imageRegex)
+	imgs := make([]model.MediaFile, 0, len(imgFiles))
+
+	for _, file := range imgFiles {
+		content, err := readZipFile(file)
+		if err != nil {
+			return nil, fmt.Errorf("read zip file: %w", err)
+		}
+
+		imgs = append(imgs, model.MediaFile{
+			Content:     content,
+			Sha256:      hex.EncodeToString(sha256.New().Sum(content)),
+			LastUpdated: time.Time{},
+		})
+	}
+
+	return imgs, nil
+}
+
+func (*Service) filesByRegex(
+	zipReader *zip.Reader,
+	re *regexp.Regexp,
+) []*zip.File {
+	var files []*zip.File //nolint:prealloc
+
+	for _, f := range zipReader.File {
+		if !re.MatchString(f.Name) {
+			continue
+		}
+
+		files = append(files, f)
+	}
+
+	return files
+}
+
+func (s *Service) xml2text(xmlStr []byte) string {
+	decoder := xml.NewDecoder(bytes.NewReader(xmlStr))
+
+	var result strings.Builder
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			break
+		}
+
+		if startElem, ok := token.(xml.StartElement); ok {
+			s.processStartElement(decoder, startElem, &result)
+		}
+	}
+
+	return result.String()
+}
+
+func (*Service) processStartElement(
+	decoder *xml.Decoder,
+	elem xml.StartElement,
+	result *strings.Builder,
+) {
+	switch elem.Name.Local {
+	case "t":
+		var text string
+
+		if err := decoder.DecodeElement(&text, &elem); err == nil {
+			result.WriteString(text)
+		}
+
+	case "tab":
+		result.WriteString("\t")
+
+	case "br":
+		result.WriteString("\n")
+
+	case "p":
+		result.WriteString("\n\n")
+	}
+}
+
+func readZipFile(f *zip.File) ([]byte, error) {
+	rc, err := f.Open()
+	if err != nil {
+		return nil, fmt.Errorf("open zip file: %w", err)
+	}
+
+	defer rc.Close()
+
+	res, err := io.ReadAll(rc)
+	if err != nil {
+		return nil, fmt.Errorf("read content: %w", err)
+	}
+
+	return res, nil
+}

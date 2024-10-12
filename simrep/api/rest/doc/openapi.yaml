@@ -1,0 +1,217 @@
+openapi: 3.0.0
+info:
+  title: File Similarity API
+  description: API для анализа сходства файлов между собой
+  version: 0.0.1
+
+tags:
+  - name: files
+  - name: similarity
+
+paths:
+  /files/upload:
+    post:
+      tags:
+        - files
+      summary: Загрузка файлов для анализа
+      description: Загружает один или несколько файлов для дальнейшего сравнения на сходство.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/UploadRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/UploadSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /files/compare:
+    post:
+      tags:
+        - similarity
+      summary: Сравнение файлов на сходство
+      description: Выполняет сравнение загруженных файлов по их идентификаторам.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompareRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/ComparisonResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /files/{file_id}/compare-all:
+    get:
+      tags:
+        - similarity
+      summary: Сравнение файла со всеми загруженными файлами
+      description: Выполняет сравнение указанного файла со всеми ранее загруженными файлами.
+      parameters:
+        - $ref: "#/components/parameters/FileId"
+      responses:
+        "200":
+          $ref: "#/components/responses/CompareAllResult"
+        "404":
+          $ref: "#/components/responses/FileNotFound"
+
+  /files/{file_id}:
+    get:
+      tags:
+        - files
+      summary: Получение информации о загруженном файле
+      description: Возвращает метаданные и информацию о ранее загруженном файле по его идентификатору.
+      parameters:
+        - $ref: "#/components/parameters/FileId"
+      responses:
+        "200":
+          $ref: "#/components/responses/FileInfo"
+        "404":
+          $ref: "#/components/responses/FileNotFound"
+
+components:
+  schemas:
+    FileInfo:
+      type: object
+      properties:
+        file_id:
+          type: string
+        filename:
+          type: string
+        upload_date:
+          type: string
+          format: date-time
+        size:
+          type: integer
+          description: Размер файла в байтах
+
+    CompareRequest:
+      type: object
+      properties:
+        file_ids:
+          type: array
+          items:
+            type: string
+          description: Список идентификаторов файлов для сравнения
+
+    CompareAllResult:
+      type: object
+      properties:
+        file_id:
+          type: string
+          description: Идентификатор исходного файла
+        comparisons:
+          type: array
+          items:
+            type: object
+            properties:
+              other_file_id:
+                type: string
+              similarity:
+                type: number
+                format: float
+                description: Процент сходства с другим файлом
+
+    UploadRequest:
+      type: object
+      properties:
+        files:
+          type: array
+          items:
+            type: string
+            format: binary
+          description: Список файлов для загрузки
+
+    UploadSuccess:
+      type: object
+      properties:
+        file_ids:
+          type: array
+          items:
+            type: string
+          description: Список уникальных идентификаторов загруженных файлов
+
+    ComparisonResult:
+      type: object
+      properties:
+        similarity_score:
+          type: number
+          format: float
+          description: Процент сходства между файлами (от 0 до 100)
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              file1_id:
+                type: string
+              file2_id:
+                type: string
+              similarity:
+                type: number
+                format: float
+                description: Процент сходства между парой файлов
+
+  responses:
+    UploadSuccess:
+      description: Файлы успешно загружены
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/UploadSuccess"
+
+    ComparisonResult:
+      description: Результаты сравнения файлов
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ComparisonResult"
+
+    CompareAllResult:
+      description: Результаты сравнения файла со всеми загруженными файлами
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/CompareAllResult"
+
+    FileInfo:
+      description: Информация о файле
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/FileInfo"
+
+    FileNotFound:
+      description: Файл не найден
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Файл не найден
+
+    BadRequest:
+      description: Ошибка валидации или неверный формат запроса
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Неверный запрос
+
+  parameters:
+    FileId:
+      name: file_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Уникальный идентификатор файла

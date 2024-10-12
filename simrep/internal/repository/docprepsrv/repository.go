@@ -42,7 +42,7 @@ func NewRepository(opts Opts) (*Repository, error) {
 func (r *Repository) PreprocessRawDocument(
 	ctx context.Context,
 	doc []byte,
-) (*model.Document, error) {
+) (*model.DocumentFull, error) {
 	body, ftype, err := mapDocToPreprocessRequest(doc)
 	if err != nil {
 		return nil, fmt.Errorf("map document to request: %w", err)
