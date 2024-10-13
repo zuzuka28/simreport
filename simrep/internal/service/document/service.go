@@ -177,6 +177,7 @@ func (s *Service) FetchParsedFile(
 
 	return model.ParsedDocumentFile{
 		ID:          doc.ID,
+		Name:        doc.Name,
 		Source:      main,
 		Images:      media,
 		TextContent: doc.TextContent,
