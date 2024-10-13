@@ -1,0 +1,64 @@
+{
+    "settings": {
+        "analysis": {
+            "filter": {
+                "russian_stop": {
+                    "type": "stop",
+                    "stopwords": "_russian_"
+                },
+                "english_stop": {
+                    "type": "stop",
+                    "stopwords": "_english_"
+                },
+                "russian_morphology": {
+                    "type": "morfologik_stemmer",
+                    "language": "ru"
+                },
+                "ngram_filter": {
+                    "type": "shingle",
+                    "min_shingle_size": 2,
+                    "max_shingle_size": 3
+                }
+            },
+            "analyzer": {
+                "custom_russian_analyzer": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [
+                        "lowercase",
+                        "russian_stop",
+                        "russian_morphology",
+                        "ngram_filter"
+                    ]
+                },
+                "custom_english_analyzer": {
+                    "type": "custom",
+                    "tokenizer": "standard",
+                    "filter": [
+                        "lowercase",
+                        "english_stop",
+                        "porter_stem",
+                        "ngram_filter"
+                    ]
+                }
+            }
+        }
+    },
+    "mappings": {
+        "properties": {
+            "textContent": {
+                "type": "text",
+                "fields": {
+                    "russian": {
+                        "type": "text",
+                        "analyzer": "custom_russian_analyzer"
+                    },
+                    "english": {
+                        "type": "text",
+                        "analyzer": "custom_english_analyzer"
+                    }
+                }
+            }
+        }
+    }
+}

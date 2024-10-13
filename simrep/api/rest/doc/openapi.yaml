@@ -1,20 +1,14 @@
 openapi: 3.0.0
 info:
-  title: File Similarity API
-  description: API для анализа сходства файлов между собой
-  version: 0.0.1
-
-tags:
-  - name: files
-  - name: similarity
+  title: Document Similarity API
+  description: API для анализа сходства документов и поиска документов по имени
+  version: 1.5.0
 
 paths:
-  /files/upload:
+  /document/upload:
     post:
-      tags:
-        - files
-      summary: Загрузка файлов для анализа
-      description: Загружает один или несколько файлов для дальнейшего сравнения на сходство.
+      summary: Загрузка документа
+      description: Загружает документ для дальнейшего анализа на сходство.
       requestBody:
         required: true
         content:
@@ -27,12 +21,32 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
-  /files/compare:
+  /document/{document_id}/download:
+    get:
+      summary: Скачать документ
+      description: Позволяет скачать загруженный документ по его идентификатору.
+      parameters:
+        - $ref: "#/components/parameters/DocumentId"
+      responses:
+        "200":
+          description: Успешная загрузка документа
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+                example: attachment; filename="example.docx"
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/DocumentNotFound"
+
+  /document/compare:
     post:
-      tags:
-        - similarity
-      summary: Сравнение файлов на сходство
-      description: Выполняет сравнение загруженных файлов по их идентификаторам.
+      summary: Сравнение документов
+      description: Выполняет сравнение загруженных документов на сходство.
       requestBody:
         required: true
         content:
@@ -45,95 +59,89 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
-  /files/{file_id}/compare-all:
-    get:
-      tags:
-        - similarity
-      summary: Сравнение файла со всеми загруженными файлами
-      description: Выполняет сравнение указанного файла со всеми ранее загруженными файлами.
-      parameters:
-        - $ref: "#/components/parameters/FileId"
+  /documents/search:
+    post:
+      summary: Поиск документов по имени
+      description: Получить список документов, соответствующих заданному имени.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SearchRequest"
       responses:
         "200":
-          $ref: "#/components/responses/CompareAllResult"
-        "404":
-          $ref: "#/components/responses/FileNotFound"
-
-  /files/{file_id}:
-    get:
-      tags:
-        - files
-      summary: Получение информации о загруженном файле
-      description: Возвращает метаданные и информацию о ранее загруженном файле по его идентификатору.
-      parameters:
-        - $ref: "#/components/parameters/FileId"
-      responses:
-        "200":
-          $ref: "#/components/responses/FileInfo"
-        "404":
-          $ref: "#/components/responses/FileNotFound"
+          description: Успешный ответ с документами
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documents:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/DocumentSummary"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
 
 components:
   schemas:
-    FileInfo:
+    UploadRequest:
       type: object
       properties:
-        file_id:
+        document:
           type: string
-        filename:
+          format: binary
+          description: Документ для загрузки
+
+    SearchRequest:
+      type: object
+      properties:
+        name:
           type: string
-        upload_date:
+          description: Имя документа для поиска
+          example: "Документ 1"
+
+    Document:
+      type: object
+      properties:
+        ID:
+          type: string
+        ImageIDs:
+          type: array
+          items:
+            type: string
+        TextContent:
+          type: string
+          description: Содержимое текста документа
+
+    DocumentSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Идентификатор документа
+          example: "123"
+        name:
+          type: string
+          description: Имя документа
+          example: "Документ 1"
+        lastUpdated:
           type: string
           format: date-time
-        size:
-          type: integer
-          description: Размер файла в байтах
+          description: Дата обновления документа
+          example: "2024-10-01T12:00:00Z"
 
     CompareRequest:
       type: object
       properties:
-        file_ids:
+        documentIDs:
           type: array
           items:
             type: string
-          description: Список идентификаторов файлов для сравнения
-
-    CompareAllResult:
-      type: object
-      properties:
-        file_id:
-          type: string
-          description: Идентификатор исходного файла
-        comparisons:
-          type: array
-          items:
-            type: object
-            properties:
-              other_file_id:
-                type: string
-              similarity:
-                type: number
-                format: float
-                description: Процент сходства с другим файлом
-
-    UploadRequest:
-      type: object
-      properties:
-        files:
-          type: array
-          items:
-            type: string
-            format: binary
-          description: Список файлов для загрузки
-
-    UploadSuccess:
-      type: object
-      properties:
-        file_ids:
-          type: array
-          items:
-            type: string
-          description: Список уникальных идентификаторов загруженных файлов
+          description: Список идентификаторов документов для сравнения
 
     ComparisonResult:
       type: object
@@ -141,52 +149,42 @@ components:
         similarity_score:
           type: number
           format: float
-          description: Процент сходства между файлами (от 0 до 100)
+          description: Процент сходства между документами (от 0 до 100)
         details:
           type: array
           items:
             type: object
             properties:
-              file1_id:
+              documentID:
                 type: string
-              file2_id:
+              otherDocumentID:
                 type: string
               similarity:
                 type: number
                 format: float
-                description: Процент сходства между парой файлов
+                description: Процент сходства между парой документов
 
   responses:
     UploadSuccess:
-      description: Файлы успешно загружены
+      description: Документ успешно загружен
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/UploadSuccess"
+            type: object
+            properties:
+              documentID:
+                type: string
+                description: Уникальный идентификатор загруженного документа
 
     ComparisonResult:
-      description: Результаты сравнения файлов
+      description: Результаты сравнения документов
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/ComparisonResult"
 
-    CompareAllResult:
-      description: Результаты сравнения файла со всеми загруженными файлами
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/CompareAllResult"
-
-    FileInfo:
-      description: Информация о файле
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/FileInfo"
-
-    FileNotFound:
-      description: Файл не найден
+    DocumentNotFound:
+      description: Документ не найден
       content:
         application/json:
           schema:
@@ -194,7 +192,7 @@ components:
             properties:
               error:
                 type: string
-                example: Файл не найден
+                example: "Документ не найден"
 
     BadRequest:
       description: Ошибка валидации или неверный формат запроса
@@ -205,13 +203,24 @@ components:
             properties:
               error:
                 type: string
-                example: Неверный запрос
+                example: "Неверный запрос"
+
+    ServerError:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Ошибка сервера"
 
   parameters:
-    FileId:
-      name: file_id
+    DocumentId:
+      name: document_id
       in: path
       required: true
       schema:
         type: string
-      description: Уникальный идентификатор файла
+      description: Уникальный идентификатор документа

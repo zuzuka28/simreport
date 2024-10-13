@@ -1,0 +1,25 @@
+port: 8000
+s3:
+  endpoint: "localhost:9000"
+  accessKeyID: "minio"
+  secletAccessKey: "minio123"
+  buckets:
+    - document
+    - image
+elastic:
+  hosts:
+    - http://localhost:9200/
+  indexopts:
+    - index: "document"
+      updateMapping: true
+      createMapping: true
+      mappingPath: "config/mappings/document.json"
+      alias: ""
+      shards: 1
+      replics: 1
+imageRepo:
+  bucket: "image"
+documentFileRepo:
+  bucket: "document"
+documentRepo:
+  index: "document"

@@ -7,14 +7,12 @@ import (
 	"io"
 	"os"
 	"simrep/api/rest/server"
-	filesapi "simrep/api/rest/server/handler/files"
-	"simrep/api/rest/server/handler/similarity"
+	documentapi "simrep/api/rest/server/handler/document"
 	"simrep/internal/config"
 	documentrepo "simrep/internal/repository/document"
 	documentfilerepo "simrep/internal/repository/documentfile"
 	imagerepo "simrep/internal/repository/image"
 	documentsrv "simrep/internal/service/document"
-	documentparsersrv "simrep/internal/service/documentparser"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
 
@@ -61,12 +59,6 @@ func InitS3(
 	))
 }
 
-func InitDocumentParserService() (*documentparsersrv.Service, error) {
-	panic(wire.Build(
-		documentparsersrv.NewService,
-	))
-}
-
 func InitDocumentFileRepository(
 	_ *minio.Client,
 	_ *config.Config,
@@ -98,13 +90,11 @@ func InitDocumentRepository(
 }
 
 func InitDocumentService(
-	_ *documentparsersrv.Service,
 	_ *imagerepo.Repository,
 	_ *documentfilerepo.Repository,
 	_ *documentrepo.Repository,
 ) (*documentsrv.Service, error) {
 	panic(wire.Build(
-		wire.Bind(new(documentsrv.FileParser), new(*documentparsersrv.Service)),
 		wire.Bind(new(documentsrv.FileRepository), new(*documentfilerepo.Repository)),
 		wire.Bind(new(documentsrv.ImageRepository), new(*imagerepo.Repository)),
 		wire.Bind(new(documentsrv.Repository), new(*documentrepo.Repository)),
@@ -112,17 +102,13 @@ func InitDocumentService(
 	))
 }
 
-func InitFilesHandler(
+func InitDocumentHandler(
 	_ *documentsrv.Service,
-) *filesapi.Handler {
+) *documentapi.Handler {
 	panic(wire.Build(
-		wire.Bind(new(filesapi.DocumentService), new(*documentsrv.Service)),
-		filesapi.NewHandler,
+		wire.Bind(new(documentapi.Service), new(*documentsrv.Service)),
+		documentapi.NewHandler,
 	))
-}
-
-func InitSimilarityHandler() *similarity.Handler {
-	panic(wire.Build(similarity.NewHandler))
 }
 
 func InitRestAPI(
@@ -130,19 +116,16 @@ func InitRestAPI(
 	_ *config.Config,
 ) (*server.Server, error) {
 	panic(wire.Build(
-		wire.Value("localhost:8000"),
 		ProvideSpec,
 		InitS3,
 		InitElastic,
 		InitImageRepository,
 		InitDocumentFileRepository,
 		InitDocumentRepository,
-		InitDocumentParserService,
 		InitDocumentService,
-		InitFilesHandler,
-		InitSimilarityHandler,
-		wire.Bind(new(server.FileHandler), new(*filesapi.Handler)),
-		wire.Bind(new(server.SimilarityHandler), new(*similarity.Handler)),
+		InitDocumentHandler,
+		wire.Bind(new(server.DocumentHandler), new(*documentapi.Handler)),
+		wire.FieldsOf(new(*config.Config), "Port"),
 		wire.Struct(new(server.Opts), "*"),
 		server.New,
 	))

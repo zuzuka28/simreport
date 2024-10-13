@@ -6,18 +6,15 @@ import (
 )
 
 type (
-	FileParser interface {
-		Parse(
-			ctx context.Context,
-			item model.DocumentFile,
-		) (model.ParsedDocumentFile, error)
-	}
-
 	ImageRepository interface {
 		SaveMany(
 			ctx context.Context,
 			cmd model.MediaFileSaveManyCommand,
 		) error
+		Fetch(
+			ctx context.Context,
+			query model.MediaFileQuery,
+		) (model.MediaFile, error)
 	}
 
 	FileRepository interface {
@@ -25,12 +22,24 @@ type (
 			ctx context.Context,
 			cmd model.MediaFileSaveManyCommand,
 		) error
+		Fetch(
+			ctx context.Context,
+			query model.DocumentFileQuery,
+		) (model.DocumentFile, error)
 	}
 
 	Repository interface {
-		SaveParsed(
+		Save(
 			ctx context.Context,
-			cmd model.ParsedDocumentSaveCommand,
+			cmd model.DocumentSaveCommand,
 		) error
+		Fetch(
+			ctx context.Context,
+			query model.DocumentQuery,
+		) (model.Document, error)
+		Search(
+			ctx context.Context,
+			query model.DocumentSearchQuery,
+		) ([]model.Document, error)
 	}
 )

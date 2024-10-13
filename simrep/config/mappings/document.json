@@ -1,0 +1,18 @@
+{
+  "mappings": {
+    "properties": {
+      "id": {
+        "type": "keyword"
+      },
+      "imageIDs": {
+        "type": "keyword"
+      },
+      "textContent": {
+        "type": "text"
+      },
+      "lastUpdated": {
+        "type": "date"
+      }
+    }
+  }
+}

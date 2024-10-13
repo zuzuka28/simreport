@@ -20,11 +20,10 @@ type Server struct {
 }
 
 type Opts struct {
-	Addr string
+	Port int
 
-	Spec              []byte
-	FileHandler       FileHandler
-	SimilarityHandler SimilarityHandler
+	Spec            []byte
+	DocumentHandler DocumentHandler
 }
 
 func New(
@@ -39,18 +38,18 @@ func New(
 	router.Use(openapimw.OapiRequestValidator(spec))
 
 	compose := struct {
-		FileHandler
+		DocumentHandler
 		SimilarityHandler
 	}{
-		FileHandler:       opts.FileHandler,
-		SimilarityHandler: opts.SimilarityHandler,
+		DocumentHandler:   opts.DocumentHandler,
+		SimilarityHandler: nil,
 	}
 
 	stricthandler := openapi.NewStrictHandler(compose, nil)
-	router.Handle("", openapi.Handler(stricthandler))
+	router.PathPrefix("").Handler(openapi.Handler(stricthandler))
 
 	return &Server{
-		addr:   opts.Addr,
+		addr:   fmt.Sprintf(":%d", opts.Port),
 		router: router,
 	}, nil
 }

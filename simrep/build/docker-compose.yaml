@@ -1,0 +1,60 @@
+version: "3.7"
+services:
+  minio:
+    image: minio/minio
+    ports:
+      - 9000:9000
+      - 9001:9001
+    volumes:
+      - minio_vol:/data
+    command: server --console-address ":9001" /data
+    environment:
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+  miniomc:
+    image: minio/mc
+    links:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host rm local;
+      /usr/bin/mc config host add --quiet --api s3v4 local http://minio:9000 minio minio123;
+      /usr/bin/mc mb local/document;
+      /usr/bin/mc anonymous set public local/document;
+      /usr/bin/mc mb local/image;
+      /usr/bin/mc anonymous set public local/image;
+      "
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+  elasticsearch:
+    image: bitnami/elasticsearch:latest
+    container_name: elasticsearch
+    ports:
+      - 9200:9200
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+
+    volumes:
+      - elastic_vol:/usr/share/elasticsearch/data
+  kibana:
+    image: bitnami/kibana:latest
+    container_name: kibana
+    ports:
+      - 5601:5601
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+        reservations:
+          cpus: "1.0"
+    depends_on:
+      - elasticsearch
+volumes:
+  elastic_vol:
+  minio_vol:

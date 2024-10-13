@@ -1,9 +1,8 @@
-package documentparser
+package docxparser
 
 import (
 	"archive/zip"
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/xml"
@@ -25,47 +24,37 @@ var (
 	imageRegex  = regexp.MustCompile(`word/media/.*\.(jpg|jpeg|png|bmp)`)
 )
 
-type Service struct{}
-
-func NewService() *Service {
-	return &Service{}
-}
-
-func (s *Service) Parse(
-	_ context.Context,
-	item model.DocumentFile,
-) (model.ParsedDocumentFile, error) {
+func Parse(item model.DocumentFile) (model.ParsedDocumentFile, error) {
 	if len(item.Content) == 0 {
 		return model.ParsedDocumentFile{}, errEmptyFile
 	}
 
-	text, images, err := s.processDocx(item.Content)
+	text, images, err := processDocx(item.Content)
 	if err != nil {
 		return model.ParsedDocumentFile{}, err
 	}
 
 	return model.ParsedDocumentFile{
 		ID:          item.Sha256,
-		Sha256:      item.Sha256,
-		RawContent:  item.Content,
-		LastUpdated: item.LastUpdated,
-		TextContent: text,
+		Name:        item.Name,
+		Source:      item,
 		Images:      images,
+		TextContent: text,
 	}, nil
 }
 
-func (s *Service) processDocx(docx []byte) (string, []model.MediaFile, error) {
+func processDocx(docx []byte) (string, []model.MediaFile, error) {
 	zipReader, err := zip.NewReader(bytes.NewReader(docx), int64(len(docx)))
 	if err != nil {
 		return "", nil, fmt.Errorf("new zip reader: %w", err)
 	}
 
-	text, err := s.extractText(zipReader)
+	text, err := extractText(zipReader)
 	if err != nil {
 		return "", nil, err
 	}
 
-	images, err := s.extractImages(zipReader)
+	images, err := extractImages(zipReader)
 	if err != nil {
 		return "", nil, err
 	}
@@ -73,12 +62,12 @@ func (s *Service) processDocx(docx []byte) (string, []model.MediaFile, error) {
 	return text, images, nil
 }
 
-func (s *Service) extractText(zipReader *zip.Reader) (string, error) {
+func extractText(zipReader *zip.Reader) (string, error) {
 	var builder strings.Builder
 
-	headerFiles := s.filesByRegex(zipReader, headerRegex)
-	mainFiles := s.filesByRegex(zipReader, mainRegex)
-	footerFiles := s.filesByRegex(zipReader, footerRegex)
+	headerFiles := filesByRegex(zipReader, headerRegex)
+	mainFiles := filesByRegex(zipReader, mainRegex)
+	footerFiles := filesByRegex(zipReader, footerRegex)
 
 	raws := make([][]byte, 0, len(headerFiles)+len(mainFiles)+len(footerFiles))
 
@@ -110,15 +99,15 @@ func (s *Service) extractText(zipReader *zip.Reader) (string, error) {
 	}
 
 	for _, raw := range raws {
-		builder.WriteString(s.xml2text(raw))
+		builder.WriteString(xml2text(raw))
 		builder.WriteString("\n\n")
 	}
 
 	return builder.String(), nil
 }
 
-func (s *Service) extractImages(zipReader *zip.Reader) ([]model.MediaFile, error) {
-	imgFiles := s.filesByRegex(zipReader, imageRegex)
+func extractImages(zipReader *zip.Reader) ([]model.MediaFile, error) {
+	imgFiles := filesByRegex(zipReader, imageRegex)
 	imgs := make([]model.MediaFile, 0, len(imgFiles))
 
 	for _, file := range imgFiles {
@@ -129,7 +118,7 @@ func (s *Service) extractImages(zipReader *zip.Reader) ([]model.MediaFile, error
 
 		imgs = append(imgs, model.MediaFile{
 			Content:     content,
-			Sha256:      hex.EncodeToString(sha256.New().Sum(content)),
+			Sha256:      sha256String(content),
 			LastUpdated: time.Time{},
 		})
 	}
@@ -137,7 +126,7 @@ func (s *Service) extractImages(zipReader *zip.Reader) ([]model.MediaFile, error
 	return imgs, nil
 }
 
-func (*Service) filesByRegex(
+func filesByRegex(
 	zipReader *zip.Reader,
 	re *regexp.Regexp,
 ) []*zip.File {
@@ -154,7 +143,7 @@ func (*Service) filesByRegex(
 	return files
 }
 
-func (s *Service) xml2text(xmlStr []byte) string {
+func xml2text(xmlStr []byte) string {
 	decoder := xml.NewDecoder(bytes.NewReader(xmlStr))
 
 	var result strings.Builder
@@ -166,14 +155,14 @@ func (s *Service) xml2text(xmlStr []byte) string {
 		}
 
 		if startElem, ok := token.(xml.StartElement); ok {
-			s.processStartElement(decoder, startElem, &result)
+			processStartElement(decoder, startElem, &result)
 		}
 	}
 
 	return result.String()
 }
 
-func (*Service) processStartElement(
+func processStartElement(
 	decoder *xml.Decoder,
 	elem xml.StartElement,
 	result *strings.Builder,
@@ -211,4 +200,11 @@ func readZipFile(f *zip.File) ([]byte, error) {
 	}
 
 	return res, nil
+}
+
+func sha256String(in []byte) string {
+	hash := sha256.New()
+	_, _ = hash.Write(in)
+
+	return hex.EncodeToString(hash.Sum(nil))
 }

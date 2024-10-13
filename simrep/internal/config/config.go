@@ -26,6 +26,7 @@ type Elastic struct {
 }
 
 type Config struct {
+	Port             int                `yaml:"port"`
 	S3               minioutil.Config   `yaml:"s3"`
 	Elastic          elasticutil.Config `yaml:"elastic"`
 	ImageRepo        image.Opts         `yaml:"imageRepo"`

@@ -4,11 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"simrep/internal/model"
 
 	"github.com/minio/minio-go/v7"
 	"golang.org/x/sync/errgroup"
 )
+
+const userMetadataNameKey = "Name"
 
 type Opts struct {
 	Bucket string `yaml:"bucket"`
@@ -54,11 +57,53 @@ func (r *Repository) Save(ctx context.Context, cmd model.MediaFileSaveCommand) e
 		cmd.Item.Sha256,
 		bytes.NewReader(cmd.Item.Content),
 		int64(len(cmd.Item.Content)),
-		minio.PutObjectOptions{}, //nolint:exhaustruct
+		minio.PutObjectOptions{ //nolint:exhaustruct
+			UserMetadata: map[string]string{userMetadataNameKey: cmd.Item.Name},
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("put file %s: %w", cmd.Item.Sha256, err)
 	}
 
 	return nil
+}
+
+func (r *Repository) Fetch(
+	ctx context.Context,
+	query model.DocumentFileQuery,
+) (model.DocumentFile, error) {
+	objectInfo, err := r.cli.StatObject(
+		ctx,
+		r.bucket,
+		query.ID,
+		minio.StatObjectOptions{}, //nolint:exhaustruct
+	)
+	if err != nil {
+		return model.DocumentFile{}, fmt.Errorf("stat object: %w", err)
+	}
+
+	object, err := r.cli.GetObject(
+		ctx,
+		r.bucket,
+		query.ID,
+		minio.GetObjectOptions{}, //nolint:exhaustruct
+	)
+	if err != nil {
+		return model.DocumentFile{}, fmt.Errorf("get object: %w", err)
+	}
+
+	defer object.Close()
+
+	var buf bytes.Buffer
+
+	if _, err := io.Copy(&buf, object); err != nil {
+		return model.DocumentFile{}, fmt.Errorf("copy object data: %w", err)
+	}
+
+	return model.DocumentFile{
+		Name:        objectInfo.UserMetadata[userMetadataNameKey],
+		Content:     buf.Bytes(),
+		Sha256:      query.ID,
+		LastUpdated: objectInfo.LastModified,
+	}, nil
 }

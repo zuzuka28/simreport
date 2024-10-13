@@ -142,9 +142,7 @@ func updateIndexMapping(
 		return fmt.Errorf("load mapping for update: %w", err)
 	}
 
-	body.Settings = nil
-
-	m, err := json.Marshal(body)
+	m, err := json.Marshal(body.Mappings)
 	if err != nil {
 		return fmt.Errorf("marshal mapping: %w", err)
 	}

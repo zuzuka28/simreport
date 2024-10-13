@@ -2,16 +2,17 @@ package document
 
 import "simrep/internal/model"
 
-func mapParsedDocumentFileToParsedDocument(in model.ParsedDocumentFile) model.ParsedDocument {
+func mapParsedDocumentFileToDocument(in model.ParsedDocumentFile) model.Document {
 	imageIDs := make([]string, len(in.Images))
 	for i, img := range in.Images {
 		imageIDs[i] = img.Sha256
 	}
 
-	return model.ParsedDocument{
+	return model.Document{
 		ID:          in.ID,
-		Sha256:      in.Sha256,
+		Name:        in.Name,
 		ImageIDs:    imageIDs,
 		TextContent: in.TextContent,
+		LastUpdated: in.Source.LastUpdated,
 	}
 }

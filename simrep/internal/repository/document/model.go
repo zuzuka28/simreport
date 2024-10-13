@@ -1,8 +1,11 @@
 package document
 
-type parsedDocument struct {
-	ID          string   `json:"id"`
-	Sha256      string   `json:"sha256"`
-	ImageIDs    []string `json:"imageIDs"`
-	TextContent string   `json:"textContent"`
+import "time"
+
+type document struct {
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	ImageIDs    []string  `json:"imageIDs"`
+	TextContent string    `json:"textContent"`
+	LastUpdated time.Time `json:"lastUpdated"`
 }

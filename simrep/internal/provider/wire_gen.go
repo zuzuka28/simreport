@@ -13,14 +13,12 @@ import (
 	"io"
 	"os"
 	"simrep/api/rest/server"
-	"simrep/api/rest/server/handler/files"
-	"simrep/api/rest/server/handler/similarity"
+	document3 "simrep/api/rest/server/handler/document"
 	"simrep/internal/config"
 	"simrep/internal/repository/document"
 	"simrep/internal/repository/documentfile"
 	"simrep/internal/repository/image"
 	document2 "simrep/internal/service/document"
-	"simrep/internal/service/documentparser"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
 )
@@ -53,11 +51,6 @@ func InitS3(contextContext context.Context, configConfig *config.Config) (*minio
 	return client, nil
 }
 
-func InitDocumentParserService() (*documentparser.Service, error) {
-	service := documentparser.NewService()
-	return service, nil
-}
-
 func InitDocumentFileRepository(client *minio.Client, configConfig *config.Config) (*documentfile.Repository, error) {
 	opts := configConfig.DocumentFileRepo
 	repository := documentfile.NewRepository(opts, client)
@@ -79,28 +72,19 @@ func InitDocumentRepository(client *elasticsearch.Client, configConfig *config.C
 	return repository, nil
 }
 
-func InitDocumentService(service *documentparser.Service, repository *image.Repository, documentfileRepository *documentfile.Repository, documentRepository *document.Repository) (*document2.Service, error) {
-	documentService := document2.NewService(service, documentRepository, repository, documentfileRepository)
-	return documentService, nil
+func InitDocumentService(repository *image.Repository, documentfileRepository *documentfile.Repository, documentRepository *document.Repository) (*document2.Service, error) {
+	service := document2.NewService(documentRepository, repository, documentfileRepository)
+	return service, nil
 }
 
-func InitFilesHandler(service *document2.Service) *files.Handler {
-	handler := files.NewHandler(service)
-	return handler
-}
-
-func InitSimilarityHandler() *similarity.Handler {
-	handler := similarity.NewHandler()
+func InitDocumentHandler(service *document2.Service) *document3.Handler {
+	handler := document3.NewHandler(service)
 	return handler
 }
 
 func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*server.Server, error) {
-	string2 := _wireStringValue
+	int2 := configConfig.Port
 	v, err := ProvideSpec()
-	if err != nil {
-		return nil, err
-	}
-	service, err := InitDocumentParserService()
 	if err != nil {
 		return nil, err
 	}
@@ -124,17 +108,15 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(service, repository, documentfileRepository, documentRepository)
+	service, err := InitDocumentService(repository, documentfileRepository, documentRepository)
 	if err != nil {
 		return nil, err
 	}
-	handler := InitFilesHandler(documentService)
-	similarityHandler := InitSimilarityHandler()
+	handler := InitDocumentHandler(service)
 	opts := server.Opts{
-		Addr:              string2,
-		Spec:              v,
-		FileHandler:       handler,
-		SimilarityHandler: similarityHandler,
+		Port:            int2,
+		Spec:            v,
+		DocumentHandler: handler,
 	}
 	serverServer, err := server.New(opts)
 	if err != nil {
@@ -142,10 +124,6 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	}
 	return serverServer, nil
 }
-
-var (
-	_wireStringValue = "localhost:8000"
-)
 
 // wire.go:
 

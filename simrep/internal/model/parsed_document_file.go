@@ -1,13 +1,9 @@
 package model
 
-import "time"
-
 type ParsedDocumentFile struct {
-	ID string
-
-	Sha256      string
-	RawContent  []byte
-	LastUpdated time.Time
+	ID     string
+	Name   string
+	Source DocumentFile
 
 	Images      []MediaFile
 	TextContent string

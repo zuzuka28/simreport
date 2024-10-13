@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"simrep/internal/model"
 
 	"github.com/minio/minio-go/v7"
@@ -61,4 +62,43 @@ func (r *Repository) Save(ctx context.Context, cmd model.MediaFileSaveCommand) e
 	}
 
 	return nil
+}
+
+func (r *Repository) Fetch(
+	ctx context.Context,
+	query model.MediaFileQuery,
+) (model.MediaFile, error) {
+	objectInfo, err := r.cli.StatObject(
+		ctx,
+		r.bucket,
+		query.ID,
+		minio.StatObjectOptions{}, //nolint:exhaustruct
+	)
+	if err != nil {
+		return model.MediaFile{}, fmt.Errorf("stat object: %w", err)
+	}
+
+	object, err := r.cli.GetObject(
+		ctx,
+		r.bucket,
+		query.ID,
+		minio.GetObjectOptions{}, //nolint:exhaustruct
+	)
+	if err != nil {
+		return model.MediaFile{}, fmt.Errorf("get object: %w", err)
+	}
+
+	defer object.Close()
+
+	var buf bytes.Buffer
+
+	if _, err := io.Copy(&buf, object); err != nil {
+		return model.MediaFile{}, fmt.Errorf("copy object data: %w", err)
+	}
+
+	return model.MediaFile{
+		Content:     buf.Bytes(),
+		Sha256:      query.ID,
+		LastUpdated: objectInfo.LastModified,
+	}, nil
 }

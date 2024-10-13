@@ -6,25 +6,25 @@ import (
 )
 
 type (
-	FileHandler interface {
-		PostFilesUpload(
+	DocumentHandler interface {
+		PostDocumentUpload(
 			ctx context.Context,
-			request openapi.PostFilesUploadRequestObject,
-		) (openapi.PostFilesUploadResponseObject, error)
-		GetFilesFileId(
+			request openapi.PostDocumentUploadRequestObject,
+		) (openapi.PostDocumentUploadResponseObject, error)
+		GetDocumentDocumentIdDownload(
 			ctx context.Context,
-			request openapi.GetFilesFileIdRequestObject,
-		) (openapi.GetFilesFileIdResponseObject, error)
+			request openapi.GetDocumentDocumentIdDownloadRequestObject,
+		) (openapi.GetDocumentDocumentIdDownloadResponseObject, error)
+		PostDocumentsSearch(
+			ctx context.Context,
+			request openapi.PostDocumentsSearchRequestObject,
+		) (openapi.PostDocumentsSearchResponseObject, error)
 	}
 
 	SimilarityHandler interface {
-		PostFilesCompare(
-			ctx context.Context,
-			request openapi.PostFilesCompareRequestObject,
-		) (openapi.PostFilesCompareResponseObject, error)
-		GetFilesFileIdCompareAll(
-			ctx context.Context,
-			request openapi.GetFilesFileIdCompareAllRequestObject,
-		) (openapi.GetFilesFileIdCompareAllResponseObject, error)
+		PostDocumentCompare(ctx context.Context, request openapi.PostDocumentCompareRequestObject) (
+			openapi.PostDocumentCompareResponseObject,
+			error,
+		)
 	}
 )

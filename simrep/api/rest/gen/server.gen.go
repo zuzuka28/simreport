@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"time"
@@ -17,94 +18,97 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// CompareAllResult defines model for CompareAllResult.
-type CompareAllResult struct {
-	Comparisons *[]struct {
-		OtherFileId *string `json:"other_file_id,omitempty"`
-
-		// Similarity Процент сходства с другим файлом
-		Similarity *float32 `json:"similarity,omitempty"`
-	} `json:"comparisons,omitempty"`
-
-	// FileId Идентификатор исходного файла
-	FileId *string `json:"file_id,omitempty"`
-}
-
 // CompareRequest defines model for CompareRequest.
 type CompareRequest struct {
-	// FileIds Список идентификаторов файлов для сравнения
-	FileIds *[]string `json:"file_ids,omitempty"`
+	// DocumentIDs Список идентификаторов документов для сравнения
+	DocumentIDs *[]string `json:"documentIDs,omitempty"`
 }
 
 // ComparisonResult defines model for ComparisonResult.
 type ComparisonResult struct {
 	Details *[]struct {
-		File1Id *string `json:"file1_id,omitempty"`
-		File2Id *string `json:"file2_id,omitempty"`
+		DocumentID      *string `json:"documentID,omitempty"`
+		OtherDocumentID *string `json:"otherDocumentID,omitempty"`
 
-		// Similarity Процент сходства между парой файлов
+		// Similarity Процент сходства между парой документов
 		Similarity *float32 `json:"similarity,omitempty"`
 	} `json:"details,omitempty"`
 
-	// SimilarityScore Процент сходства между файлами (от 0 до 100)
+	// SimilarityScore Процент сходства между документами (от 0 до 100)
 	SimilarityScore *float32 `json:"similarity_score,omitempty"`
 }
 
-// FileInfo defines model for FileInfo.
-type FileInfo struct {
-	FileId   *string `json:"file_id,omitempty"`
-	Filename *string `json:"filename,omitempty"`
+// DocumentSummary defines model for DocumentSummary.
+type DocumentSummary struct {
+	// Id Идентификатор документа
+	Id *string `json:"id,omitempty"`
 
-	// Size Размер файла в байтах
-	Size       *int       `json:"size,omitempty"`
-	UploadDate *time.Time `json:"upload_date,omitempty"`
+	// LastUpdated Дата обновления документа
+	LastUpdated *time.Time `json:"lastUpdated,omitempty"`
+
+	// Name Имя документа
+	Name *string `json:"name,omitempty"`
+}
+
+// SearchRequest defines model for SearchRequest.
+type SearchRequest struct {
+	// Name Имя документа для поиска
+	Name *string `json:"name,omitempty"`
 }
 
 // UploadRequest defines model for UploadRequest.
 type UploadRequest struct {
-	// Files Список файлов для загрузки
-	Files *[]openapi_types.File `json:"files,omitempty"`
+	// Document Документ для загрузки
+	Document *openapi_types.File `json:"document,omitempty"`
 }
 
-// UploadSuccess defines model for UploadSuccess.
-type UploadSuccess struct {
-	// FileIds Список уникальных идентификаторов загруженных файлов
-	FileIds *[]string `json:"file_ids,omitempty"`
-}
-
-// FileId defines model for FileId.
-type FileId = string
+// DocumentId defines model for DocumentId.
+type DocumentId = string
 
 // BadRequest defines model for BadRequest.
 type BadRequest struct {
 	Error *string `json:"error,omitempty"`
 }
 
-// FileNotFound defines model for FileNotFound.
-type FileNotFound struct {
+// DocumentNotFound defines model for DocumentNotFound.
+type DocumentNotFound struct {
 	Error *string `json:"error,omitempty"`
 }
 
-// PostFilesCompareJSONRequestBody defines body for PostFilesCompare for application/json ContentType.
-type PostFilesCompareJSONRequestBody = CompareRequest
+// ServerError defines model for ServerError.
+type ServerError struct {
+	Error *string `json:"error,omitempty"`
+}
 
-// PostFilesUploadMultipartRequestBody defines body for PostFilesUpload for multipart/form-data ContentType.
-type PostFilesUploadMultipartRequestBody = UploadRequest
+// UploadSuccess defines model for UploadSuccess.
+type UploadSuccess struct {
+	// DocumentID Уникальный идентификатор загруженного документа
+	DocumentID *string `json:"documentID,omitempty"`
+}
+
+// PostDocumentCompareJSONRequestBody defines body for PostDocumentCompare for application/json ContentType.
+type PostDocumentCompareJSONRequestBody = CompareRequest
+
+// PostDocumentUploadMultipartRequestBody defines body for PostDocumentUpload for multipart/form-data ContentType.
+type PostDocumentUploadMultipartRequestBody = UploadRequest
+
+// PostDocumentsSearchJSONRequestBody defines body for PostDocumentsSearch for application/json ContentType.
+type PostDocumentsSearchJSONRequestBody = SearchRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Сравнение файлов на сходство
-	// (POST /files/compare)
-	PostFilesCompare(w http.ResponseWriter, r *http.Request)
-	// Загрузка файлов для анализа
-	// (POST /files/upload)
-	PostFilesUpload(w http.ResponseWriter, r *http.Request)
-	// Получение информации о загруженном файле
-	// (GET /files/{file_id})
-	GetFilesFileId(w http.ResponseWriter, r *http.Request, fileId FileId)
-	// Сравнение файла со всеми загруженными файлами
-	// (GET /files/{file_id}/compare-all)
-	GetFilesFileIdCompareAll(w http.ResponseWriter, r *http.Request, fileId FileId)
+	// Сравнение документов
+	// (POST /document/compare)
+	PostDocumentCompare(w http.ResponseWriter, r *http.Request)
+	// Загрузка документа
+	// (POST /document/upload)
+	PostDocumentUpload(w http.ResponseWriter, r *http.Request)
+	// Скачать документ
+	// (GET /document/{document_id}/download)
+	GetDocumentDocumentIdDownload(w http.ResponseWriter, r *http.Request, documentId DocumentId)
+	// Поиск документов по имени
+	// (POST /documents/search)
+	PostDocumentsSearch(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -116,11 +120,11 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// PostFilesCompare operation middleware
-func (siw *ServerInterfaceWrapper) PostFilesCompare(w http.ResponseWriter, r *http.Request) {
+// PostDocumentCompare operation middleware
+func (siw *ServerInterfaceWrapper) PostDocumentCompare(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostFilesCompare(w, r)
+		siw.Handler.PostDocumentCompare(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -130,11 +134,11 @@ func (siw *ServerInterfaceWrapper) PostFilesCompare(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
-// PostFilesUpload operation middleware
-func (siw *ServerInterfaceWrapper) PostFilesUpload(w http.ResponseWriter, r *http.Request) {
+// PostDocumentUpload operation middleware
+func (siw *ServerInterfaceWrapper) PostDocumentUpload(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostFilesUpload(w, r)
+		siw.Handler.PostDocumentUpload(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -144,22 +148,22 @@ func (siw *ServerInterfaceWrapper) PostFilesUpload(w http.ResponseWriter, r *htt
 	handler.ServeHTTP(w, r)
 }
 
-// GetFilesFileId operation middleware
-func (siw *ServerInterfaceWrapper) GetFilesFileId(w http.ResponseWriter, r *http.Request) {
+// GetDocumentDocumentIdDownload operation middleware
+func (siw *ServerInterfaceWrapper) GetDocumentDocumentIdDownload(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 
-	// ------------- Path parameter "file_id" -------------
-	var fileId FileId
+	// ------------- Path parameter "document_id" -------------
+	var documentId DocumentId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "file_id", mux.Vars(r)["file_id"], &fileId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "document_id", mux.Vars(r)["document_id"], &documentId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "file_id", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "document_id", Err: err})
 		return
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetFilesFileId(w, r, fileId)
+		siw.Handler.GetDocumentDocumentIdDownload(w, r, documentId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -169,22 +173,11 @@ func (siw *ServerInterfaceWrapper) GetFilesFileId(w http.ResponseWriter, r *http
 	handler.ServeHTTP(w, r)
 }
 
-// GetFilesFileIdCompareAll operation middleware
-func (siw *ServerInterfaceWrapper) GetFilesFileIdCompareAll(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-
-	// ------------- Path parameter "file_id" -------------
-	var fileId FileId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "file_id", mux.Vars(r)["file_id"], &fileId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "file_id", Err: err})
-		return
-	}
+// PostDocumentsSearch operation middleware
+func (siw *ServerInterfaceWrapper) PostDocumentsSearch(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetFilesFileIdCompareAll(w, r, fileId)
+		siw.Handler.PostDocumentsSearch(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -307,13 +300,13 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	r.HandleFunc(options.BaseURL+"/files/compare", wrapper.PostFilesCompare).Methods("POST")
+	r.HandleFunc(options.BaseURL+"/document/compare", wrapper.PostDocumentCompare).Methods("POST")
 
-	r.HandleFunc(options.BaseURL+"/files/upload", wrapper.PostFilesUpload).Methods("POST")
+	r.HandleFunc(options.BaseURL+"/document/upload", wrapper.PostDocumentUpload).Methods("POST")
 
-	r.HandleFunc(options.BaseURL+"/files/{file_id}", wrapper.GetFilesFileId).Methods("GET")
+	r.HandleFunc(options.BaseURL+"/document/{document_id}/download", wrapper.GetDocumentDocumentIdDownload).Methods("GET")
 
-	r.HandleFunc(options.BaseURL+"/files/{file_id}/compare-all", wrapper.GetFilesFileIdCompareAll).Methods("GET")
+	r.HandleFunc(options.BaseURL+"/documents/search", wrapper.PostDocumentsSearch).Methods("POST")
 
 	return r
 }
@@ -322,136 +315,166 @@ type BadRequestJSONResponse struct {
 	Error *string `json:"error,omitempty"`
 }
 
-type CompareAllResultJSONResponse CompareAllResult
-
 type ComparisonResultJSONResponse ComparisonResult
 
-type FileInfoJSONResponse FileInfo
-
-type FileNotFoundJSONResponse struct {
+type DocumentNotFoundJSONResponse struct {
 	Error *string `json:"error,omitempty"`
 }
 
-type UploadSuccessJSONResponse UploadSuccess
-
-type PostFilesCompareRequestObject struct {
-	Body *PostFilesCompareJSONRequestBody
+type ServerErrorJSONResponse struct {
+	Error *string `json:"error,omitempty"`
 }
 
-type PostFilesCompareResponseObject interface {
-	VisitPostFilesCompareResponse(w http.ResponseWriter) error
+type UploadSuccessJSONResponse struct {
+	// DocumentID Уникальный идентификатор загруженного документа
+	DocumentID *string `json:"documentID,omitempty"`
 }
 
-type PostFilesCompare200JSONResponse struct{ ComparisonResultJSONResponse }
+type PostDocumentCompareRequestObject struct {
+	Body *PostDocumentCompareJSONRequestBody
+}
 
-func (response PostFilesCompare200JSONResponse) VisitPostFilesCompareResponse(w http.ResponseWriter) error {
+type PostDocumentCompareResponseObject interface {
+	VisitPostDocumentCompareResponse(w http.ResponseWriter) error
+}
+
+type PostDocumentCompare200JSONResponse struct{ ComparisonResultJSONResponse }
+
+func (response PostDocumentCompare200JSONResponse) VisitPostDocumentCompareResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostFilesCompare400JSONResponse struct{ BadRequestJSONResponse }
+type PostDocumentCompare400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response PostFilesCompare400JSONResponse) VisitPostFilesCompareResponse(w http.ResponseWriter) error {
+func (response PostDocumentCompare400JSONResponse) VisitPostDocumentCompareResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostFilesUploadRequestObject struct {
+type PostDocumentUploadRequestObject struct {
 	Body *multipart.Reader
 }
 
-type PostFilesUploadResponseObject interface {
-	VisitPostFilesUploadResponse(w http.ResponseWriter) error
+type PostDocumentUploadResponseObject interface {
+	VisitPostDocumentUploadResponse(w http.ResponseWriter) error
 }
 
-type PostFilesUpload200JSONResponse struct{ UploadSuccessJSONResponse }
+type PostDocumentUpload200JSONResponse struct{ UploadSuccessJSONResponse }
 
-func (response PostFilesUpload200JSONResponse) VisitPostFilesUploadResponse(w http.ResponseWriter) error {
+func (response PostDocumentUpload200JSONResponse) VisitPostDocumentUploadResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostFilesUpload400JSONResponse struct{ BadRequestJSONResponse }
+type PostDocumentUpload400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response PostFilesUpload400JSONResponse) VisitPostFilesUploadResponse(w http.ResponseWriter) error {
+func (response PostDocumentUpload400JSONResponse) VisitPostDocumentUploadResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetFilesFileIdRequestObject struct {
-	FileId FileId `json:"file_id"`
+type GetDocumentDocumentIdDownloadRequestObject struct {
+	DocumentId DocumentId `json:"document_id"`
 }
 
-type GetFilesFileIdResponseObject interface {
-	VisitGetFilesFileIdResponse(w http.ResponseWriter) error
+type GetDocumentDocumentIdDownloadResponseObject interface {
+	VisitGetDocumentDocumentIdDownloadResponse(w http.ResponseWriter) error
 }
 
-type GetFilesFileId200JSONResponse struct{ FileInfoJSONResponse }
+type GetDocumentDocumentIdDownload200ResponseHeaders struct {
+	ContentDisposition string
+}
 
-func (response GetFilesFileId200JSONResponse) VisitGetFilesFileIdResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
+type GetDocumentDocumentIdDownload200ApplicationoctetStreamResponse struct {
+	Body          io.Reader
+	Headers       GetDocumentDocumentIdDownload200ResponseHeaders
+	ContentLength int64
+}
+
+func (response GetDocumentDocumentIdDownload200ApplicationoctetStreamResponse) VisitGetDocumentDocumentIdDownloadResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/octet-stream")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.Header().Set("Content-Disposition", fmt.Sprint(response.Headers.ContentDisposition))
 	w.WriteHeader(200)
 
-	return json.NewEncoder(w).Encode(response)
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
 }
 
-type GetFilesFileId404JSONResponse struct{ FileNotFoundJSONResponse }
+type GetDocumentDocumentIdDownload404JSONResponse struct{ DocumentNotFoundJSONResponse }
 
-func (response GetFilesFileId404JSONResponse) VisitGetFilesFileIdResponse(w http.ResponseWriter) error {
+func (response GetDocumentDocumentIdDownload404JSONResponse) VisitGetDocumentDocumentIdDownloadResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetFilesFileIdCompareAllRequestObject struct {
-	FileId FileId `json:"file_id"`
+type PostDocumentsSearchRequestObject struct {
+	Body *PostDocumentsSearchJSONRequestBody
 }
 
-type GetFilesFileIdCompareAllResponseObject interface {
-	VisitGetFilesFileIdCompareAllResponse(w http.ResponseWriter) error
+type PostDocumentsSearchResponseObject interface {
+	VisitPostDocumentsSearchResponse(w http.ResponseWriter) error
 }
 
-type GetFilesFileIdCompareAll200JSONResponse struct{ CompareAllResultJSONResponse }
+type PostDocumentsSearch200JSONResponse struct {
+	Documents *[]DocumentSummary `json:"documents,omitempty"`
+}
 
-func (response GetFilesFileIdCompareAll200JSONResponse) VisitGetFilesFileIdCompareAllResponse(w http.ResponseWriter) error {
+func (response PostDocumentsSearch200JSONResponse) VisitPostDocumentsSearchResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetFilesFileIdCompareAll404JSONResponse struct{ FileNotFoundJSONResponse }
+type PostDocumentsSearch400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response GetFilesFileIdCompareAll404JSONResponse) VisitGetFilesFileIdCompareAllResponse(w http.ResponseWriter) error {
+func (response PostDocumentsSearch400JSONResponse) VisitPostDocumentsSearchResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostDocumentsSearch500JSONResponse struct{ ServerErrorJSONResponse }
+
+func (response PostDocumentsSearch500JSONResponse) VisitPostDocumentsSearchResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// Сравнение файлов на сходство
-	// (POST /files/compare)
-	PostFilesCompare(ctx context.Context, request PostFilesCompareRequestObject) (PostFilesCompareResponseObject, error)
-	// Загрузка файлов для анализа
-	// (POST /files/upload)
-	PostFilesUpload(ctx context.Context, request PostFilesUploadRequestObject) (PostFilesUploadResponseObject, error)
-	// Получение информации о загруженном файле
-	// (GET /files/{file_id})
-	GetFilesFileId(ctx context.Context, request GetFilesFileIdRequestObject) (GetFilesFileIdResponseObject, error)
-	// Сравнение файла со всеми загруженными файлами
-	// (GET /files/{file_id}/compare-all)
-	GetFilesFileIdCompareAll(ctx context.Context, request GetFilesFileIdCompareAllRequestObject) (GetFilesFileIdCompareAllResponseObject, error)
+	// Сравнение документов
+	// (POST /document/compare)
+	PostDocumentCompare(ctx context.Context, request PostDocumentCompareRequestObject) (PostDocumentCompareResponseObject, error)
+	// Загрузка документа
+	// (POST /document/upload)
+	PostDocumentUpload(ctx context.Context, request PostDocumentUploadRequestObject) (PostDocumentUploadResponseObject, error)
+	// Скачать документ
+	// (GET /document/{document_id}/download)
+	GetDocumentDocumentIdDownload(ctx context.Context, request GetDocumentDocumentIdDownloadRequestObject) (GetDocumentDocumentIdDownloadResponseObject, error)
+	// Поиск документов по имени
+	// (POST /documents/search)
+	PostDocumentsSearch(ctx context.Context, request PostDocumentsSearchRequestObject) (PostDocumentsSearchResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -483,11 +506,11 @@ type strictHandler struct {
 	options     StrictHTTPServerOptions
 }
 
-// PostFilesCompare operation middleware
-func (sh *strictHandler) PostFilesCompare(w http.ResponseWriter, r *http.Request) {
-	var request PostFilesCompareRequestObject
+// PostDocumentCompare operation middleware
+func (sh *strictHandler) PostDocumentCompare(w http.ResponseWriter, r *http.Request) {
+	var request PostDocumentCompareRequestObject
 
-	var body PostFilesCompareJSONRequestBody
+	var body PostDocumentCompareJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
 		return
@@ -495,18 +518,18 @@ func (sh *strictHandler) PostFilesCompare(w http.ResponseWriter, r *http.Request
 	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostFilesCompare(ctx, request.(PostFilesCompareRequestObject))
+		return sh.ssi.PostDocumentCompare(ctx, request.(PostDocumentCompareRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostFilesCompare")
+		handler = middleware(handler, "PostDocumentCompare")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostFilesCompareResponseObject); ok {
-		if err := validResponse.VisitPostFilesCompareResponse(w); err != nil {
+	} else if validResponse, ok := response.(PostDocumentCompareResponseObject); ok {
+		if err := validResponse.VisitPostDocumentCompareResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -514,9 +537,9 @@ func (sh *strictHandler) PostFilesCompare(w http.ResponseWriter, r *http.Request
 	}
 }
 
-// PostFilesUpload operation middleware
-func (sh *strictHandler) PostFilesUpload(w http.ResponseWriter, r *http.Request) {
-	var request PostFilesUploadRequestObject
+// PostDocumentUpload operation middleware
+func (sh *strictHandler) PostDocumentUpload(w http.ResponseWriter, r *http.Request) {
+	var request PostDocumentUploadRequestObject
 
 	if reader, err := r.MultipartReader(); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
@@ -526,18 +549,18 @@ func (sh *strictHandler) PostFilesUpload(w http.ResponseWriter, r *http.Request)
 	}
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostFilesUpload(ctx, request.(PostFilesUploadRequestObject))
+		return sh.ssi.PostDocumentUpload(ctx, request.(PostDocumentUploadRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostFilesUpload")
+		handler = middleware(handler, "PostDocumentUpload")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostFilesUploadResponseObject); ok {
-		if err := validResponse.VisitPostFilesUploadResponse(w); err != nil {
+	} else if validResponse, ok := response.(PostDocumentUploadResponseObject); ok {
+		if err := validResponse.VisitPostDocumentUploadResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -545,25 +568,25 @@ func (sh *strictHandler) PostFilesUpload(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// GetFilesFileId operation middleware
-func (sh *strictHandler) GetFilesFileId(w http.ResponseWriter, r *http.Request, fileId FileId) {
-	var request GetFilesFileIdRequestObject
+// GetDocumentDocumentIdDownload operation middleware
+func (sh *strictHandler) GetDocumentDocumentIdDownload(w http.ResponseWriter, r *http.Request, documentId DocumentId) {
+	var request GetDocumentDocumentIdDownloadRequestObject
 
-	request.FileId = fileId
+	request.DocumentId = documentId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetFilesFileId(ctx, request.(GetFilesFileIdRequestObject))
+		return sh.ssi.GetDocumentDocumentIdDownload(ctx, request.(GetDocumentDocumentIdDownloadRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetFilesFileId")
+		handler = middleware(handler, "GetDocumentDocumentIdDownload")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetFilesFileIdResponseObject); ok {
-		if err := validResponse.VisitGetFilesFileIdResponse(w); err != nil {
+	} else if validResponse, ok := response.(GetDocumentDocumentIdDownloadResponseObject); ok {
+		if err := validResponse.VisitGetDocumentDocumentIdDownloadResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -571,25 +594,30 @@ func (sh *strictHandler) GetFilesFileId(w http.ResponseWriter, r *http.Request, 
 	}
 }
 
-// GetFilesFileIdCompareAll operation middleware
-func (sh *strictHandler) GetFilesFileIdCompareAll(w http.ResponseWriter, r *http.Request, fileId FileId) {
-	var request GetFilesFileIdCompareAllRequestObject
+// PostDocumentsSearch operation middleware
+func (sh *strictHandler) PostDocumentsSearch(w http.ResponseWriter, r *http.Request) {
+	var request PostDocumentsSearchRequestObject
 
-	request.FileId = fileId
+	var body PostDocumentsSearchJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetFilesFileIdCompareAll(ctx, request.(GetFilesFileIdCompareAllRequestObject))
+		return sh.ssi.PostDocumentsSearch(ctx, request.(PostDocumentsSearchRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetFilesFileIdCompareAll")
+		handler = middleware(handler, "PostDocumentsSearch")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetFilesFileIdCompareAllResponseObject); ok {
-		if err := validResponse.VisitGetFilesFileIdCompareAllResponse(w); err != nil {
+	} else if validResponse, ok := response.(PostDocumentsSearchResponseObject); ok {
+		if err := validResponse.VisitPostDocumentsSearchResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
