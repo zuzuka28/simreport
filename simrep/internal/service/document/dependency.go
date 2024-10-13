@@ -6,6 +6,13 @@ import (
 )
 
 type (
+	AnalyzeService interface {
+		Analyze(
+			ctx context.Context,
+			documentID string,
+		) error
+	}
+
 	ImageRepository interface {
 		SaveMany(
 			ctx context.Context,

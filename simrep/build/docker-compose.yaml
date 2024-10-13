@@ -1,5 +1,10 @@
 version: "3.7"
 services:
+  rabbit:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"
+      - "5672:5672"
   minio:
     image: minio/minio
     ports:
@@ -29,7 +34,8 @@ services:
     ports:
       - "6379:6379"
   elasticsearch:
-    image: bitnami/elasticsearch:latest
+    # image: bitnami/elasticsearch:latest
+    image: elasticsearch:8.15.2
     container_name: elasticsearch
     ports:
       - 9200:9200
@@ -37,11 +43,17 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=false
       - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    # command: >
+    #   sh -c "
+    #   bin/elasticsearch-plugin install analysis-morfologik --batch &&
+    #   bin/elasticsearch
+    #   "
 
     volumes:
       - elastic_vol:/usr/share/elasticsearch/data
   kibana:
-    image: bitnami/kibana:latest
+    # image: bitnami/kibana:latest
+    image: kibana:8.15.2
     container_name: kibana
     ports:
       - 5601:5601

@@ -2,6 +2,9 @@ package config
 
 import (
 	"fmt"
+	"simrep/api/amqp/asyncanalyze/consumer"
+	"simrep/api/amqp/asyncanalyze/producer"
+	"simrep/internal/repository/analyze"
 	"simrep/internal/repository/document"
 	"simrep/internal/repository/documentfile"
 	"simrep/internal/repository/image"
@@ -26,12 +29,16 @@ type Elastic struct {
 }
 
 type Config struct {
-	Port             int                `yaml:"port"`
-	S3               minioutil.Config   `yaml:"s3"`
-	Elastic          elasticutil.Config `yaml:"elastic"`
-	ImageRepo        image.Opts         `yaml:"imageRepo"`
-	DocumentFileRepo documentfile.Opts  `yaml:"documentFileRepo"`
-	DocumentRepo     document.Opts      `yaml:"documentRepo"`
+	Port                 int                `yaml:"port"`
+	S3                   minioutil.Config   `yaml:"s3"`
+	Elastic              elasticutil.Config `yaml:"elastic"`
+	VectorizerService    string             `yaml:"vectorizerService"`
+	AnalyzeProducer      producer.Config    `yaml:"analyzeProducer"`
+	AnalyzeConsumer      consumer.Config    `yaml:"analyzeConsumer"`
+	ImageRepo            image.Opts         `yaml:"imageRepo"`
+	DocumentFileRepo     documentfile.Opts  `yaml:"documentFileRepo"`
+	DocumentRepo         document.Opts      `yaml:"documentRepo"`
+	AnalyzedDocumentRepo analyze.Opts       `yaml:"analyzedDocumentRepo"`
 }
 
 func New(path string) (*Config, error) {

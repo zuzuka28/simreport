@@ -98,10 +98,12 @@ func createIndex(
 		return fmt.Errorf("load mapping: %w", err)
 	}
 
-	mapping.Settings = map[string]any{
-		"number_of_shards":   indexCfg.Shards,
-		"number_of_replicas": indexCfg.Replics,
+	if mapping.Settings == nil {
+		mapping.Settings = make(map[string]any)
 	}
+
+	mapping.Settings["number_of_shards"] = indexCfg.Shards
+	mapping.Settings["number_of_replicas"] = indexCfg.Replics
 
 	m, err := json.Marshal(mapping)
 	if err != nil {
@@ -123,7 +125,7 @@ func createIndex(
 		return fmt.Errorf("create index: %w", err)
 	}
 
-	slog.Error("Index created", "index", indexCfg.Index)
+	slog.Info("Index created", "index", indexCfg.Index)
 
 	return nil
 }
@@ -162,7 +164,7 @@ func updateIndexMapping(
 		return fmt.Errorf("update mapping: %w", err)
 	}
 
-	slog.Error("Mapping updated", "index", indexCfg.Index)
+	slog.Info("Mapping updated", "index", indexCfg.Index)
 
 	return nil
 }

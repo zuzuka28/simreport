@@ -12,15 +12,21 @@ import (
 	"github.com/minio/minio-go/v7"
 	"io"
 	"os"
+	"simrep/api/amqp/asyncanalyze/consumer"
+	"simrep/api/amqp/asyncanalyze/producer"
 	"simrep/api/rest/server"
 	document3 "simrep/api/rest/server/handler/document"
 	"simrep/internal/config"
+	"simrep/internal/repository/analyze"
 	"simrep/internal/repository/document"
 	"simrep/internal/repository/documentfile"
 	"simrep/internal/repository/image"
+	analyze2 "simrep/internal/service/analyze"
 	document2 "simrep/internal/service/document"
+	"simrep/internal/service/vectorizer"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
+	"simrep/pkg/vectorizerclient"
 )
 
 // Injectors from wire.go:
@@ -51,29 +57,71 @@ func InitS3(contextContext context.Context, configConfig *config.Config) (*minio
 	return client, nil
 }
 
-func InitDocumentFileRepository(client *minio.Client, configConfig *config.Config) (*documentfile.Repository, error) {
+func InitVectorizerClient(configConfig *config.Config) (*client.ClientWithResponses, error) {
+	string2 := configConfig.VectorizerService
+	v := _wireValue
+	clientWithResponses, err := client.NewClientWithResponses(string2, v...)
+	if err != nil {
+		return nil, err
+	}
+	return clientWithResponses, nil
+}
+
+var (
+	_wireValue = []client.ClientOption(nil)
+)
+
+func InitDocumentFileRepository(minioClient *minio.Client, configConfig *config.Config) (*documentfile.Repository, error) {
 	opts := configConfig.DocumentFileRepo
-	repository := documentfile.NewRepository(opts, client)
+	repository := documentfile.NewRepository(opts, minioClient)
 	return repository, nil
 }
 
-func InitImageRepository(client *minio.Client, configConfig *config.Config) (*image.Repository, error) {
+func InitImageRepository(minioClient *minio.Client, configConfig *config.Config) (*image.Repository, error) {
 	opts := configConfig.ImageRepo
-	repository := image.NewRepository(opts, client)
+	repository := image.NewRepository(opts, minioClient)
 	return repository, nil
 }
 
-func InitDocumentRepository(client *elasticsearch.Client, configConfig *config.Config) (*document.Repository, error) {
+func InitDocumentRepository(elasticsearchClient *elasticsearch.Client, configConfig *config.Config) (*document.Repository, error) {
 	opts := configConfig.DocumentRepo
-	repository, err := document.NewRepository(opts, client)
+	repository, err := document.NewRepository(opts, elasticsearchClient)
 	if err != nil {
 		return nil, err
 	}
 	return repository, nil
 }
 
-func InitDocumentService(repository *image.Repository, documentfileRepository *documentfile.Repository, documentRepository *document.Repository) (*document2.Service, error) {
-	service := document2.NewService(documentRepository, repository, documentfileRepository)
+func InitAsyncAnalyzeProducerService(configConfig *config.Config) (*producer.Producer, error) {
+	producerConfig := configConfig.AnalyzeProducer
+	producerProducer, err := producer.New(producerConfig)
+	if err != nil {
+		return nil, err
+	}
+	return producerProducer, nil
+}
+
+func InitAnalyzedDocumentRepository(elasticsearchClient *elasticsearch.Client, configConfig *config.Config) (*analyze.Repository, error) {
+	opts := configConfig.AnalyzedDocumentRepo
+	repository, err := analyze.NewRepository(opts, elasticsearchClient)
+	if err != nil {
+		return nil, err
+	}
+	return repository, nil
+}
+
+func InitVectorizerService(clientWithResponses *client.ClientWithResponses) (*vectorizer.Service, error) {
+	service := vectorizer.NewService(clientWithResponses)
+	return service, nil
+}
+
+func InitAnalyzeService(service *vectorizer.Service, repository *analyze.Repository) (*analyze2.Service, error) {
+	analyzeService := analyze2.NewService(repository, service)
+	return analyzeService, nil
+}
+
+func InitDocumentService(repository *image.Repository, documentfileRepository *documentfile.Repository, documentRepository *document.Repository, producerProducer *producer.Producer) (*document2.Service, error) {
+	service := document2.NewService(documentRepository, repository, documentfileRepository, producerProducer)
 	return service, nil
 }
 
@@ -88,15 +136,15 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	client, err := InitS3(contextContext, configConfig)
+	minioClient, err := InitS3(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitImageRepository(client, configConfig)
+	repository, err := InitImageRepository(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	documentfileRepository, err := InitDocumentFileRepository(client, configConfig)
+	documentfileRepository, err := InitDocumentFileRepository(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +156,11 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	service, err := InitDocumentService(repository, documentfileRepository, documentRepository)
+	producerProducer, err := InitAsyncAnalyzeProducerService(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	service, err := InitDocumentService(repository, documentfileRepository, documentRepository, producerProducer)
 	if err != nil {
 		return nil, err
 	}
@@ -123,6 +175,59 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 		return nil, err
 	}
 	return serverServer, nil
+}
+
+func InitAsyncAnalyzeAPI(contextContext context.Context, configConfig *config.Config) (*consumer.Consumer, error) {
+	consumerConfig := configConfig.AnalyzeConsumer
+	minioClient, err := InitS3(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	repository, err := InitImageRepository(minioClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	documentfileRepository, err := InitDocumentFileRepository(minioClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	elasticsearchClient, err := InitElastic(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	documentRepository, err := InitDocumentRepository(elasticsearchClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	producerProducer, err := InitAsyncAnalyzeProducerService(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	service, err := InitDocumentService(repository, documentfileRepository, documentRepository, producerProducer)
+	if err != nil {
+		return nil, err
+	}
+	clientWithResponses, err := InitVectorizerClient(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	vectorizerService, err := InitVectorizerService(clientWithResponses)
+	if err != nil {
+		return nil, err
+	}
+	analyzeRepository, err := InitAnalyzedDocumentRepository(elasticsearchClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	analyzeService, err := InitAnalyzeService(vectorizerService, analyzeRepository)
+	if err != nil {
+		return nil, err
+	}
+	consumerConsumer, err := consumer.New(consumerConfig, service, analyzeService)
+	if err != nil {
+		return nil, err
+	}
+	return consumerConsumer, nil
 }
 
 // wire.go:

@@ -13,13 +13,12 @@ type CountResponse struct {
 	Count int `json:"count"`
 }
 
-type HitHighlight struct {
-	Message []string `json:"message"`
-}
+type HitHighlight struct{}
 
 type Hit struct {
 	ID        string          `json:"_id"`
 	Source    json.RawMessage `json:"_source"`
+	Score     float64         `json:"_score"`
 	Index     string          `json:"_index"`
 	Highlight HitHighlight    `json:"highlight"`
 }

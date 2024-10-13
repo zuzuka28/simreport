@@ -1,0 +1,307 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "SimRep Preprocessor",
+        "description": "SimRep Preprocessor",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/vectorize/text": {
+            "post": {
+                "summary": "Vectorize Text",
+                "operationId": "vectorize_text_vectorize_text_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/VectorizeTextRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VectorizeTextReponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/vectorize/image": {
+            "post": {
+                "summary": "Vectorize Image",
+                "operationId": "vectorize_image_vectorize_image_post",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_vectorize_image_vectorize_image_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/VectorizeImageReponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/hash/image": {
+            "post": {
+                "summary": "Hash Image",
+                "operationId": "hash_image_hash_image_post",
+                "requestBody": {
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "$ref": "#/components/schemas/Body_hash_image_hash_image_post"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ImageHashesResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "Body_hash_image_hash_image_post": {
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "title": "File"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file"
+                ],
+                "title": "Body_hash_image_hash_image_post"
+            },
+            "Body_vectorize_image_vectorize_image_post": {
+                "properties": {
+                    "file": {
+                        "type": "string",
+                        "format": "binary",
+                        "title": "File"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "file"
+                ],
+                "title": "Body_vectorize_image_vectorize_image_post"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "ImageHashesResponse": {
+                "properties": {
+                    "phash": {
+                        "type": "string",
+                        "title": "Phash"
+                    },
+                    "phash_vector": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Phash Vector"
+                    },
+                    "dhash": {
+                        "type": "string",
+                        "title": "Dhash"
+                    },
+                    "dhash_vector": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Dhash Vector"
+                    },
+                    "ahash": {
+                        "type": "string",
+                        "title": "Ahash"
+                    },
+                    "ahash_vector": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Ahash Vector"
+                    },
+                    "whash": {
+                        "type": "string",
+                        "title": "Whash"
+                    },
+                    "whash_vector": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Whash Vector"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "phash",
+                    "phash_vector",
+                    "dhash",
+                    "dhash_vector",
+                    "ahash",
+                    "ahash_vector",
+                    "whash",
+                    "whash_vector"
+                ],
+                "title": "ImageHashesResponse"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            },
+            "VectorizeImageReponse": {
+                "properties": {
+                    "vector": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Vector"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "vector"
+                ],
+                "title": "VectorizeImageReponse"
+            },
+            "VectorizeTextReponse": {
+                "properties": {
+                    "vector": {
+                        "items": {
+                            "type": "number"
+                        },
+                        "type": "array",
+                        "title": "Vector"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "vector"
+                ],
+                "title": "VectorizeTextReponse"
+            },
+            "VectorizeTextRequest": {
+                "properties": {
+                    "text": {
+                        "type": "string",
+                        "title": "Text"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "text"
+                ],
+                "title": "VectorizeTextRequest"
+            }
+        }
+    }
+}

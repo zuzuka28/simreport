@@ -11,4 +11,7 @@ shutdown_env:
 	docker-compose -f build/docker-compose.yaml down --remove-orphans
 
 run_api:
-	go run cmd/simrep/*.go --config config/config.yaml
+	go run cmd/simrep/*.go --config config/config.yaml run-api
+
+run_async_analysis:
+	go run cmd/simrep/*.go --config config/config.yaml run-async-analyze

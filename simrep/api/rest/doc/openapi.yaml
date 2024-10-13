@@ -43,22 +43,6 @@ paths:
         "404":
           $ref: "#/components/responses/DocumentNotFound"
 
-  /document/compare:
-    post:
-      summary: Сравнение документов
-      description: Выполняет сравнение загруженных документов на сходство.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CompareRequest"
-      responses:
-        "200":
-          $ref: "#/components/responses/ComparisonResult"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-
   /documents/search:
     post:
       summary: Поиск документов по имени

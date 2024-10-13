@@ -6,15 +6,21 @@ import (
 	"context"
 	"io"
 	"os"
+	asyncanalyzeconsumer "simrep/api/amqp/asyncanalyze/consumer"
+	asyncanalyzeproducer "simrep/api/amqp/asyncanalyze/producer"
 	"simrep/api/rest/server"
 	documentapi "simrep/api/rest/server/handler/document"
 	"simrep/internal/config"
+	analyzerepo "simrep/internal/repository/analyze"
 	documentrepo "simrep/internal/repository/document"
 	documentfilerepo "simrep/internal/repository/documentfile"
 	imagerepo "simrep/internal/repository/image"
+	analyzesrv "simrep/internal/service/analyze"
 	documentsrv "simrep/internal/service/document"
+	vectorizersrv "simrep/internal/service/vectorizer"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
+	vectorizerclient "simrep/pkg/vectorizerclient"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/google/wire"
@@ -59,6 +65,16 @@ func InitS3(
 	))
 }
 
+func InitVectorizerClient(
+	_ *config.Config,
+) (*vectorizerclient.ClientWithResponses, error) {
+	panic(wire.Build(
+		wire.Value([]vectorizerclient.ClientOption(nil)),
+		wire.FieldsOf(new(*config.Config), "VectorizerService"),
+		vectorizerclient.NewClientWithResponses,
+	))
+}
+
 func InitDocumentFileRepository(
 	_ *minio.Client,
 	_ *config.Config,
@@ -89,12 +105,53 @@ func InitDocumentRepository(
 	))
 }
 
+func InitAsyncAnalyzeProducerService(
+	_ *config.Config,
+) (*asyncanalyzeproducer.Producer, error) {
+	panic(wire.Build(
+		wire.FieldsOf(new(*config.Config), "AnalyzeProducer"),
+		asyncanalyzeproducer.New,
+	))
+}
+
+func InitAnalyzedDocumentRepository(
+	_ *elasticsearch.Client,
+	_ *config.Config,
+) (*analyzerepo.Repository, error) {
+	panic(wire.Build(
+		wire.FieldsOf(new(*config.Config), "AnalyzedDocumentRepo"),
+		analyzerepo.NewRepository,
+	))
+}
+
+func InitVectorizerService(
+	_ *vectorizerclient.ClientWithResponses,
+) (*vectorizersrv.Service, error) {
+	panic(wire.Build(
+		wire.Bind(new(vectorizerclient.ClientWithResponsesInterface), new(*vectorizerclient.ClientWithResponses)),
+		vectorizersrv.NewService,
+	))
+}
+
+func InitAnalyzeService(
+	_ *vectorizersrv.Service,
+	_ *analyzerepo.Repository,
+) (*analyzesrv.Service, error) {
+	panic(wire.Build(
+		wire.Bind(new(analyzesrv.VectorizerService), new(*vectorizersrv.Service)),
+		wire.Bind(new(analyzesrv.Repository), new(*analyzerepo.Repository)),
+		analyzesrv.NewService,
+	))
+}
+
 func InitDocumentService(
 	_ *imagerepo.Repository,
 	_ *documentfilerepo.Repository,
 	_ *documentrepo.Repository,
+	_ *asyncanalyzeproducer.Producer,
 ) (*documentsrv.Service, error) {
 	panic(wire.Build(
+		wire.Bind(new(documentsrv.AnalyzeService), new(*asyncanalyzeproducer.Producer)),
 		wire.Bind(new(documentsrv.FileRepository), new(*documentfilerepo.Repository)),
 		wire.Bind(new(documentsrv.ImageRepository), new(*imagerepo.Repository)),
 		wire.Bind(new(documentsrv.Repository), new(*documentrepo.Repository)),
@@ -124,9 +181,34 @@ func InitRestAPI(
 		InitDocumentRepository,
 		InitDocumentService,
 		InitDocumentHandler,
+		// InitAnalyzeService,
+		InitAsyncAnalyzeProducerService,
 		wire.Bind(new(server.DocumentHandler), new(*documentapi.Handler)),
 		wire.FieldsOf(new(*config.Config), "Port"),
 		wire.Struct(new(server.Opts), "*"),
 		server.New,
+	))
+}
+
+func InitAsyncAnalyzeAPI(
+	_ context.Context,
+	_ *config.Config,
+) (*asyncanalyzeconsumer.Consumer, error) {
+	panic(wire.Build(
+		InitS3,
+		InitElastic,
+		InitImageRepository,
+		InitDocumentFileRepository,
+		InitDocumentRepository,
+		InitDocumentService,
+		InitVectorizerClient,
+		InitVectorizerService,
+		InitAnalyzedDocumentRepository,
+		InitAnalyzeService,
+		InitAsyncAnalyzeProducerService,
+		wire.Bind(new(asyncanalyzeconsumer.DocumentService), new(*documentsrv.Service)),
+		wire.Bind(new(asyncanalyzeconsumer.AnalyzeService), new(*analyzesrv.Service)),
+		wire.FieldsOf(new(*config.Config), "AnalyzeConsumer"),
+		asyncanalyzeconsumer.New,
 	))
 }

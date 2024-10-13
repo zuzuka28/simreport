@@ -17,9 +17,29 @@ elastic:
       alias: ""
       shards: 1
       replics: 1
+    - index: "analyzed_document"
+      updateMapping: true
+      createMapping: true
+      mappingPath: "config/mappings/document_analysis.json"
+      alias: ""
+      shards: 1
+      replics: 1
 imageRepo:
   bucket: "image"
 documentFileRepo:
   bucket: "document"
 documentRepo:
   index: "document"
+analyzedDocumentRepo:
+  index: "analyzed_document"
+vectorizerService: "http://localhost:8081"
+analyzeProducer:
+  dsn: "amqp://localhost:5672/"
+  exchangeName: "analyzeRequest"
+  queueName: "analyzeRequest"
+  routingKey: ""
+  maxRetries: 5
+analyzeConsumer:
+  dsn: "amqp://localhost:5672/"
+  queueName: "analyzeRequest"
+  maxRetries: 5

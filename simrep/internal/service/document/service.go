@@ -14,18 +14,33 @@ type Service struct {
 	r     Repository
 	imgR  ImageRepository
 	fileR FileRepository
+	as    AnalyzeService
 }
 
 func NewService(
 	r Repository,
 	imgR ImageRepository,
 	fileR FileRepository,
+	as AnalyzeService,
 ) *Service {
 	return &Service{
 		r:     r,
 		imgR:  imgR,
 		fileR: fileR,
+		as:    as,
 	}
+}
+
+func (*Service) Parse(
+	_ context.Context,
+	item model.DocumentFile,
+) (model.ParsedDocumentFile, error) {
+	parsed, err := docxparser.Parse(item)
+	if err != nil {
+		return model.ParsedDocumentFile{}, fmt.Errorf("parse document: %w", err)
+	}
+
+	return parsed, nil
 }
 
 func (s *Service) UploadManyFiles(
@@ -80,6 +95,10 @@ func (s *Service) UploadFile(
 
 	if err := g.Wait(); err != nil {
 		return fmt.Errorf("save file resources: %w", err)
+	}
+
+	if err := s.as.Analyze(ctx, parsed.ID); err != nil {
+		return fmt.Errorf("send analyze: %w", err)
 	}
 
 	return nil
