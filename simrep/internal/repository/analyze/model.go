@@ -26,3 +26,7 @@ type analyzedDocument struct {
 	Images      []analyzedImage `json:"images"`
 	LastUpdated time.Time       `json:"lastUpdated"`
 }
+
+type similarityHighlight struct {
+	Text []string `json:"text.russian"`
+}

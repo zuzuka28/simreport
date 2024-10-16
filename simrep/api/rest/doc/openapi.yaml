@@ -55,16 +55,25 @@ paths:
               $ref: "#/components/schemas/SearchRequest"
       responses:
         "200":
-          description: Успешный ответ с документами
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  documents:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/DocumentSummary"
+          $ref: "#/components/responses/SearchResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /analyze/similar:
+    post:
+      summary: Поиск подожих документов
+      description: Получить список документов, наиболее похожих на загруженный
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/UploadRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/SimilaritySearchResult"
         "400":
           $ref: "#/components/responses/BadRequest"
         "500":
@@ -118,35 +127,26 @@ components:
           description: Дата обновления документа
           example: "2024-10-01T12:00:00Z"
 
-    CompareRequest:
+    AnalyzedDocumentMatch:
       type: object
       properties:
-        documentIDs:
+        id:
+          type: string
+          description: Уникальный идентификатор документа.
+        rate:
+          type: number
+          format: float
+          description: Коэффициент похожести (например, от 0 до 1).
+        highlights:
           type: array
           items:
             type: string
-          description: Список идентификаторов документов для сравнения
-
-    ComparisonResult:
-      type: object
-      properties:
-        similarity_score:
-          type: number
-          format: float
-          description: Процент сходства между документами (от 0 до 100)
-        details:
+          description: Список фрагментов текста, которые совпадают в документах.
+        similarImages:
           type: array
           items:
-            type: object
-            properties:
-              documentID:
-                type: string
-              otherDocumentID:
-                type: string
-              similarity:
-                type: number
-                format: float
-                description: Процент сходства между парой документов
+            type: string
+          description: Список идентификаторов похожих изображений.
 
   responses:
     UploadSuccess:
@@ -160,12 +160,29 @@ components:
                 type: string
                 description: Уникальный идентификатор загруженного документа
 
-    ComparisonResult:
-      description: Результаты сравнения документов
+    SearchResult:
+      description: Результаты поиска документов
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ComparisonResult"
+            type: object
+            properties:
+              documents:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentSummary"
+
+    SimilaritySearchResult:
+      description: Результаты поиска схожих документов
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              documents:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnalyzedDocumentMatch"
 
     DocumentNotFound:
       description: Документ не найден

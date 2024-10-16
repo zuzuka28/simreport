@@ -9,6 +9,7 @@ import (
 	asyncanalyzeconsumer "simrep/api/amqp/asyncanalyze/consumer"
 	asyncanalyzeproducer "simrep/api/amqp/asyncanalyze/producer"
 	"simrep/api/rest/server"
+	analyzeapi "simrep/api/rest/server/handler/analyze"
 	documentapi "simrep/api/rest/server/handler/document"
 	"simrep/internal/config"
 	analyzerepo "simrep/internal/repository/analyze"
@@ -168,6 +169,17 @@ func InitDocumentHandler(
 	))
 }
 
+func InitAnalyzeHandler(
+	_ *documentsrv.Service,
+	_ *analyzesrv.Service,
+) *analyzeapi.Handler {
+	panic(wire.Build(
+		wire.Bind(new(analyzeapi.Service), new(*analyzesrv.Service)),
+		wire.Bind(new(analyzeapi.DocumentParser), new(*documentsrv.Service)),
+		analyzeapi.NewHandler,
+	))
+}
+
 func InitRestAPI(
 	_ context.Context,
 	_ *config.Config,
@@ -176,14 +188,19 @@ func InitRestAPI(
 		ProvideSpec,
 		InitS3,
 		InitElastic,
+		InitVectorizerClient,
+		InitVectorizerService,
 		InitImageRepository,
 		InitDocumentFileRepository,
 		InitDocumentRepository,
 		InitDocumentService,
 		InitDocumentHandler,
-		// InitAnalyzeService,
+		InitAnalyzedDocumentRepository,
+		InitAnalyzeService,
+		InitAnalyzeHandler,
 		InitAsyncAnalyzeProducerService,
 		wire.Bind(new(server.DocumentHandler), new(*documentapi.Handler)),
+		wire.Bind(new(server.AnalyzeHandler), new(*analyzeapi.Handler)),
 		wire.FieldsOf(new(*config.Config), "Port"),
 		wire.Struct(new(server.Opts), "*"),
 		server.New,

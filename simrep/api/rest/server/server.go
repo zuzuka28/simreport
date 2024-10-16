@@ -24,6 +24,7 @@ type Opts struct {
 
 	Spec            []byte
 	DocumentHandler DocumentHandler
+	AnalyzeHandler  AnalyzeHandler
 }
 
 func New(
@@ -39,10 +40,10 @@ func New(
 
 	compose := struct {
 		DocumentHandler
-		SimilarityHandler
+		AnalyzeHandler
 	}{
-		DocumentHandler:   opts.DocumentHandler,
-		SimilarityHandler: nil,
+		DocumentHandler: opts.DocumentHandler,
+		AnalyzeHandler:  opts.AnalyzeHandler,
 	}
 
 	stricthandler := openapi.NewStrictHandler(compose, nil)

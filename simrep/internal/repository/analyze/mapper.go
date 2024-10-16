@@ -108,17 +108,39 @@ func mapSearchResponseToMatches(
 		docs = append(docs, doc)
 	}
 
+	highlights := make([][]string, 0, len(in.Hits.Hits))
+
+	for _, hit := range in.Hits.Hits {
+		highlight, err := parseSimilarityHighlights(hit.Highlight)
+		if err != nil {
+			return nil, fmt.Errorf("parse highlight: %w", err)
+		}
+
+		highlights = append(highlights, highlight)
+	}
+
 	matches := make([]model.AnalyzedDocumentMatch, 0, len(docs))
+
 	for i, match := range docs {
 		matches = append(matches, model.AnalyzedDocumentMatch{
 			ID:            match.ID,
 			Rate:          in.Hits.Hits[i].Score,
-			Highlights:    []string{},
+			Highlights:    highlights[i],
 			SimilarImages: filterSimilarImages(query, match),
 		})
 	}
 
 	return matches, nil
+}
+
+func parseSimilarityHighlights(in json.RawMessage) ([]string, error) {
+	var doc similarityHighlight
+
+	if err := json.Unmarshal(in, &doc); err != nil {
+		return nil, fmt.Errorf("unmarshal highlights: %w", err)
+	}
+
+	return doc.Text, nil
 }
 
 func filterSimilarImages(
@@ -173,10 +195,54 @@ func buildSearchQuery(
 		)
 	}
 
+	// if len(query.Item.TextVector) > 0 {
+	// 	criteria = append(
+	// 		criteria,
+	// 		map_{
+	// 			"script_score": map_{
+	// 				"query": map_{
+	// 					"match_all": map_{},
+	// 				},
+	// 				"script": map_{
+	// 					"source": `1 + cosineSimilarity(params.query_vector, 'textVector') * 0.5`,
+	// 					"params": map_{
+	// 						"query_vector": query.Item.TextVector,
+	// 					},
+	// 				},
+	// 			},
+	// 		})
+	// }
+	//
+	// if len(query.Item.Images) > 0 {
+	// 	for _, vec := range query.Item.Images {
+	// 		criteria = append(
+	// 			criteria,
+	// 			map_{
+	// 				"script_score": map_{
+	// 					"query": map_{
+	// 						"match_all": map_{},
+	// 					},
+	// 					"script": map_{
+	// 						"source": `1 + cosineSimilarity(params.query_vector, 'images.vector') * 0.5`,
+	// 						"params": map_{
+	// 							"query_vector": vec,
+	// 						},
+	// 					},
+	// 				},
+	// 			})
+	// 	}
+	// }
+
 	q := map_{
 		"query": map_{
 			"bool": map_{
 				"should": criteria,
+			},
+		},
+		"highlight": map_{
+		    "number_of_fragments": 0,
+			"fields": map_{
+				"text.russian": map_{},
 			},
 		},
 	}
@@ -185,6 +251,8 @@ func buildSearchQuery(
 	if err != nil {
 		return nil, fmt.Errorf("marshal query: %w", err)
 	}
+
+	fmt.Println(string(m))
 
 	return m, nil
 }

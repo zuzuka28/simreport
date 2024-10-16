@@ -65,20 +65,7 @@ func processDocx(docx []byte) (string, []model.MediaFile, error) {
 func extractText(zipReader *zip.Reader) (string, error) {
 	var builder strings.Builder
 
-	headerFiles := filesByRegex(zipReader, headerRegex)
 	mainFiles := filesByRegex(zipReader, mainRegex)
-	footerFiles := filesByRegex(zipReader, footerRegex)
-
-	raws := make([][]byte, 0, len(headerFiles)+len(mainFiles)+len(footerFiles))
-
-	for _, f := range headerFiles {
-		data, err := readZipFile(f)
-		if err != nil {
-			return "", err
-		}
-
-		raws = append(raws, data)
-	}
 
 	for _, f := range mainFiles {
 		data, err := readZipFile(f)
@@ -86,20 +73,7 @@ func extractText(zipReader *zip.Reader) (string, error) {
 			return "", err
 		}
 
-		raws = append(raws, data)
-	}
-
-	for _, f := range footerFiles {
-		data, err := readZipFile(f)
-		if err != nil {
-			return "", err
-		}
-
-		raws = append(raws, data)
-	}
-
-	for _, raw := range raws {
-		builder.WriteString(xml2text(raw))
+		builder.WriteString(xml2text(data))
 		builder.WriteString("\n\n")
 	}
 
@@ -117,6 +91,7 @@ func extractImages(zipReader *zip.Reader) ([]model.MediaFile, error) {
 		}
 
 		imgs = append(imgs, model.MediaFile{
+			Name:        "",
 			Content:     content,
 			Sha256:      sha256String(content),
 			LastUpdated: time.Time{},

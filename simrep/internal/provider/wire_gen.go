@@ -15,6 +15,7 @@ import (
 	"simrep/api/amqp/asyncanalyze/consumer"
 	"simrep/api/amqp/asyncanalyze/producer"
 	"simrep/api/rest/server"
+	analyze3 "simrep/api/rest/server/handler/analyze"
 	document3 "simrep/api/rest/server/handler/document"
 	"simrep/internal/config"
 	"simrep/internal/repository/analyze"
@@ -130,6 +131,11 @@ func InitDocumentHandler(service *document2.Service) *document3.Handler {
 	return handler
 }
 
+func InitAnalyzeHandler(service *document2.Service, analyzeService *analyze2.Service) *analyze3.Handler {
+	handler := analyze3.NewHandler(analyzeService, service)
+	return handler
+}
+
 func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*server.Server, error) {
 	int2 := configConfig.Port
 	v, err := ProvideSpec()
@@ -165,10 +171,28 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 		return nil, err
 	}
 	handler := InitDocumentHandler(service)
+	clientWithResponses, err := InitVectorizerClient(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	vectorizerService, err := InitVectorizerService(clientWithResponses)
+	if err != nil {
+		return nil, err
+	}
+	analyzeRepository, err := InitAnalyzedDocumentRepository(elasticsearchClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	analyzeService, err := InitAnalyzeService(vectorizerService, analyzeRepository)
+	if err != nil {
+		return nil, err
+	}
+	analyzeHandler := InitAnalyzeHandler(service, analyzeService)
 	opts := server.Opts{
 		Port:            int2,
 		Spec:            v,
 		DocumentHandler: handler,
+		AnalyzeHandler:  analyzeHandler,
 	}
 	serverServer, err := server.New(opts)
 	if err != nil {

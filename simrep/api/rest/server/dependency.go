@@ -21,10 +21,10 @@ type (
 		) (openapi.PostDocumentsSearchResponseObject, error)
 	}
 
-	SimilarityHandler interface {
-		PostDocumentCompare(ctx context.Context, request openapi.PostDocumentCompareRequestObject) (
-			openapi.PostDocumentCompareResponseObject,
-			error,
-		)
+	AnalyzeHandler interface {
+		PostAnalyzeSimilar(
+			ctx context.Context,
+			request openapi.PostAnalyzeSimilarRequestObject,
+		) (openapi.PostAnalyzeSimilarResponseObject, error)
 	}
 )

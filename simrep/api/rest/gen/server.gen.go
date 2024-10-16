@@ -18,24 +18,19 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// CompareRequest defines model for CompareRequest.
-type CompareRequest struct {
-	// DocumentIDs Список идентификаторов документов для сравнения
-	DocumentIDs *[]string `json:"documentIDs,omitempty"`
-}
+// AnalyzedDocumentMatch defines model for AnalyzedDocumentMatch.
+type AnalyzedDocumentMatch struct {
+	// Highlights Список фрагментов текста, которые совпадают в документах.
+	Highlights *[]string `json:"highlights,omitempty"`
 
-// ComparisonResult defines model for ComparisonResult.
-type ComparisonResult struct {
-	Details *[]struct {
-		DocumentID      *string `json:"documentID,omitempty"`
-		OtherDocumentID *string `json:"otherDocumentID,omitempty"`
+	// Id Уникальный идентификатор документа.
+	Id *string `json:"id,omitempty"`
 
-		// Similarity Процент сходства между парой документов
-		Similarity *float32 `json:"similarity,omitempty"`
-	} `json:"details,omitempty"`
+	// Rate Коэффициент похожести (например, от 0 до 1).
+	Rate *float32 `json:"rate,omitempty"`
 
-	// SimilarityScore Процент сходства между документами (от 0 до 100)
-	SimilarityScore *float32 `json:"similarity_score,omitempty"`
+	// SimilarImages Список идентификаторов похожих изображений.
+	SimilarImages *[]string `json:"similarImages,omitempty"`
 }
 
 // DocumentSummary defines model for DocumentSummary.
@@ -75,9 +70,19 @@ type DocumentNotFound struct {
 	Error *string `json:"error,omitempty"`
 }
 
+// SearchResult defines model for SearchResult.
+type SearchResult struct {
+	Documents *[]DocumentSummary `json:"documents,omitempty"`
+}
+
 // ServerError defines model for ServerError.
 type ServerError struct {
 	Error *string `json:"error,omitempty"`
+}
+
+// SimilaritySearchResult defines model for SimilaritySearchResult.
+type SimilaritySearchResult struct {
+	Documents *[]AnalyzedDocumentMatch `json:"documents,omitempty"`
 }
 
 // UploadSuccess defines model for UploadSuccess.
@@ -86,8 +91,8 @@ type UploadSuccess struct {
 	DocumentID *string `json:"documentID,omitempty"`
 }
 
-// PostDocumentCompareJSONRequestBody defines body for PostDocumentCompare for application/json ContentType.
-type PostDocumentCompareJSONRequestBody = CompareRequest
+// PostAnalyzeSimilarMultipartRequestBody defines body for PostAnalyzeSimilar for multipart/form-data ContentType.
+type PostAnalyzeSimilarMultipartRequestBody = UploadRequest
 
 // PostDocumentUploadMultipartRequestBody defines body for PostDocumentUpload for multipart/form-data ContentType.
 type PostDocumentUploadMultipartRequestBody = UploadRequest
@@ -97,9 +102,9 @@ type PostDocumentsSearchJSONRequestBody = SearchRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Сравнение документов
-	// (POST /document/compare)
-	PostDocumentCompare(w http.ResponseWriter, r *http.Request)
+	// Поиск подожих документов
+	// (POST /analyze/similar)
+	PostAnalyzeSimilar(w http.ResponseWriter, r *http.Request)
 	// Загрузка документа
 	// (POST /document/upload)
 	PostDocumentUpload(w http.ResponseWriter, r *http.Request)
@@ -120,11 +125,11 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// PostDocumentCompare operation middleware
-func (siw *ServerInterfaceWrapper) PostDocumentCompare(w http.ResponseWriter, r *http.Request) {
+// PostAnalyzeSimilar operation middleware
+func (siw *ServerInterfaceWrapper) PostAnalyzeSimilar(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostDocumentCompare(w, r)
+		siw.Handler.PostAnalyzeSimilar(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -300,7 +305,7 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	r.HandleFunc(options.BaseURL+"/document/compare", wrapper.PostDocumentCompare).Methods("POST")
+	r.HandleFunc(options.BaseURL+"/analyze/similar", wrapper.PostAnalyzeSimilar).Methods("POST")
 
 	r.HandleFunc(options.BaseURL+"/document/upload", wrapper.PostDocumentUpload).Methods("POST")
 
@@ -315,14 +320,20 @@ type BadRequestJSONResponse struct {
 	Error *string `json:"error,omitempty"`
 }
 
-type ComparisonResultJSONResponse ComparisonResult
-
 type DocumentNotFoundJSONResponse struct {
 	Error *string `json:"error,omitempty"`
 }
 
+type SearchResultJSONResponse struct {
+	Documents *[]DocumentSummary `json:"documents,omitempty"`
+}
+
 type ServerErrorJSONResponse struct {
 	Error *string `json:"error,omitempty"`
+}
+
+type SimilaritySearchResultJSONResponse struct {
+	Documents *[]AnalyzedDocumentMatch `json:"documents,omitempty"`
 }
 
 type UploadSuccessJSONResponse struct {
@@ -330,28 +341,39 @@ type UploadSuccessJSONResponse struct {
 	DocumentID *string `json:"documentID,omitempty"`
 }
 
-type PostDocumentCompareRequestObject struct {
-	Body *PostDocumentCompareJSONRequestBody
+type PostAnalyzeSimilarRequestObject struct {
+	Body *multipart.Reader
 }
 
-type PostDocumentCompareResponseObject interface {
-	VisitPostDocumentCompareResponse(w http.ResponseWriter) error
+type PostAnalyzeSimilarResponseObject interface {
+	VisitPostAnalyzeSimilarResponse(w http.ResponseWriter) error
 }
 
-type PostDocumentCompare200JSONResponse struct{ ComparisonResultJSONResponse }
+type PostAnalyzeSimilar200JSONResponse struct {
+	SimilaritySearchResultJSONResponse
+}
 
-func (response PostDocumentCompare200JSONResponse) VisitPostDocumentCompareResponse(w http.ResponseWriter) error {
+func (response PostAnalyzeSimilar200JSONResponse) VisitPostAnalyzeSimilarResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostDocumentCompare400JSONResponse struct{ BadRequestJSONResponse }
+type PostAnalyzeSimilar400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response PostDocumentCompare400JSONResponse) VisitPostDocumentCompareResponse(w http.ResponseWriter) error {
+func (response PostAnalyzeSimilar400JSONResponse) VisitPostAnalyzeSimilarResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostAnalyzeSimilar500JSONResponse struct{ ServerErrorJSONResponse }
+
+func (response PostAnalyzeSimilar500JSONResponse) VisitPostAnalyzeSimilarResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
 
 	return json.NewEncoder(w).Encode(response)
 }
@@ -432,9 +454,7 @@ type PostDocumentsSearchResponseObject interface {
 	VisitPostDocumentsSearchResponse(w http.ResponseWriter) error
 }
 
-type PostDocumentsSearch200JSONResponse struct {
-	Documents *[]DocumentSummary `json:"documents,omitempty"`
-}
+type PostDocumentsSearch200JSONResponse struct{ SearchResultJSONResponse }
 
 func (response PostDocumentsSearch200JSONResponse) VisitPostDocumentsSearchResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
@@ -463,9 +483,9 @@ func (response PostDocumentsSearch500JSONResponse) VisitPostDocumentsSearchRespo
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// Сравнение документов
-	// (POST /document/compare)
-	PostDocumentCompare(ctx context.Context, request PostDocumentCompareRequestObject) (PostDocumentCompareResponseObject, error)
+	// Поиск подожих документов
+	// (POST /analyze/similar)
+	PostAnalyzeSimilar(ctx context.Context, request PostAnalyzeSimilarRequestObject) (PostAnalyzeSimilarResponseObject, error)
 	// Загрузка документа
 	// (POST /document/upload)
 	PostDocumentUpload(ctx context.Context, request PostDocumentUploadRequestObject) (PostDocumentUploadResponseObject, error)
@@ -506,30 +526,30 @@ type strictHandler struct {
 	options     StrictHTTPServerOptions
 }
 
-// PostDocumentCompare operation middleware
-func (sh *strictHandler) PostDocumentCompare(w http.ResponseWriter, r *http.Request) {
-	var request PostDocumentCompareRequestObject
+// PostAnalyzeSimilar operation middleware
+func (sh *strictHandler) PostAnalyzeSimilar(w http.ResponseWriter, r *http.Request) {
+	var request PostAnalyzeSimilarRequestObject
 
-	var body PostDocumentCompareJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+	if reader, err := r.MultipartReader(); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
 		return
+	} else {
+		request.Body = reader
 	}
-	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostDocumentCompare(ctx, request.(PostDocumentCompareRequestObject))
+		return sh.ssi.PostAnalyzeSimilar(ctx, request.(PostAnalyzeSimilarRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostDocumentCompare")
+		handler = middleware(handler, "PostAnalyzeSimilar")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostDocumentCompareResponseObject); ok {
-		if err := validResponse.VisitPostDocumentCompareResponse(w); err != nil {
+	} else if validResponse, ok := response.(PostAnalyzeSimilarResponseObject); ok {
+		if err := validResponse.VisitPostAnalyzeSimilarResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

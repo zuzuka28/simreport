@@ -134,7 +134,9 @@ func mapDocumentsToSearchResponse(in []model.Document) openapi.PostDocumentsSear
 	}
 
 	return openapi.PostDocumentsSearch200JSONResponse{
-		Documents: &docs,
+		SearchResultJSONResponse: openapi.SearchResultJSONResponse{
+			Documents: &docs,
+		},
 	}
 }
 

@@ -22,7 +22,7 @@
                     "type": "shingle",
                     "min_shingle_size": 2,
                     "max_shingle_size": 3,
-                    "output_unigrams": true
+                    "output_unigrams": false
                 }
             },
             "analyzer": {
@@ -61,6 +61,7 @@
                 }
             },
             "images": {
+                "type": "nested",
                 "properties": {
                     "hashImage": {
                         "properties": {
