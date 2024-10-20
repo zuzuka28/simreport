@@ -17,7 +17,6 @@ import (
 var (
 	errNilPart    = errors.New("nil part")
 	errNoDocument = errors.New("no document")
-	errNoBody     = errors.New("no body")
 )
 
 func makeMapSearchSimilarRequestToQuery(
@@ -120,7 +119,9 @@ func sha256String(in []byte) string {
 	return hex.EncodeToString(hash.Sum(nil))
 }
 
-func mapMatchesToSearchSimilarResponse(in []model.AnalyzedDocumentMatch) openapi.PostAnalyzeSimilar200JSONResponse {
+func mapMatchesToSearchSimilarResponse(
+	in []model.AnalyzedDocumentMatch,
+) openapi.PostAnalyzeSimilar200JSONResponse {
 	docs := make([]openapi.AnalyzedDocumentMatch, 0, len(in))
 
 	for _, v := range in {

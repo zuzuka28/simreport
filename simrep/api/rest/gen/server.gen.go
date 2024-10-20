@@ -94,26 +94,26 @@ type UploadSuccess struct {
 // PostAnalyzeSimilarMultipartRequestBody defines body for PostAnalyzeSimilar for multipart/form-data ContentType.
 type PostAnalyzeSimilarMultipartRequestBody = UploadRequest
 
+// PostDocumentSearchJSONRequestBody defines body for PostDocumentSearch for application/json ContentType.
+type PostDocumentSearchJSONRequestBody = SearchRequest
+
 // PostDocumentUploadMultipartRequestBody defines body for PostDocumentUpload for multipart/form-data ContentType.
 type PostDocumentUploadMultipartRequestBody = UploadRequest
-
-// PostDocumentsSearchJSONRequestBody defines body for PostDocumentsSearch for application/json ContentType.
-type PostDocumentsSearchJSONRequestBody = SearchRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Поиск подожих документов
 	// (POST /analyze/similar)
 	PostAnalyzeSimilar(w http.ResponseWriter, r *http.Request)
+	// Поиск документов по имени
+	// (POST /document/search)
+	PostDocumentSearch(w http.ResponseWriter, r *http.Request)
 	// Загрузка документа
 	// (POST /document/upload)
 	PostDocumentUpload(w http.ResponseWriter, r *http.Request)
 	// Скачать документ
 	// (GET /document/{document_id}/download)
 	GetDocumentDocumentIdDownload(w http.ResponseWriter, r *http.Request, documentId DocumentId)
-	// Поиск документов по имени
-	// (POST /documents/search)
-	PostDocumentsSearch(w http.ResponseWriter, r *http.Request)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -130,6 +130,20 @@ func (siw *ServerInterfaceWrapper) PostAnalyzeSimilar(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PostAnalyzeSimilar(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PostDocumentSearch operation middleware
+func (siw *ServerInterfaceWrapper) PostDocumentSearch(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostDocumentSearch(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -169,20 +183,6 @@ func (siw *ServerInterfaceWrapper) GetDocumentDocumentIdDownload(w http.Response
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetDocumentDocumentIdDownload(w, r, documentId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PostDocumentsSearch operation middleware
-func (siw *ServerInterfaceWrapper) PostDocumentsSearch(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostDocumentsSearch(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -307,11 +307,11 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/analyze/similar", wrapper.PostAnalyzeSimilar).Methods("POST")
 
+	r.HandleFunc(options.BaseURL+"/document/search", wrapper.PostDocumentSearch).Methods("POST")
+
 	r.HandleFunc(options.BaseURL+"/document/upload", wrapper.PostDocumentUpload).Methods("POST")
 
 	r.HandleFunc(options.BaseURL+"/document/{document_id}/download", wrapper.GetDocumentDocumentIdDownload).Methods("GET")
-
-	r.HandleFunc(options.BaseURL+"/documents/search", wrapper.PostDocumentsSearch).Methods("POST")
 
 	return r
 }
@@ -372,6 +372,41 @@ func (response PostAnalyzeSimilar400JSONResponse) VisitPostAnalyzeSimilarRespons
 type PostAnalyzeSimilar500JSONResponse struct{ ServerErrorJSONResponse }
 
 func (response PostAnalyzeSimilar500JSONResponse) VisitPostAnalyzeSimilarResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostDocumentSearchRequestObject struct {
+	Body *PostDocumentSearchJSONRequestBody
+}
+
+type PostDocumentSearchResponseObject interface {
+	VisitPostDocumentSearchResponse(w http.ResponseWriter) error
+}
+
+type PostDocumentSearch200JSONResponse struct{ SearchResultJSONResponse }
+
+func (response PostDocumentSearch200JSONResponse) VisitPostDocumentSearchResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostDocumentSearch400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response PostDocumentSearch400JSONResponse) VisitPostDocumentSearchResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostDocumentSearch500JSONResponse struct{ ServerErrorJSONResponse }
+
+func (response PostDocumentSearch500JSONResponse) VisitPostDocumentSearchResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -446,55 +481,20 @@ func (response GetDocumentDocumentIdDownload404JSONResponse) VisitGetDocumentDoc
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostDocumentsSearchRequestObject struct {
-	Body *PostDocumentsSearchJSONRequestBody
-}
-
-type PostDocumentsSearchResponseObject interface {
-	VisitPostDocumentsSearchResponse(w http.ResponseWriter) error
-}
-
-type PostDocumentsSearch200JSONResponse struct{ SearchResultJSONResponse }
-
-func (response PostDocumentsSearch200JSONResponse) VisitPostDocumentsSearchResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostDocumentsSearch400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response PostDocumentsSearch400JSONResponse) VisitPostDocumentsSearchResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostDocumentsSearch500JSONResponse struct{ ServerErrorJSONResponse }
-
-func (response PostDocumentsSearch500JSONResponse) VisitPostDocumentsSearchResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Поиск подожих документов
 	// (POST /analyze/similar)
 	PostAnalyzeSimilar(ctx context.Context, request PostAnalyzeSimilarRequestObject) (PostAnalyzeSimilarResponseObject, error)
+	// Поиск документов по имени
+	// (POST /document/search)
+	PostDocumentSearch(ctx context.Context, request PostDocumentSearchRequestObject) (PostDocumentSearchResponseObject, error)
 	// Загрузка документа
 	// (POST /document/upload)
 	PostDocumentUpload(ctx context.Context, request PostDocumentUploadRequestObject) (PostDocumentUploadResponseObject, error)
 	// Скачать документ
 	// (GET /document/{document_id}/download)
 	GetDocumentDocumentIdDownload(ctx context.Context, request GetDocumentDocumentIdDownloadRequestObject) (GetDocumentDocumentIdDownloadResponseObject, error)
-	// Поиск документов по имени
-	// (POST /documents/search)
-	PostDocumentsSearch(ctx context.Context, request PostDocumentsSearchRequestObject) (PostDocumentsSearchResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -557,6 +557,37 @@ func (sh *strictHandler) PostAnalyzeSimilar(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// PostDocumentSearch operation middleware
+func (sh *strictHandler) PostDocumentSearch(w http.ResponseWriter, r *http.Request) {
+	var request PostDocumentSearchRequestObject
+
+	var body PostDocumentSearchJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PostDocumentSearch(ctx, request.(PostDocumentSearchRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostDocumentSearch")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PostDocumentSearchResponseObject); ok {
+		if err := validResponse.VisitPostDocumentSearchResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // PostDocumentUpload operation middleware
 func (sh *strictHandler) PostDocumentUpload(w http.ResponseWriter, r *http.Request) {
 	var request PostDocumentUploadRequestObject
@@ -607,37 +638,6 @@ func (sh *strictHandler) GetDocumentDocumentIdDownload(w http.ResponseWriter, r 
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetDocumentDocumentIdDownloadResponseObject); ok {
 		if err := validResponse.VisitGetDocumentDocumentIdDownloadResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PostDocumentsSearch operation middleware
-func (sh *strictHandler) PostDocumentsSearch(w http.ResponseWriter, r *http.Request) {
-	var request PostDocumentsSearchRequestObject
-
-	var body PostDocumentsSearchJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostDocumentsSearch(ctx, request.(PostDocumentsSearchRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostDocumentsSearch")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostDocumentsSearchResponseObject); ok {
-		if err := validResponse.VisitPostDocumentsSearchResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

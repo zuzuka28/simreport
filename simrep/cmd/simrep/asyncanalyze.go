@@ -17,7 +17,7 @@ func runAsyncAnalyze(c *cli.Context) error {
 		return fmt.Errorf("read config: %w", err)
 	}
 
-	api, err := provider.InitAsyncAnalyzeAPI(c.Context, cfg)
+	api, err := provider.InitAsyncProcessing(c.Context, cfg)
 	if err != nil {
 		return fmt.Errorf("init api: %w", err)
 	}
@@ -26,7 +26,7 @@ func runAsyncAnalyze(c *cli.Context) error {
 
 	go func() {
 		if err := api.Start(c.Context); err != nil {
-			errCh <- fmt.Errorf("run async analisis: %w", err)
+			errCh <- fmt.Errorf("run async api: %w", err)
 		}
 	}()
 

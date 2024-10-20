@@ -12,21 +12,68 @@ import (
 type Service struct {
 	vs VectorizerService
 	r  Repository
+	n  Notify
 }
 
 func NewService(
 	r Repository,
 	vs VectorizerService,
+	n Notify,
 ) *Service {
 	return &Service{
 		vs: vs,
 		r:  r,
+		n:  n,
 	}
+}
+
+func (s *Service) Fetch(
+	ctx context.Context,
+	query model.AnalyzedDocumentQuery,
+) (model.AnalyzedDocument, error) {
+	res, err := s.r.Fetch(ctx, query)
+	if err != nil {
+		return model.AnalyzedDocument{}, fmt.Errorf("fetch analyzed document: %w", err)
+	}
+
+	return res, nil
+}
+
+func (s *Service) SearchSimilar(
+	ctx context.Context,
+	query model.AnalyzedDocumentSimilarQuery,
+) ([]model.AnalyzedDocumentMatch, error) {
+	res, err := s.r.SearchSimilar(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("search similar: %w", err)
+	}
+
+	return res, nil
+}
+
+func (s *Service) Save(
+	ctx context.Context,
+	cmd model.AnalyzedDocumentSaveCommand,
+) error {
+	if err := s.r.Save(ctx, cmd); err != nil {
+		return fmt.Errorf("save analyzed document: %w", err)
+	}
+
+	if err := s.n.Notify(
+		ctx,
+		cmd.Item.ID,
+		model.NotifyActionDocumentAnalyzed,
+		nil,
+	); err != nil {
+		return fmt.Errorf("notify: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Service) Analyze(
 	ctx context.Context,
-	item model.ParsedDocumentFile,
+	item model.Document,
 ) (model.AnalyzedDocument, error) {
 	g, gCtx := errgroup.WithContext(ctx)
 
@@ -79,7 +126,7 @@ func (s *Service) Analyze(
 
 func (s *Service) AnalyzeImage(
 	ctx context.Context,
-	item model.MediaFile,
+	item model.File,
 ) (model.AnalyzedImage, error) {
 	g, gCtx := errgroup.WithContext(ctx)
 
@@ -122,39 +169,4 @@ func (s *Service) AnalyzeImage(
 		Vector:    vector,
 		HashImage: hash,
 	}, nil
-}
-
-func (s *Service) SearchSimilar(
-	ctx context.Context,
-	query model.AnalyzedDocumentSimilarQuery,
-) ([]model.AnalyzedDocumentMatch, error) {
-	res, err := s.r.SearchSimilar(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("search similar: %w", err)
-	}
-
-	return res, nil
-}
-
-func (s *Service) Save(
-	ctx context.Context,
-	cmd model.AnalyzedDocumentSaveCommand,
-) error {
-	if err := s.r.Save(ctx, cmd); err != nil {
-		return fmt.Errorf("save analyzed document: %w", err)
-	}
-
-	return nil
-}
-
-func (s *Service) Fetch(
-	ctx context.Context,
-	query model.AnalyzedDocumentQuery,
-) (model.AnalyzedDocument, error) {
-	res, err := s.r.Fetch(ctx, query)
-	if err != nil {
-		return model.AnalyzedDocument{}, fmt.Errorf("fetch analyzed document: %w", err)
-	}
-
-	return res, nil
 }

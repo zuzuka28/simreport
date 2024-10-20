@@ -33,13 +33,13 @@ documentRepo:
 analyzedDocumentRepo:
   index: "analyzed_document"
 vectorizerService: "http://localhost:8081"
-analyzeProducer:
+notifyProducer:
   dsn: "amqp://localhost:5672/"
-  exchangeName: "analyzeRequest"
-  queueName: "analyzeRequest"
+  exchangeName: "notification"
+  queueName: "notification"
   routingKey: ""
   maxRetries: 5
-analyzeConsumer:
+notifyConsumer:
   dsn: "amqp://localhost:5672/"
-  queueName: "analyzeRequest"
+  queueName: "notification"
   maxRetries: 5

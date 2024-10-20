@@ -12,21 +12,27 @@ import (
 	"github.com/minio/minio-go/v7"
 	"io"
 	"os"
-	"simrep/api/amqp/asyncanalyze/consumer"
-	"simrep/api/amqp/asyncanalyze/producer"
+	"simrep/api/amqp/asyncnotify/consumer"
+	"simrep/api/amqp/asyncnotify/handler/documentsaved"
+	"simrep/api/amqp/asyncnotify/handler/filesaved"
+	"simrep/api/amqp/asyncnotify/producer"
 	"simrep/api/rest/server"
 	analyze3 "simrep/api/rest/server/handler/analyze"
 	document3 "simrep/api/rest/server/handler/document"
+	file2 "simrep/api/rest/server/handler/file"
 	"simrep/internal/config"
+	"simrep/internal/model"
 	"simrep/internal/repository/analyze"
 	"simrep/internal/repository/document"
-	"simrep/internal/repository/documentfile"
-	"simrep/internal/repository/image"
+	"simrep/internal/repository/file"
 	analyze2 "simrep/internal/service/analyze"
 	document2 "simrep/internal/service/document"
+	"simrep/internal/service/documentfile"
+	"simrep/internal/service/imagefile"
 	"simrep/internal/service/vectorizer"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
+	"simrep/pkg/rabbitmq"
 	"simrep/pkg/vectorizerclient"
 )
 
@@ -72,15 +78,42 @@ var (
 	_wireValue = []client.ClientOption(nil)
 )
 
-func InitDocumentFileRepository(minioClient *minio.Client, configConfig *config.Config) (*documentfile.Repository, error) {
+func InitRabbitNotifyPublisher(configConfig *config.Config) (*rabbitmq.Producer, error) {
+	producerConfig := configConfig.NotifyProducer
+	producer, err := rabbitmq.NewProducer(producerConfig)
+	if err != nil {
+		return nil, err
+	}
+	return producer, nil
+}
+
+func InitRabbitNotifyConsumer(configConfig *config.Config) (*rabbitmq.Consumer, error) {
+	consumerConfig := configConfig.NotifyConsumer
+	consumer, err := rabbitmq.NewConsumer(consumerConfig)
+	if err != nil {
+		return nil, err
+	}
+	return consumer, nil
+}
+
+func InitNotifyProducer(configConfig *config.Config) (*producer.Producer, error) {
+	rabbitmqProducer, err := InitRabbitNotifyPublisher(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	producerProducer := producer.New(rabbitmqProducer)
+	return producerProducer, nil
+}
+
+func InitDocumentFileRepository(minioClient *minio.Client, configConfig *config.Config) (*file.Repository, error) {
 	opts := configConfig.DocumentFileRepo
-	repository := documentfile.NewRepository(opts, minioClient)
+	repository := file.NewRepository(opts, minioClient)
 	return repository, nil
 }
 
-func InitImageRepository(minioClient *minio.Client, configConfig *config.Config) (*image.Repository, error) {
+func InitImageFileRepository(minioClient *minio.Client, configConfig *config.Config) (*file.Repository, error) {
 	opts := configConfig.ImageRepo
-	repository := image.NewRepository(opts, minioClient)
+	repository := file.NewRepository(opts, minioClient)
 	return repository, nil
 }
 
@@ -91,15 +124,6 @@ func InitDocumentRepository(elasticsearchClient *elasticsearch.Client, configCon
 		return nil, err
 	}
 	return repository, nil
-}
-
-func InitAsyncAnalyzeProducerService(configConfig *config.Config) (*producer.Producer, error) {
-	producerConfig := configConfig.AnalyzeProducer
-	producerProducer, err := producer.New(producerConfig)
-	if err != nil {
-		return nil, err
-	}
-	return producerProducer, nil
 }
 
 func InitAnalyzedDocumentRepository(elasticsearchClient *elasticsearch.Client, configConfig *config.Config) (*analyze.Repository, error) {
@@ -116,18 +140,41 @@ func InitVectorizerService(clientWithResponses *client.ClientWithResponses) (*ve
 	return service, nil
 }
 
-func InitAnalyzeService(service *vectorizer.Service, repository *analyze.Repository) (*analyze2.Service, error) {
-	analyzeService := analyze2.NewService(repository, service)
+func InitAnalyzeService(producerProducer *producer.Producer, service *vectorizer.Service, repository *analyze.Repository) (*analyze2.Service, error) {
+	analyzeService := analyze2.NewService(repository, service, producerProducer)
 	return analyzeService, nil
 }
 
-func InitDocumentService(repository *image.Repository, documentfileRepository *documentfile.Repository, documentRepository *document.Repository, producerProducer *producer.Producer) (*document2.Service, error) {
-	service := document2.NewService(documentRepository, repository, documentfileRepository, producerProducer)
+func InitDocumentFileService(producerProducer *producer.Producer, minioClient *minio.Client, configConfig *config.Config) (*documentfile.Service, error) {
+	repository, err := InitDocumentFileRepository(minioClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	service := documentfile.NewService(repository, producerProducer)
 	return service, nil
+}
+
+func InitImageFileService(minioClient *minio.Client, configConfig *config.Config) (*imagefile.Service, error) {
+	repository, err := InitImageFileRepository(minioClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	service := imagefile.NewService(repository)
+	return service, nil
+}
+
+func InitDocumentService(producerProducer *producer.Producer, service *imagefile.Service, documentfileService *documentfile.Service, repository *document.Repository) (*document2.Service, error) {
+	documentService := document2.NewService(repository, service, documentfileService, producerProducer)
+	return documentService, nil
 }
 
 func InitDocumentHandler(service *document2.Service) *document3.Handler {
 	handler := document3.NewHandler(service)
+	return handler
+}
+
+func InitFileHandler(service *documentfile.Service) *file2.Handler {
+	handler := file2.NewHandler(service)
 	return handler
 }
 
@@ -142,15 +189,19 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
+	producerProducer, err := InitNotifyProducer(configConfig)
+	if err != nil {
+		return nil, err
+	}
 	minioClient, err := InitS3(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitImageRepository(minioClient, configConfig)
+	service, err := InitImageFileService(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	documentfileRepository, err := InitDocumentFileRepository(minioClient, configConfig)
+	documentfileService, err := InitDocumentFileService(producerProducer, minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -158,19 +209,15 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	documentRepository, err := InitDocumentRepository(elasticsearchClient, configConfig)
+	repository, err := InitDocumentRepository(elasticsearchClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	producerProducer, err := InitAsyncAnalyzeProducerService(configConfig)
+	documentService, err := InitDocumentService(producerProducer, service, documentfileService, repository)
 	if err != nil {
 		return nil, err
 	}
-	service, err := InitDocumentService(repository, documentfileRepository, documentRepository, producerProducer)
-	if err != nil {
-		return nil, err
-	}
-	handler := InitDocumentHandler(service)
+	handler := InitDocumentHandler(documentService)
 	clientWithResponses, err := InitVectorizerClient(configConfig)
 	if err != nil {
 		return nil, err
@@ -183,16 +230,18 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(vectorizerService, analyzeRepository)
+	analyzeService, err := InitAnalyzeService(producerProducer, vectorizerService, analyzeRepository)
 	if err != nil {
 		return nil, err
 	}
-	analyzeHandler := InitAnalyzeHandler(service, analyzeService)
+	analyzeHandler := InitAnalyzeHandler(documentService, analyzeService)
+	fileHandler := InitFileHandler(documentfileService)
 	opts := server.Opts{
 		Port:            int2,
 		Spec:            v,
 		DocumentHandler: handler,
 		AnalyzeHandler:  analyzeHandler,
+		FileHandler:     fileHandler,
 	}
 	serverServer, err := server.New(opts)
 	if err != nil {
@@ -201,17 +250,34 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	return serverServer, nil
 }
 
-func InitAsyncAnalyzeAPI(contextContext context.Context, configConfig *config.Config) (*consumer.Consumer, error) {
-	consumerConfig := configConfig.AnalyzeConsumer
+func InitAsyncFileSavedHandler(service *documentfile.Service, documentService *document2.Service) *filesaved.Handler {
+	handler := filesaved.NewHandler(service, documentService)
+	return handler
+}
+
+func InitAsyncDocumentSavedHandler(service *document2.Service, analyzeService *analyze2.Service) *documentsaved.Handler {
+	handler := documentsaved.NewHandler(service, analyzeService)
+	return handler
+}
+
+func InitAsyncProcessing(contextContext context.Context, configConfig *config.Config) (*consumer.Consumer, error) {
+	rabbitmqConsumer, err := InitRabbitNotifyConsumer(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	producerProducer, err := InitNotifyProducer(configConfig)
+	if err != nil {
+		return nil, err
+	}
 	minioClient, err := InitS3(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitImageRepository(minioClient, configConfig)
+	service, err := InitDocumentFileService(producerProducer, minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	documentfileRepository, err := InitDocumentFileRepository(minioClient, configConfig)
+	imagefileService, err := InitImageFileService(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -219,18 +285,15 @@ func InitAsyncAnalyzeAPI(contextContext context.Context, configConfig *config.Co
 	if err != nil {
 		return nil, err
 	}
-	documentRepository, err := InitDocumentRepository(elasticsearchClient, configConfig)
+	repository, err := InitDocumentRepository(elasticsearchClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	producerProducer, err := InitAsyncAnalyzeProducerService(configConfig)
+	documentService, err := InitDocumentService(producerProducer, imagefileService, service, repository)
 	if err != nil {
 		return nil, err
 	}
-	service, err := InitDocumentService(repository, documentfileRepository, documentRepository, producerProducer)
-	if err != nil {
-		return nil, err
-	}
+	handler := InitAsyncFileSavedHandler(service, documentService)
 	clientWithResponses, err := InitVectorizerClient(configConfig)
 	if err != nil {
 		return nil, err
@@ -243,14 +306,13 @@ func InitAsyncAnalyzeAPI(contextContext context.Context, configConfig *config.Co
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(vectorizerService, analyzeRepository)
+	analyzeService, err := InitAnalyzeService(producerProducer, vectorizerService, analyzeRepository)
 	if err != nil {
 		return nil, err
 	}
-	consumerConsumer, err := consumer.New(consumerConfig, service, analyzeService)
-	if err != nil {
-		return nil, err
-	}
+	documentsavedHandler := InitAsyncDocumentSavedHandler(documentService, analyzeService)
+	v := ProvideAsyncProcessingHandlers(handler, documentsavedHandler)
+	consumerConsumer := consumer.New(rabbitmqConsumer, v)
 	return consumerConsumer, nil
 }
 
@@ -268,4 +330,11 @@ func ProvideSpec() ([]byte, error) {
 	}
 
 	return spec, nil
+}
+
+func ProvideAsyncProcessingHandlers(
+	fsapi *filesaved.Handler,
+	dsapi *documentsaved.Handler,
+) map[model.NotifyAction]consumer.HandlerFunc {
+	return map[model.NotifyAction]consumer.HandlerFunc{model.NotifyActionFileSaved: fsapi.Serve, model.NotifyActionDocumentSaved: dsapi.Serve, model.NotifyActionDocumentAnalyzed: func(ctx context.Context, id string, data any) error { return nil }}
 }

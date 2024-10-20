@@ -8,4 +8,8 @@ type Document struct {
 	ImageIDs    []string
 	TextContent string
 	LastUpdated time.Time
+
+	WithContent bool
+	Source      File
+	Images      []File
 }

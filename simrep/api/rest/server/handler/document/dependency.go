@@ -7,14 +7,6 @@ import (
 
 type (
 	Service interface {
-		UploadFile(
-			ctx context.Context,
-			cmd model.DocumentFileUploadCommand,
-		) error
-		FetchFile(
-			ctx context.Context,
-			query model.DocumentFileQuery,
-		) (model.DocumentFile, error)
 		Search(
 			ctx context.Context,
 			query model.DocumentSearchQuery,

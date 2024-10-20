@@ -7,6 +7,13 @@ import (
 
 type (
 	DocumentHandler interface {
+		PostDocumentSearch(
+			ctx context.Context,
+			request openapi.PostDocumentSearchRequestObject,
+		) (openapi.PostDocumentSearchResponseObject, error)
+	}
+
+	FileHandler interface {
 		PostDocumentUpload(
 			ctx context.Context,
 			request openapi.PostDocumentUploadRequestObject,
@@ -15,10 +22,6 @@ type (
 			ctx context.Context,
 			request openapi.GetDocumentDocumentIdDownloadRequestObject,
 		) (openapi.GetDocumentDocumentIdDownloadResponseObject, error)
-		PostDocumentsSearch(
-			ctx context.Context,
-			request openapi.PostDocumentsSearchRequestObject,
-		) (openapi.PostDocumentsSearchResponseObject, error)
 	}
 
 	AnalyzeHandler interface {

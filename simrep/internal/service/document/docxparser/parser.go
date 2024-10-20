@@ -24,26 +24,33 @@ var (
 	imageRegex  = regexp.MustCompile(`word/media/.*\.(jpg|jpeg|png|bmp)`)
 )
 
-func Parse(item model.DocumentFile) (model.ParsedDocumentFile, error) {
+func Parse(item model.File) (model.Document, error) {
 	if len(item.Content) == 0 {
-		return model.ParsedDocumentFile{}, errEmptyFile
+		return model.Document{}, errEmptyFile
 	}
 
 	text, images, err := processDocx(item.Content)
 	if err != nil {
-		return model.ParsedDocumentFile{}, err
+		return model.Document{}, err
 	}
 
-	return model.ParsedDocumentFile{
+	imageIDs := make([]string, len(images))
+	for i, img := range images {
+		imageIDs[i] = img.Sha256
+	}
+
+	return model.Document{
 		ID:          item.Sha256,
 		Name:        item.Name,
+		ImageIDs:    imageIDs,
+		TextContent: text,
+		LastUpdated: time.Now(),
 		Source:      item,
 		Images:      images,
-		TextContent: text,
 	}, nil
 }
 
-func processDocx(docx []byte) (string, []model.MediaFile, error) {
+func processDocx(docx []byte) (string, []model.File, error) {
 	zipReader, err := zip.NewReader(bytes.NewReader(docx), int64(len(docx)))
 	if err != nil {
 		return "", nil, fmt.Errorf("new zip reader: %w", err)
@@ -80,9 +87,9 @@ func extractText(zipReader *zip.Reader) (string, error) {
 	return builder.String(), nil
 }
 
-func extractImages(zipReader *zip.Reader) ([]model.MediaFile, error) {
+func extractImages(zipReader *zip.Reader) ([]model.File, error) {
 	imgFiles := filesByRegex(zipReader, imageRegex)
-	imgs := make([]model.MediaFile, 0, len(imgFiles))
+	imgs := make([]model.File, 0, len(imgFiles))
 
 	for _, file := range imgFiles {
 		content, err := readZipFile(file)
@@ -90,7 +97,7 @@ func extractImages(zipReader *zip.Reader) ([]model.MediaFile, error) {
 			return nil, fmt.Errorf("read zip file: %w", err)
 		}
 
-		imgs = append(imgs, model.MediaFile{
+		imgs = append(imgs, model.File{
 			Name:        "",
 			Content:     content,
 			Sha256:      sha256String(content),

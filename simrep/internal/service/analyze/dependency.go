@@ -6,6 +6,15 @@ import (
 )
 
 type (
+	Notify interface {
+		Notify(
+			ctx context.Context,
+			documentID string,
+			action model.NotifyAction,
+			userdata any,
+		) error
+	}
+
 	VectorizerService interface {
 		TextToVector(
 			ctx context.Context,

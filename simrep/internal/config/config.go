@@ -2,14 +2,12 @@ package config
 
 import (
 	"fmt"
-	"simrep/api/amqp/asyncanalyze/consumer"
-	"simrep/api/amqp/asyncanalyze/producer"
 	"simrep/internal/repository/analyze"
 	"simrep/internal/repository/document"
-	"simrep/internal/repository/documentfile"
-	"simrep/internal/repository/image"
+	filerepo "simrep/internal/repository/file"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
+	"simrep/pkg/rabbitmq"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
@@ -29,16 +27,16 @@ type Elastic struct {
 }
 
 type Config struct {
-	Port                 int                `yaml:"port"`
-	S3                   minioutil.Config   `yaml:"s3"`
-	Elastic              elasticutil.Config `yaml:"elastic"`
-	VectorizerService    string             `yaml:"vectorizerService"`
-	AnalyzeProducer      producer.Config    `yaml:"analyzeProducer"`
-	AnalyzeConsumer      consumer.Config    `yaml:"analyzeConsumer"`
-	ImageRepo            image.Opts         `yaml:"imageRepo"`
-	DocumentFileRepo     documentfile.Opts  `yaml:"documentFileRepo"`
-	DocumentRepo         document.Opts      `yaml:"documentRepo"`
-	AnalyzedDocumentRepo analyze.Opts       `yaml:"analyzedDocumentRepo"`
+	Port                 int                     `yaml:"port"`
+	S3                   minioutil.Config        `yaml:"s3"`
+	Elastic              elasticutil.Config      `yaml:"elastic"`
+	VectorizerService    string                  `yaml:"vectorizerService"`
+	NotifyProducer       rabbitmq.ProducerConfig `yaml:"notifyProducer"`
+	NotifyConsumer       rabbitmq.ConsumerConfig `yaml:"notifyConsumer"`
+	ImageRepo            filerepo.Opts           `yaml:"imageRepo"`
+	DocumentFileRepo     filerepo.Opts           `yaml:"documentFileRepo"`
+	DocumentRepo         document.Opts           `yaml:"documentRepo"`
+	AnalyzedDocumentRepo analyze.Opts            `yaml:"analyzedDocumentRepo"`
 }
 
 func New(path string) (*Config, error) {

@@ -1,5 +1,6 @@
 package model
 
 type DocumentQuery struct {
-	ID string
+	ID          string
+	WithContent bool
 }

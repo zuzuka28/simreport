@@ -6,33 +6,35 @@ import (
 )
 
 type (
-	AnalyzeService interface {
-		Analyze(
+	Notify interface {
+		Notify(
 			ctx context.Context,
 			documentID string,
+			action model.NotifyAction,
+			userdata any,
 		) error
 	}
 
 	ImageRepository interface {
-		SaveMany(
+		Save(
 			ctx context.Context,
-			cmd model.MediaFileSaveManyCommand,
+			cmd model.FileSaveCommand,
 		) error
 		Fetch(
 			ctx context.Context,
-			query model.MediaFileQuery,
-		) (model.MediaFile, error)
+			query model.FileQuery,
+		) (model.File, error)
 	}
 
 	FileRepository interface {
-		SaveMany(
+		Save(
 			ctx context.Context,
-			cmd model.MediaFileSaveManyCommand,
+			cmd model.FileSaveCommand,
 		) error
 		Fetch(
 			ctx context.Context,
-			query model.DocumentFileQuery,
-		) (model.DocumentFile, error)
+			query model.FileQuery,
+		) (model.File, error)
 	}
 
 	Repository interface {

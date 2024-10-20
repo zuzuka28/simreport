@@ -1,5 +1,5 @@
 package model
 
 type VectorizeImageParams struct {
-	Image MediaFile
+	Image File
 }

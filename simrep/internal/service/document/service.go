@@ -14,94 +14,21 @@ type Service struct {
 	r     Repository
 	imgR  ImageRepository
 	fileR FileRepository
-	as    AnalyzeService
+	n     Notify
 }
 
 func NewService(
 	r Repository,
 	imgR ImageRepository,
 	fileR FileRepository,
-	as AnalyzeService,
+	n Notify,
 ) *Service {
 	return &Service{
 		r:     r,
 		imgR:  imgR,
 		fileR: fileR,
-		as:    as,
+		n:     n,
 	}
-}
-
-func (*Service) Parse(
-	_ context.Context,
-	item model.DocumentFile,
-) (model.ParsedDocumentFile, error) {
-	parsed, err := docxparser.Parse(item)
-	if err != nil {
-		return model.ParsedDocumentFile{}, fmt.Errorf("parse document: %w", err)
-	}
-
-	return parsed, nil
-}
-
-func (s *Service) UploadManyFiles(
-	ctx context.Context,
-	cmd model.DocumentFileUploadManyCommand,
-) error {
-	g, gCtx := errgroup.WithContext(ctx)
-
-	for _, item := range cmd.Items {
-		g.Go(func() error {
-			return s.UploadFile(gCtx, model.DocumentFileUploadCommand{
-				Item: item,
-			})
-		})
-	}
-
-	if err := g.Wait(); err != nil {
-		return fmt.Errorf("upload file: %w", err)
-	}
-
-	return nil
-}
-
-func (s *Service) UploadFile(
-	ctx context.Context,
-	cmd model.DocumentFileUploadCommand,
-) error {
-	parsed, err := docxparser.Parse(cmd.Item)
-	if err != nil {
-		return fmt.Errorf("parse document: %w", err)
-	}
-
-	g, gCtx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		return s.fileR.SaveMany(gCtx, model.MediaFileSaveManyCommand{
-			Items: []model.File{parsed.Source},
-		})
-	})
-
-	g.Go(func() error {
-		return s.r.Save(gCtx, model.DocumentSaveCommand{
-			Item: mapParsedDocumentFileToDocument(parsed),
-		})
-	})
-
-	g.Go(func() error {
-		return s.imgR.SaveMany(gCtx, model.MediaFileSaveManyCommand{
-			Items: parsed.Images,
-		})
-	})
-
-	if err := g.Wait(); err != nil {
-		return fmt.Errorf("save file resources: %w", err)
-	}
-
-	if err := s.as.Analyze(ctx, parsed.ID); err != nil {
-		return fmt.Errorf("send analyze: %w", err)
-	}
-
-	return nil
 }
 
 func (s *Service) Fetch(
@@ -111,6 +38,13 @@ func (s *Service) Fetch(
 	res, err := s.r.Fetch(ctx, query)
 	if err != nil {
 		return model.Document{}, fmt.Errorf("fetch document: %w", err)
+	}
+
+	if query.WithContent {
+		res, err = s.enrichContent(ctx, res)
+		if err != nil {
+			return model.Document{}, fmt.Errorf("enrich document: %w", err)
+		}
 	}
 
 	return res, nil
@@ -128,35 +62,70 @@ func (s *Service) Search(
 	return res, nil
 }
 
-func (s *Service) FetchFile(
-	ctx context.Context,
-	query model.DocumentFileQuery,
-) (model.DocumentFile, error) {
-	res, err := s.fileR.Fetch(ctx, query)
+func (*Service) Parse(
+	_ context.Context,
+	item model.File,
+) (model.Document, error) {
+	parsed, err := docxparser.Parse(item)
 	if err != nil {
-		return model.DocumentFile{}, fmt.Errorf("fetch file: %w", err)
+		return model.Document{}, fmt.Errorf("parse document: %w", err)
 	}
 
-	return res, nil
+	return parsed, nil
 }
 
-func (s *Service) FetchParsedFile(
+func (s *Service) Save(
 	ctx context.Context,
-	query model.ParsedDocumentFileQuery,
-) (model.ParsedDocumentFile, error) {
-	doc, err := s.Fetch(ctx, model.DocumentQuery{
-		ID: query.DocumentID,
-	})
-	if err != nil {
-		return model.ParsedDocumentFile{}, fmt.Errorf("fetch document: %w", err)
-	}
-
+	cmd model.DocumentSaveCommand,
+) error {
 	g, gCtx := errgroup.WithContext(ctx)
 
-	var main model.DocumentFile
+	g.Go(func() error {
+		return s.r.Save(gCtx, model.DocumentSaveCommand{
+			Item: mapDocumentWithContentToDocument(cmd.Item),
+		})
+	})
 
 	g.Go(func() error {
-		r, err := s.fileR.Fetch(gCtx, model.DocumentFileQuery{
+		return s.fileR.Save(gCtx, model.FileSaveCommand{
+			Item: cmd.Item.Source,
+		})
+	})
+
+	for _, img := range cmd.Item.Images {
+		g.Go(func() error {
+			return s.imgR.Save(gCtx, model.FileSaveCommand{
+				Item: img,
+			})
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return fmt.Errorf("save file resources: %w", err)
+	}
+
+	if err := s.n.Notify(
+		ctx,
+		cmd.Item.ID,
+		model.NotifyActionDocumentSaved,
+		nil,
+	); err != nil {
+		return fmt.Errorf("notify: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) enrichContent(
+	ctx context.Context,
+	doc model.Document,
+) (model.Document, error) {
+	g, gCtx := errgroup.WithContext(ctx)
+
+	var main model.File
+
+	g.Go(func() error {
+		r, err := s.fileR.Fetch(gCtx, model.FileQuery{
 			ID: doc.ID,
 		})
 		if err != nil {
@@ -169,13 +138,13 @@ func (s *Service) FetchParsedFile(
 	})
 
 	var (
-		media   []model.MediaFile
+		media   []model.File
 		mediaMu sync.Mutex
 	)
 
 	for _, id := range doc.ImageIDs {
 		g.Go(func() error {
-			r, err := s.imgR.Fetch(gCtx, model.MediaFileQuery{
+			r, err := s.imgR.Fetch(gCtx, model.FileQuery{
 				ID: id,
 			})
 			if err != nil {
@@ -191,14 +160,17 @@ func (s *Service) FetchParsedFile(
 	}
 
 	if err := g.Wait(); err != nil {
-		return model.ParsedDocumentFile{}, fmt.Errorf("fetch: %w", err)
+		return model.Document{}, fmt.Errorf("fetch: %w", err)
 	}
 
-	return model.ParsedDocumentFile{
+	return model.Document{
 		ID:          doc.ID,
 		Name:        doc.Name,
+		ImageIDs:    doc.ImageIDs,
+		TextContent: doc.TextContent,
+		LastUpdated: doc.LastUpdated,
+		WithContent: true,
 		Source:      main,
 		Images:      media,
-		TextContent: doc.TextContent,
 	}, nil
 }
