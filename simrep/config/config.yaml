@@ -33,13 +33,33 @@ documentRepo:
 analyzedDocumentRepo:
   index: "analyzed_document"
 vectorizerService: "http://localhost:8081"
-notifyProducer:
+notifyFileSavedProducer:
   dsn: "amqp://localhost:5672/"
-  exchangeName: "notification"
-  queueName: "notification"
-  routingKey: ""
+  exchangeName: "notification_exchange"
+  queueName: "saved_file_queue"
+  routingKey: "file_saved"
   maxRetries: 5
-notifyConsumer:
+notifyDocumentSavedProducer:
   dsn: "amqp://localhost:5672/"
-  queueName: "notification"
+  exchangeName: "notification_exchange"
+  queueName: "saved_document_queue"
+  routingKey: "document_saved"
+  maxRetries: 5
+notifyDocumentAnalyzedProducer:
+  dsn: "amqp://localhost:5672/"
+  exchangeName: "notification_exchange"
+  queueName: "analyzed_document_queue"
+  routingKey: "document_analyzed"
+  maxRetries: 5
+notifyFileSavedConsumer:
+  dsn: "amqp://localhost:5672/"
+  queueName: "saved_file_queue"
+  maxRetries: 5
+notifyDocumentSavedConsumer:
+  dsn: "amqp://localhost:5672/"
+  queueName: "saved_document_queue"
+  maxRetries: 5
+notifyDocumentAnalyzedConsumer:
+  dsn: "amqp://localhost:5672/"
+  queueName: "analyzed_document_queue"
   maxRetries: 5

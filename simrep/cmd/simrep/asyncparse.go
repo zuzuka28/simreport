@@ -11,13 +11,13 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func runAsyncAnalyze(c *cli.Context) error {
+func runAsyncParse(c *cli.Context) error {
 	cfg, err := provider.InitConfig(c.String("config"))
 	if err != nil {
 		return fmt.Errorf("read config: %w", err)
 	}
 
-	api, err := provider.InitAsyncDocumentAnalysis(c.Context, cfg)
+	api, err := provider.InitAsyncDocumentParsing(c.Context, cfg)
 	if err != nil {
 		return fmt.Errorf("init api: %w", err)
 	}

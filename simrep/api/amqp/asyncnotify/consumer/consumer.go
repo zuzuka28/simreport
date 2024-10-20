@@ -2,26 +2,22 @@ package consumer
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"simrep/internal/model"
 	"simrep/pkg/rabbitmq"
 )
 
-var errUnprocessableType = errors.New("unprocessable notification type")
-
 type Consumer struct {
-	con      RMQConsumer
-	handlers map[model.NotifyAction]HandlerFunc
+	con     RMQConsumer
+	handler Handler
 }
 
 func New(
 	con RMQConsumer,
-	handlers map[model.NotifyAction]HandlerFunc,
+	handler Handler,
 ) *Consumer {
 	return &Consumer{
-		con:      con,
-		handlers: handlers,
+		con:     con,
+		handler: handler,
 	}
 }
 
@@ -32,12 +28,7 @@ func (c *Consumer) Start(ctx context.Context) error {
 			return fmt.Errorf("parse notification: %w", err)
 		}
 
-		h, ok := c.handlers[model.NotifyAction(notif.Action)]
-		if !ok {
-			return fmt.Errorf("%w: %s", errUnprocessableType, notif.Action)
-		}
-
-		if err := h(ctx, notif.DocumentID, notif.UserData); err != nil {
+		if err := c.handler.Serve(ctx, notif.DocumentID, notif.UserData); err != nil {
 			return fmt.Errorf("handle notify: %w", err)
 		}
 

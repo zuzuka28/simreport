@@ -15,7 +15,6 @@ import (
 	documentapi "simrep/api/rest/server/handler/document"
 	fileapi "simrep/api/rest/server/handler/file"
 	"simrep/internal/config"
-	"simrep/internal/model"
 	analyzerepo "simrep/internal/repository/analyze"
 	documentrepo "simrep/internal/repository/document"
 	filerepo "simrep/internal/repository/file"
@@ -82,29 +81,85 @@ func InitVectorizerClient(
 	))
 }
 
-func InitRabbitNotifyPublisher(
+func InitRabbitNotifyFileSavedPublisher(
 	_ *config.Config,
 ) (*rabbitmq.Producer, error) {
 	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "NotifyProducer"),
+		wire.FieldsOf(new(*config.Config), "NotifyFileSavedProducer"),
 		rabbitmq.NewProducer,
 	))
 }
 
-func InitRabbitNotifyConsumer(
+func InitRabbitNotifyDocumentSavedPublisher(
+	_ *config.Config,
+) (*rabbitmq.Producer, error) {
+	panic(wire.Build(
+		wire.FieldsOf(new(*config.Config), "NotifyDocumentSavedProducer"),
+		rabbitmq.NewProducer,
+	))
+}
+
+func InitRabbitNotifyDocumentAnalyzedPublisher(
+	_ *config.Config,
+) (*rabbitmq.Producer, error) {
+	panic(wire.Build(
+		wire.FieldsOf(new(*config.Config), "NotifyDocumentAnalyzedProducer"),
+		rabbitmq.NewProducer,
+	))
+}
+
+func InitRabbitNotifyFileSavedConsumer(
 	_ *config.Config,
 ) (*rabbitmq.Consumer, error) {
 	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "NotifyConsumer"),
+		wire.FieldsOf(new(*config.Config), "NotifyFileSavedConsumer"),
 		rabbitmq.NewConsumer,
 	))
 }
 
-func InitNotifyProducer(
+func InitRabbitNotifyDocumentSavedConsumer(
+	_ *config.Config,
+) (*rabbitmq.Consumer, error) {
+	panic(wire.Build(
+		wire.FieldsOf(new(*config.Config), "NotifyDocumentSavedConsumer"),
+		rabbitmq.NewConsumer,
+	))
+}
+
+func InitRabbitNotifyDocumentAnalyzedConsumer(
+	_ *config.Config,
+) (*rabbitmq.Consumer, error) {
+	panic(wire.Build(
+		wire.FieldsOf(new(*config.Config), "NotifyDocumentAnalyzedConsumer"),
+		rabbitmq.NewConsumer,
+	))
+}
+
+func InitNotifyFileSavedProducer(
 	_ *config.Config,
 ) (*notify.Producer, error) {
 	panic(wire.Build(
-		InitRabbitNotifyPublisher,
+		InitRabbitNotifyFileSavedPublisher,
+		wire.Bind(new(notify.Publisher), new(*rabbitmq.Producer)),
+		notify.New,
+	))
+}
+
+func InitNotifyDocumentSavedProducer(
+	_ *config.Config,
+) (*notify.Producer, error) {
+	panic(wire.Build(
+		InitRabbitNotifyDocumentSavedPublisher,
+		wire.Bind(new(notify.Publisher), new(*rabbitmq.Producer)),
+		notify.New,
+	))
+}
+
+func InitNotifyDocumentAnalyzedProducer(
+	_ *config.Config,
+) (*notify.Producer, error) {
+	panic(wire.Build(
+		InitRabbitNotifyDocumentAnalyzedPublisher,
 		wire.Bind(new(notify.Publisher), new(*rabbitmq.Producer)),
 		notify.New,
 	))
@@ -160,11 +215,12 @@ func InitVectorizerService(
 }
 
 func InitAnalyzeService(
-	_ *notify.Producer,
+	_ *config.Config,
 	_ *vectorizersrv.Service,
 	_ *analyzerepo.Repository,
 ) (*analyzesrv.Service, error) {
 	panic(wire.Build(
+		InitNotifyDocumentAnalyzedProducer,
 		wire.Bind(new(analyzesrv.Notify), new(*notify.Producer)),
 		wire.Bind(new(analyzesrv.VectorizerService), new(*vectorizersrv.Service)),
 		wire.Bind(new(analyzesrv.Repository), new(*analyzerepo.Repository)),
@@ -173,11 +229,11 @@ func InitAnalyzeService(
 }
 
 func InitDocumentFileService(
-	_ *notify.Producer,
 	_ *minio.Client,
 	_ *config.Config,
 ) (*documentfilesrv.Service, error) {
 	panic(wire.Build(
+		InitNotifyFileSavedProducer,
 		InitDocumentFileRepository,
 		wire.Bind(new(documentfilesrv.Repository), new(*filerepo.Repository)),
 		wire.Bind(new(documentfilesrv.Notify), new(*notify.Producer)),
@@ -197,12 +253,13 @@ func InitImageFileService(
 }
 
 func InitDocumentService(
-	_ *notify.Producer,
+	_ *config.Config,
 	_ *imagefilesrv.Service,
 	_ *documentfilesrv.Service,
 	_ *documentrepo.Repository,
 ) (*documentsrv.Service, error) {
 	panic(wire.Build(
+		InitNotifyDocumentSavedProducer,
 		wire.Bind(new(documentsrv.Notify), new(*notify.Producer)),
 		wire.Bind(new(documentsrv.FileRepository), new(*documentfilesrv.Service)),
 		wire.Bind(new(documentsrv.ImageRepository), new(*imagefilesrv.Service)),
@@ -248,7 +305,6 @@ func InitRestAPI(
 		ProvideSpec,
 		InitS3,
 		InitElastic,
-		InitNotifyProducer,
 		InitVectorizerClient,
 		InitVectorizerService,
 		InitDocumentFileService,
@@ -291,37 +347,43 @@ func InitAsyncDocumentSavedHandler(
 	))
 }
 
-func ProvideAsyncProcessingHandlers(
-	fsapi *filesavedapi.Handler,
-	dsapi *documentsavedapi.Handler,
-) map[model.NotifyAction]notifyprocessing.HandlerFunc {
-	return map[model.NotifyAction]notifyprocessing.HandlerFunc{
-		model.NotifyActionFileSaved:        fsapi.Serve,
-		model.NotifyActionDocumentSaved:    dsapi.Serve,
-		model.NotifyActionDocumentAnalyzed: func(ctx context.Context, id string, data any) error { return nil },
-	}
-}
-
-func InitAsyncProcessing(
+func InitAsyncDocumentParsing(
 	_ context.Context,
 	_ *config.Config,
 ) (*notifyprocessing.Consumer, error) {
 	panic(wire.Build(
 		InitS3,
 		InitElastic,
-		InitRabbitNotifyConsumer,
-		InitNotifyProducer,
-		InitVectorizerClient,
-		InitVectorizerService,
+		InitRabbitNotifyFileSavedConsumer,
 		InitDocumentFileService,
 		InitImageFileService,
 		InitDocumentRepository,
 		InitDocumentService,
+		InitAsyncFileSavedHandler,
+		wire.Bind(new(notifyprocessing.Handler), new(*filesavedapi.Handler)),
+		wire.Bind(new(notifyprocessing.RMQConsumer), new(*rabbitmq.Consumer)),
+		notifyprocessing.New,
+	))
+}
+
+func InitAsyncDocumentAnalysis(
+	_ context.Context,
+	_ *config.Config,
+) (*notifyprocessing.Consumer, error) {
+	panic(wire.Build(
+		InitS3,
+		InitElastic,
+		InitRabbitNotifyDocumentSavedConsumer,
+		InitDocumentFileService,
+		InitImageFileService,
+		InitDocumentRepository,
+		InitDocumentService,
+		InitVectorizerClient,
+		InitVectorizerService,
 		InitAnalyzedDocumentRepository,
 		InitAnalyzeService,
-		InitAsyncFileSavedHandler,
 		InitAsyncDocumentSavedHandler,
-		ProvideAsyncProcessingHandlers,
+		wire.Bind(new(notifyprocessing.Handler), new(*documentsavedapi.Handler)),
 		wire.Bind(new(notifyprocessing.RMQConsumer), new(*rabbitmq.Consumer)),
 		notifyprocessing.New,
 	))

@@ -13,5 +13,7 @@ type (
 		) error
 	}
 
-	HandlerFunc func(ctx context.Context, id string, data any) error
+	Handler interface {
+		Serve(ctx context.Context, id string, data any) error
+	}
 )

@@ -27,16 +27,20 @@ type Elastic struct {
 }
 
 type Config struct {
-	Port                 int                     `yaml:"port"`
-	S3                   minioutil.Config        `yaml:"s3"`
-	Elastic              elasticutil.Config      `yaml:"elastic"`
-	VectorizerService    string                  `yaml:"vectorizerService"`
-	NotifyProducer       rabbitmq.ProducerConfig `yaml:"notifyProducer"`
-	NotifyConsumer       rabbitmq.ConsumerConfig `yaml:"notifyConsumer"`
-	ImageRepo            filerepo.Opts           `yaml:"imageRepo"`
-	DocumentFileRepo     filerepo.Opts           `yaml:"documentFileRepo"`
-	DocumentRepo         document.Opts           `yaml:"documentRepo"`
-	AnalyzedDocumentRepo analyze.Opts            `yaml:"analyzedDocumentRepo"`
+	Port                           int                     `yaml:"port"`
+	S3                             minioutil.Config        `yaml:"s3"`
+	Elastic                        elasticutil.Config      `yaml:"elastic"`
+	VectorizerService              string                  `yaml:"vectorizerService"`
+	NotifyFileSavedProducer        rabbitmq.ProducerConfig `yaml:"notifyFileSavedProducer"`
+	NotifyDocumentSavedProducer    rabbitmq.ProducerConfig `yaml:"notifyDocumentSavedProducer"`
+	NotifyDocumentAnalyzedProducer rabbitmq.ProducerConfig `yaml:"notifyDocumentAnalyzedProducer"`
+	NotifyFileSavedConsumer        rabbitmq.ConsumerConfig `yaml:"notifyFileSavedConsumer"`
+	NotifyDocumentSavedConsumer    rabbitmq.ConsumerConfig `yaml:"notifyDocumentSavedConsumer"`
+	NotifyDocumentAnalyzedConsumer rabbitmq.ConsumerConfig `yaml:"notifyDocumentAnalyzedConsumer"`
+	ImageRepo                      filerepo.Opts           `yaml:"imageRepo"`
+	DocumentFileRepo               filerepo.Opts           `yaml:"documentFileRepo"`
+	DocumentRepo                   document.Opts           `yaml:"documentRepo"`
+	AnalyzedDocumentRepo           analyze.Opts            `yaml:"analyzedDocumentRepo"`
 }
 
 func New(path string) (*Config, error) {

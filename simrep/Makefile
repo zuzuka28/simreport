@@ -13,5 +13,8 @@ shutdown_env:
 run_api:
 	go run cmd/simrep/*.go --config config/config.yaml run-api
 
-run_async_api:
-	go run cmd/simrep/*.go --config config/config.yaml run-async-api
+run_async_parsing:
+	go run cmd/simrep/*.go --config config/config.yaml run-async-parse
+
+run_async_analysis:
+	go run cmd/simrep/*.go --config config/config.yaml run-async-analyze

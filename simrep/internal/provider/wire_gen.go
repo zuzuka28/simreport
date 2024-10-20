@@ -21,7 +21,6 @@ import (
 	document3 "simrep/api/rest/server/handler/document"
 	file2 "simrep/api/rest/server/handler/file"
 	"simrep/internal/config"
-	"simrep/internal/model"
 	"simrep/internal/repository/analyze"
 	"simrep/internal/repository/document"
 	"simrep/internal/repository/file"
@@ -78,8 +77,8 @@ var (
 	_wireValue = []client.ClientOption(nil)
 )
 
-func InitRabbitNotifyPublisher(configConfig *config.Config) (*rabbitmq.Producer, error) {
-	producerConfig := configConfig.NotifyProducer
+func InitRabbitNotifyFileSavedPublisher(configConfig *config.Config) (*rabbitmq.Producer, error) {
+	producerConfig := configConfig.NotifyFileSavedProducer
 	producer, err := rabbitmq.NewProducer(producerConfig)
 	if err != nil {
 		return nil, err
@@ -87,8 +86,26 @@ func InitRabbitNotifyPublisher(configConfig *config.Config) (*rabbitmq.Producer,
 	return producer, nil
 }
 
-func InitRabbitNotifyConsumer(configConfig *config.Config) (*rabbitmq.Consumer, error) {
-	consumerConfig := configConfig.NotifyConsumer
+func InitRabbitNotifyDocumentSavedPublisher(configConfig *config.Config) (*rabbitmq.Producer, error) {
+	producerConfig := configConfig.NotifyDocumentSavedProducer
+	producer, err := rabbitmq.NewProducer(producerConfig)
+	if err != nil {
+		return nil, err
+	}
+	return producer, nil
+}
+
+func InitRabbitNotifyDocumentAnalyzedPublisher(configConfig *config.Config) (*rabbitmq.Producer, error) {
+	producerConfig := configConfig.NotifyDocumentAnalyzedProducer
+	producer, err := rabbitmq.NewProducer(producerConfig)
+	if err != nil {
+		return nil, err
+	}
+	return producer, nil
+}
+
+func InitRabbitNotifyFileSavedConsumer(configConfig *config.Config) (*rabbitmq.Consumer, error) {
+	consumerConfig := configConfig.NotifyFileSavedConsumer
 	consumer, err := rabbitmq.NewConsumer(consumerConfig)
 	if err != nil {
 		return nil, err
@@ -96,8 +113,44 @@ func InitRabbitNotifyConsumer(configConfig *config.Config) (*rabbitmq.Consumer, 
 	return consumer, nil
 }
 
-func InitNotifyProducer(configConfig *config.Config) (*producer.Producer, error) {
-	rabbitmqProducer, err := InitRabbitNotifyPublisher(configConfig)
+func InitRabbitNotifyDocumentSavedConsumer(configConfig *config.Config) (*rabbitmq.Consumer, error) {
+	consumerConfig := configConfig.NotifyDocumentSavedConsumer
+	consumer, err := rabbitmq.NewConsumer(consumerConfig)
+	if err != nil {
+		return nil, err
+	}
+	return consumer, nil
+}
+
+func InitRabbitNotifyDocumentAnalyzedConsumer(configConfig *config.Config) (*rabbitmq.Consumer, error) {
+	consumerConfig := configConfig.NotifyDocumentAnalyzedConsumer
+	consumer, err := rabbitmq.NewConsumer(consumerConfig)
+	if err != nil {
+		return nil, err
+	}
+	return consumer, nil
+}
+
+func InitNotifyFileSavedProducer(configConfig *config.Config) (*producer.Producer, error) {
+	rabbitmqProducer, err := InitRabbitNotifyFileSavedPublisher(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	producerProducer := producer.New(rabbitmqProducer)
+	return producerProducer, nil
+}
+
+func InitNotifyDocumentSavedProducer(configConfig *config.Config) (*producer.Producer, error) {
+	rabbitmqProducer, err := InitRabbitNotifyDocumentSavedPublisher(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	producerProducer := producer.New(rabbitmqProducer)
+	return producerProducer, nil
+}
+
+func InitNotifyDocumentAnalyzedProducer(configConfig *config.Config) (*producer.Producer, error) {
+	rabbitmqProducer, err := InitRabbitNotifyDocumentAnalyzedPublisher(configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -140,13 +193,21 @@ func InitVectorizerService(clientWithResponses *client.ClientWithResponses) (*ve
 	return service, nil
 }
 
-func InitAnalyzeService(producerProducer *producer.Producer, service *vectorizer.Service, repository *analyze.Repository) (*analyze2.Service, error) {
+func InitAnalyzeService(configConfig *config.Config, service *vectorizer.Service, repository *analyze.Repository) (*analyze2.Service, error) {
+	producerProducer, err := InitNotifyDocumentAnalyzedProducer(configConfig)
+	if err != nil {
+		return nil, err
+	}
 	analyzeService := analyze2.NewService(repository, service, producerProducer)
 	return analyzeService, nil
 }
 
-func InitDocumentFileService(producerProducer *producer.Producer, minioClient *minio.Client, configConfig *config.Config) (*documentfile.Service, error) {
+func InitDocumentFileService(minioClient *minio.Client, configConfig *config.Config) (*documentfile.Service, error) {
 	repository, err := InitDocumentFileRepository(minioClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	producerProducer, err := InitNotifyFileSavedProducer(configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +224,11 @@ func InitImageFileService(minioClient *minio.Client, configConfig *config.Config
 	return service, nil
 }
 
-func InitDocumentService(producerProducer *producer.Producer, service *imagefile.Service, documentfileService *documentfile.Service, repository *document.Repository) (*document2.Service, error) {
+func InitDocumentService(configConfig *config.Config, service *imagefile.Service, documentfileService *documentfile.Service, repository *document.Repository) (*document2.Service, error) {
+	producerProducer, err := InitNotifyDocumentSavedProducer(configConfig)
+	if err != nil {
+		return nil, err
+	}
 	documentService := document2.NewService(repository, service, documentfileService, producerProducer)
 	return documentService, nil
 }
@@ -189,10 +254,6 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	producerProducer, err := InitNotifyProducer(configConfig)
-	if err != nil {
-		return nil, err
-	}
 	minioClient, err := InitS3(contextContext, configConfig)
 	if err != nil {
 		return nil, err
@@ -201,7 +262,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	documentfileService, err := InitDocumentFileService(producerProducer, minioClient, configConfig)
+	documentfileService, err := InitDocumentFileService(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +274,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(producerProducer, service, documentfileService, repository)
+	documentService, err := InitDocumentService(configConfig, service, documentfileService, repository)
 	if err != nil {
 		return nil, err
 	}
@@ -230,7 +291,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(producerProducer, vectorizerService, analyzeRepository)
+	analyzeService, err := InitAnalyzeService(configConfig, vectorizerService, analyzeRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -260,12 +321,8 @@ func InitAsyncDocumentSavedHandler(service *document2.Service, analyzeService *a
 	return handler
 }
 
-func InitAsyncProcessing(contextContext context.Context, configConfig *config.Config) (*consumer.Consumer, error) {
-	rabbitmqConsumer, err := InitRabbitNotifyConsumer(configConfig)
-	if err != nil {
-		return nil, err
-	}
-	producerProducer, err := InitNotifyProducer(configConfig)
+func InitAsyncDocumentParsing(contextContext context.Context, configConfig *config.Config) (*consumer.Consumer, error) {
+	rabbitmqConsumer, err := InitRabbitNotifyFileSavedConsumer(configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -273,7 +330,7 @@ func InitAsyncProcessing(contextContext context.Context, configConfig *config.Co
 	if err != nil {
 		return nil, err
 	}
-	service, err := InitDocumentFileService(producerProducer, minioClient, configConfig)
+	service, err := InitDocumentFileService(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -289,11 +346,44 @@ func InitAsyncProcessing(contextContext context.Context, configConfig *config.Co
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(producerProducer, imagefileService, service, repository)
+	documentService, err := InitDocumentService(configConfig, imagefileService, service, repository)
 	if err != nil {
 		return nil, err
 	}
 	handler := InitAsyncFileSavedHandler(service, documentService)
+	consumerConsumer := consumer.New(rabbitmqConsumer, handler)
+	return consumerConsumer, nil
+}
+
+func InitAsyncDocumentAnalysis(contextContext context.Context, configConfig *config.Config) (*consumer.Consumer, error) {
+	rabbitmqConsumer, err := InitRabbitNotifyDocumentSavedConsumer(configConfig)
+	if err != nil {
+		return nil, err
+	}
+	minioClient, err := InitS3(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	service, err := InitImageFileService(minioClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	documentfileService, err := InitDocumentFileService(minioClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	elasticsearchClient, err := InitElastic(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	repository, err := InitDocumentRepository(elasticsearchClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	documentService, err := InitDocumentService(configConfig, service, documentfileService, repository)
+	if err != nil {
+		return nil, err
+	}
 	clientWithResponses, err := InitVectorizerClient(configConfig)
 	if err != nil {
 		return nil, err
@@ -306,13 +396,12 @@ func InitAsyncProcessing(contextContext context.Context, configConfig *config.Co
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(producerProducer, vectorizerService, analyzeRepository)
+	analyzeService, err := InitAnalyzeService(configConfig, vectorizerService, analyzeRepository)
 	if err != nil {
 		return nil, err
 	}
-	documentsavedHandler := InitAsyncDocumentSavedHandler(documentService, analyzeService)
-	v := ProvideAsyncProcessingHandlers(handler, documentsavedHandler)
-	consumerConsumer := consumer.New(rabbitmqConsumer, v)
+	handler := InitAsyncDocumentSavedHandler(documentService, analyzeService)
+	consumerConsumer := consumer.New(rabbitmqConsumer, handler)
 	return consumerConsumer, nil
 }
 
@@ -330,11 +419,4 @@ func ProvideSpec() ([]byte, error) {
 	}
 
 	return spec, nil
-}
-
-func ProvideAsyncProcessingHandlers(
-	fsapi *filesaved.Handler,
-	dsapi *documentsaved.Handler,
-) map[model.NotifyAction]consumer.HandlerFunc {
-	return map[model.NotifyAction]consumer.HandlerFunc{model.NotifyActionFileSaved: fsapi.Serve, model.NotifyActionDocumentSaved: dsapi.Serve, model.NotifyActionDocumentAnalyzed: func(ctx context.Context, id string, data any) error { return nil }}
 }
