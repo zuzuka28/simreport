@@ -9,9 +9,16 @@ import (
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/gorilla/mux"
 	openapimw "github.com/oapi-codegen/nethttp-middleware"
 	"golang.org/x/sync/errgroup"
+)
+
+const (
+	docMime  = "application/msword"
+	docxMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+	pdfMime  = "application/pdf"
 )
 
 type Server struct {
@@ -37,7 +44,11 @@ func New(
 	}
 
 	router := mux.NewRouter()
+
 	router.Use(openapimw.OapiRequestValidator(spec))
+	openapi3filter.RegisterBodyDecoder(docMime, openapi3filter.FileBodyDecoder)
+	openapi3filter.RegisterBodyDecoder(docxMime, openapi3filter.FileBodyDecoder)
+	openapi3filter.RegisterBodyDecoder(pdfMime, openapi3filter.FileBodyDecoder)
 
 	compose := struct {
 		DocumentHandler
@@ -64,9 +75,9 @@ func (s *Server) Start(ctx context.Context) error {
 	httpServer := http.Server{ //nolint:exhaustruct
 		Addr:              s.addr,
 		Handler:           s.router,
-		ReadTimeout:       10 * time.Second, //nolint:gomnd,mnd
-		WriteTimeout:      10 * time.Second, //nolint:gomnd,mnd
-		IdleTimeout:       30 * time.Second, //nolint:gomnd,mnd
+		ReadTimeout:       60 * time.Second, //nolint:gomnd,mnd
+		WriteTimeout:      60 * time.Second, //nolint:gomnd,mnd
+		IdleTimeout:       60 * time.Second, //nolint:gomnd,mnd
 		ReadHeaderTimeout: 2 * time.Second,  //nolint:gomnd,mnd
 	}
 
