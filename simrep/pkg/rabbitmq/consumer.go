@@ -11,9 +11,11 @@ import (
 )
 
 type ConsumerConfig struct {
-	DSN        string `yaml:"dsn"`
-	QueueName  string `yaml:"queueName"`
-	MaxRetries int    `yaml:"maxRetries"`
+	DSN          string `yaml:"dsn"`
+	QueueName    string `yaml:"queueName"`
+	ExchangeName string `yaml:"exchangeName"`
+	RoutingKey   string `yaml:"routingKey"`
+	MaxRetries   int    `yaml:"maxRetries"`
 }
 
 type Consumer struct {
@@ -39,6 +41,10 @@ func NewConsumer(
 
 	if err := c.declareQueue(); err != nil {
 		return nil, fmt.Errorf("declare queue: %w", err)
+	}
+
+	if err := c.bindQueue(); err != nil {
+		return nil, fmt.Errorf("bind queue: %w", err)
 	}
 
 	return c, nil
@@ -68,7 +74,7 @@ func (c *Consumer) Consume(
 		}
 
 		for msg := range msgs {
-			if err := process(ctx, Delivery(msg)); err != nil {
+			if err := process(ctx, msg); err != nil {
 				return fmt.Errorf("process message: %w", err)
 			}
 
@@ -150,6 +156,24 @@ func (c *Consumer) declareQueue() error {
 	)
 	if err != nil {
 		return fmt.Errorf("declaring queue: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Consumer) bindQueue() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	err := c.ch.QueueBind(
+		c.config.QueueName,    // queue
+		c.config.RoutingKey,   // routing key
+		c.config.ExchangeName, // exchange
+		false,                 // no-wait
+		nil,                   // args
+	)
+	if err != nil {
+		return fmt.Errorf("binding queue to exchange: %w", err)
 	}
 
 	return nil

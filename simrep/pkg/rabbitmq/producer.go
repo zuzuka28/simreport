@@ -14,7 +14,6 @@ import (
 type ProducerConfig struct {
 	DSN          string `yaml:"dsn"`
 	ExchangeName string `yaml:"exchangeName"`
-	QueueName    string `yaml:"queueName"`
 	RoutingKey   string `yaml:"routingKey"`
 	MaxRetries   int    `yaml:"maxRetries"`
 }
@@ -41,14 +40,6 @@ func NewProducer(
 	}
 
 	if err := publisher.declareExchange(); err != nil {
-		return nil, err
-	}
-
-	if err := publisher.declareQueue(); err != nil {
-		return nil, err
-	}
-
-	if err := publisher.bindQueue(); err != nil {
 		return nil, err
 	}
 
@@ -164,43 +155,6 @@ func (p *Producer) declareExchange() error {
 	)
 	if err != nil {
 		return fmt.Errorf("declaring exchange: %w", err)
-	}
-
-	return nil
-}
-
-func (p *Producer) declareQueue() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	_, err := p.ch.QueueDeclare(
-		p.config.QueueName,
-		true,  // durable
-		false, // delete when unused
-		false, // exclusive
-		false, // no-wait
-		nil,   // arguments
-	)
-	if err != nil {
-		return fmt.Errorf("declaring queue: %w", err)
-	}
-
-	return nil
-}
-
-func (p *Producer) bindQueue() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	err := p.ch.QueueBind(
-		p.config.QueueName,    // queue
-		p.config.RoutingKey,   // routing key
-		p.config.ExchangeName, // exchange
-		false,                 // no-wait
-		nil,                   // args
-	)
-	if err != nil {
-		return fmt.Errorf("binding queue to exchange: %w", err)
 	}
 
 	return nil
