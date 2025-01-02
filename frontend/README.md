@@ -1,55 +1,30 @@
-# React Vite TypeScript Starter
+# React + TypeScript + Vite
 
-This project was generated using [create-awesome-node-app](https://www.npmjs.com/package/create-awesome-node-app). **DON'T USE THIS TEMPLATE AS IT!** Generate yours using the command and following the options in the interactive menu. Check the docs for more information!
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
-## Features
+Currently, two official plugins are available:
 
-- ⚡️ **Instant HMR** - use [Vite](https://vitejs.dev/) on dev (no more refresh!)
-- ⚛ React - [React](https://reactjs.org/) is used for UI
-- 🦾 [TypeScript](https://www.typescriptlang.org/) - type safe
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
 
-## Extra documentation
+## Expanding the ESLint configuration
 
-You can find useful information such as project structure, available scripts and much more in the [docs](./docs) folder!
+If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
 
-## Pre-packed
+- Configure the top-level `parserOptions` property like this:
 
-### Dev tools
-
-- [TypeScript](https://www.typescriptlang.org/)
-- [eslint](https://eslint.org/) - Linting utility for JavaScript and JSX
-- [prettier](https://prettier.io/) - Opinionated code formatter
-- [husky](https://www.npmjs.com/package/husky) - Git hooks made easy
-- [lint-staged](https://www.npmjs.com/package/lint-staged) - Run linters against staged git files and don't let 💩 slip into your code base!
-
-## Quickstart
-
-```sh
-fnm use
-npm install
-npm run dev
+```js
+export default {
+  // other rules...
+  parserOptions: {
+    ecmaVersion: 'latest',
+    sourceType: 'module',
+    project: ['./tsconfig.json', './tsconfig.node.json'],
+    tsconfigRootDir: __dirname,
+  },
+}
 ```
 
-## Development
-
-While developing, you will probably rely mostly on `npm run start`; however, there are additional scripts at your disposal:
-
-| `npm run <script>` | Description                                                                                                             |
-| ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `dev`              | Serves your app at for local development                                                                                |
-| `format`           | Formats the project using [Prettier](https://prettier.io/)                                                              |
-| `lint`             | [Lints](http://stackoverflow.com/questions/8503559/what-is-linting) the project for potential errors                    |
-| `lint:fix`         | Lints the project and [fixes all correctable errors](http://eslint.org/docs/user-guide/command-line-interface.html#fix) |
-
-## Production
-
-Scripts for preparing and viewing the production version:
-
-| `npm run <script>` | Description                                                           |
-| ------------------ | --------------------------------------------------------------------- |
-| `preview`          | Serves your app using your production ready setup (`.env.production`) |
-| `build`            | Builds the application to `dist/`                                     |
-
-## Contributing
-
-You can report bugs, request features and create Pull Requests in the [Create-Node-App/cna-templates](https://github.com/Create-Node-App/cna-templates) repository!
+- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
+- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
+- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list

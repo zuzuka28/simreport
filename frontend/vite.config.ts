@@ -1,68 +1,18 @@
-import { defineConfig } from 'vite';
-import path from 'path';
-import react from '@vitejs/plugin-react';
-import eslint from 'vite-plugin-eslint';
-import { VitePWA } from 'vite-plugin-pwa';
-
-const { PORT = '3000' } = process.env;
-
-const root = path.resolve(__dirname, 'src');
-
-const vitePluginPWA = () =>
-  VitePWA({
-    registerType: 'autoUpdate',
-    injectRegister: 'auto',
-    devOptions: {
-      enabled: true,
-    },
-    manifest: {
-      name: 'frontend',
-      short_name: 'frontend',
-      description: 'frontend',
-      theme_color: '#ffffff',
-      icons: [
-        {
-          src: '/pwa-192x192.png',
-          sizes: '192x192',
-          type: 'image/png',
-        },
-        {
-          src: '/pwa-512x512.png',
-          sizes: '512x512',
-          type: 'image/png',
-        },
-        {
-          src: '/pwa-512x512.png',
-          sizes: '512x512',
-          type: 'image/png',
-          purpose: 'any maskable',
-        },
-      ],
-    },
-  });
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), eslint(), vitePluginPWA()],
-  server: {
-    host: '0.0.0.0',
-    port: parseInt(PORT, 10),
-  },
+  plugins: [react()],
   resolve: {
     alias: {
-      '@/': `${root}/`,
-    },
-  },
-  esbuild: {
-    loader: 'tsx',
-    include: 'src/**/*.{ts,tsx,js,jsx}',
-  },
-  optimizeDeps: {
-    esbuildOptions: {
-      loader: {
-        '.js': 'jsx',
-        '.ts': 'tsx',
-      },
+      app: "/src/app",
+      assets: "/src/assets",
+      entities: "/src/entities",
+      features: "/src/features",
+      pages: "/src/pages",
+      shared: "/src/shared",
+      widgets: "/src/widgets",
     },
   },
 });

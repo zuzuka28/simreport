@@ -1,0 +1,15 @@
+html {}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: var(--bg-color);
+}
+
+#root {
+  width: 100%;
+  max-width: 1313px;
+  display: flex;
+  flex-direction: column;
+}
