@@ -1,0 +1,31 @@
+.document-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.document-item {
+    cursor: pointer;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    transition: background-color 0.3s;
+}
+
+.document-item:hover {
+    background-color: #f0f0f0;
+}
+
+.loading,
+.error {
+    font-size: 16px;
+    text-align: center;
+    padding: 20px;
+}
+
+.loading {
+    color: #007bff;
+}
+
+.error {
+    color: #dc3545;
+}
