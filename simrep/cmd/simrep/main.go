@@ -26,14 +26,9 @@ func main() {
 				Action: runServer,
 			},
 			{
-				Name:   "run-async-parse",
+				Name:   "run-async-processing",
 				Usage:  "run simrep parse api",
-				Action: runAsyncParse,
-			},
-			{
-				Name:   "run-async-analyze",
-				Usage:  "run simrep async api",
-				Action: runAsyncAnalyze,
+				Action: runAsyncProcessing,
 			},
 		},
 	}

@@ -4,15 +4,18 @@ import (
 	"context"
 	"fmt"
 	openapi "simrep/api/rest/gen"
+	"simrep/internal/model"
 )
 
 type Handler struct {
-	s Service
+	s  Service
+	ss StatusService
 }
 
-func NewHandler(s Service) *Handler {
+func NewHandler(s Service, ss StatusService) *Handler {
 	return &Handler{
-		s: s,
+		s:  s,
+		ss: ss,
 	}
 }
 
@@ -26,6 +29,13 @@ func (h *Handler) PostDocumentUpload(
 	}
 
 	if err := h.s.Save(ctx, cmd); err != nil {
+		return nil, fmt.Errorf("upload file: %w", err)
+	}
+
+	if err := h.ss.Update(ctx, model.DocumentStatusUpdateCommand{
+		ID:     cmd.Item.Sha256,
+		Status: model.DocumentProcessingStatusFileSaved,
+	}); err != nil {
 		return nil, fmt.Errorf("upload file: %w", err)
 	}
 

@@ -21,7 +21,7 @@ func NewHandler(
 	}
 }
 
-func (h *Handler) Serve(ctx context.Context, documentID string, _ any) error {
+func (h *Handler) Serve(ctx context.Context, documentID string) error {
 	doc, err := h.ds.Fetch(ctx, model.DocumentQuery{
 		ID:          documentID,
 		WithContent: true,

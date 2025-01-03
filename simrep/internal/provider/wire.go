@@ -4,33 +4,36 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
-	notifyprocessing "simrep/api/amqp/asyncnotify/consumer"
-	documentsavedapi "simrep/api/amqp/asyncnotify/handler/documentsaved"
-	filesavedapi "simrep/api/amqp/asyncnotify/handler/filesaved"
-	notify "simrep/api/amqp/asyncnotify/producer"
 	"simrep/api/rest/server"
 	analyzeapi "simrep/api/rest/server/handler/analyze"
+	anysaveapi "simrep/api/rest/server/handler/anysave"
 	documentapi "simrep/api/rest/server/handler/document"
-	fileapi "simrep/api/rest/server/handler/file"
 	"simrep/internal/config"
 	"simrep/internal/model"
 	analyzerepo "simrep/internal/repository/analyze"
 	anysaverepo "simrep/internal/repository/anysave"
 	documentrepo "simrep/internal/repository/document"
+	documentstatusrepo "simrep/internal/repository/documentstatus"
+	vectorizerrepo "simrep/internal/repository/vectorizer"
 	analyzesrv "simrep/internal/service/analyze"
 	anysavesrv "simrep/internal/service/anysave"
 	documentsrv "simrep/internal/service/document"
-	vectorizersrv "simrep/internal/service/vectorizer"
+	"simrep/internal/service/documentpipeline"
+	documentsavedhandler "simrep/internal/service/documentpipeline/handler/documentsaved"
+	filesavedhandler "simrep/internal/service/documentpipeline/handler/filesaved"
+	documentstatussrv "simrep/internal/service/documentstatus"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
-	"simrep/pkg/rabbitmq"
 	vectorizerclient "simrep/pkg/vectorizerclient"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/google/wire"
 	"github.com/minio/minio-go/v7"
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 )
 
 func ProvideSpec() ([]byte, error) {
@@ -61,6 +64,17 @@ func InitElastic(
 	))
 }
 
+func InitNats(
+	_ context.Context,
+	_ *config.Config,
+) (*nats.Conn, error) {
+	panic(wire.Build(
+		wire.FieldsOf(new(*config.Config), "Nats"),
+		wire.Value([]nats.Option(nil)),
+		nats.Connect,
+	))
+}
+
 func InitS3(
 	_ context.Context,
 	_ *config.Config,
@@ -71,6 +85,45 @@ func InitS3(
 	))
 }
 
+func InitNatsJetstream(
+	conn *nats.Conn,
+) (jetstream.JetStream, error) {
+	panic(wire.Build(
+		wire.Value([]jetstream.JetStreamOpt(nil)),
+		jetstream.New,
+	))
+}
+
+func ProvideDocumentStatusJetstreamKV(
+	ctx context.Context,
+	js jetstream.JetStream,
+) (jetstream.KeyValue, error) {
+	kv, err := js.CreateOrUpdateKeyValue(ctx, jetstream.KeyValueConfig{ //nolint:exhaustruct
+		Bucket: "documentstatus",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("new kv: %w", err)
+	}
+
+	return kv, nil
+}
+
+func ProvideDocumentStatusJetstreamStream(
+	ctx context.Context,
+	js jetstream.JetStream,
+) (jetstream.Stream, error) {
+	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{ //nolint:exhaustruct
+		Name:      "documentstatus",
+		Subjects:  []string{"documentstatus.>"},
+		Retention: jetstream.WorkQueuePolicy,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("new steream: %w", err)
+	}
+
+	return s, nil
+}
+
 func InitVectorizerClient(
 	_ *config.Config,
 ) (*vectorizerclient.ClientWithResponses, error) {
@@ -78,90 +131,6 @@ func InitVectorizerClient(
 		wire.Value([]vectorizerclient.ClientOption(nil)),
 		wire.FieldsOf(new(*config.Config), "VectorizerService"),
 		vectorizerclient.NewClientWithResponses,
-	))
-}
-
-func InitRabbitNotifyFileSavedPublisher(
-	_ *config.Config,
-) (*rabbitmq.Producer, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "NotifyFileSavedProducer"),
-		rabbitmq.NewProducer,
-	))
-}
-
-func InitRabbitNotifyDocumentSavedPublisher(
-	_ *config.Config,
-) (*rabbitmq.Producer, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "NotifyDocumentSavedProducer"),
-		rabbitmq.NewProducer,
-	))
-}
-
-func InitRabbitNotifyDocumentAnalyzedPublisher(
-	_ *config.Config,
-) (*rabbitmq.Producer, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "NotifyDocumentAnalyzedProducer"),
-		rabbitmq.NewProducer,
-	))
-}
-
-func InitRabbitNotifyFileSavedConsumer(
-	_ *config.Config,
-) (*rabbitmq.Consumer, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "NotifyFileSavedConsumer"),
-		rabbitmq.NewConsumer,
-	))
-}
-
-func InitRabbitNotifyDocumentSavedConsumer(
-	_ *config.Config,
-) (*rabbitmq.Consumer, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "NotifyDocumentSavedConsumer"),
-		rabbitmq.NewConsumer,
-	))
-}
-
-func InitRabbitNotifyDocumentAnalyzedConsumer(
-	_ *config.Config,
-) (*rabbitmq.Consumer, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "NotifyDocumentAnalyzedConsumer"),
-		rabbitmq.NewConsumer,
-	))
-}
-
-func InitNotifyFileSavedProducer(
-	_ *config.Config,
-) (*notify.Producer, error) {
-	panic(wire.Build(
-		InitRabbitNotifyFileSavedPublisher,
-		wire.Bind(new(notify.Publisher), new(*rabbitmq.Producer)),
-		notify.New,
-	))
-}
-
-func InitNotifyDocumentSavedProducer(
-	_ *config.Config,
-) (*notify.Producer, error) {
-	panic(wire.Build(
-		InitRabbitNotifyDocumentSavedPublisher,
-		wire.Bind(new(notify.Publisher), new(*rabbitmq.Producer)),
-		notify.New,
-	))
-}
-
-func InitNotifyDocumentAnalyzedProducer(
-	_ *config.Config,
-) (*notify.Producer, error) {
-	panic(wire.Build(
-		InitRabbitNotifyDocumentAnalyzedPublisher,
-		wire.Bind(new(notify.Publisher), new(*rabbitmq.Producer)),
-		notify.New,
 	))
 }
 
@@ -194,37 +163,54 @@ func InitAnalyzedDocumentRepository(
 	))
 }
 
+func InitDocumentStatusRepository(
+	ctx context.Context,
+	js jetstream.JetStream,
+) (*documentstatusrepo.Repository, error) {
+	panic(wire.Build(
+		ProvideDocumentStatusJetstreamKV,
+		wire.Bind(new(jetstream.Publisher), new(jetstream.JetStream)),
+		documentstatusrepo.NewRepository,
+	))
+}
+
+func InitDocumentStatusService(
+	_ *documentstatusrepo.Repository,
+) (*documentstatussrv.Service, error) {
+	panic(wire.Build(
+		wire.Bind(new(documentstatussrv.Repository), new(*documentstatusrepo.Repository)),
+		documentstatussrv.NewService,
+	))
+}
+
 func InitVectorizerService(
 	_ *vectorizerclient.ClientWithResponses,
-) (*vectorizersrv.Service, error) {
+) (*vectorizerrepo.Repository, error) {
 	panic(wire.Build(
 		wire.Bind(new(vectorizerclient.ClientWithResponsesInterface), new(*vectorizerclient.ClientWithResponses)),
-		vectorizersrv.NewService,
+		vectorizerrepo.NewRepository,
 	))
+}
+
+func ProvideAnalyzeServiceOpts() analyzesrv.Opts {
+	return analyzesrv.Opts{} //nolint:exhaustruct
 }
 
 func InitAnalyzeService(
 	_ *config.Config,
-	_ *vectorizersrv.Service,
+	_ *vectorizerrepo.Repository,
 	_ *analyzerepo.Repository,
 ) (*analyzesrv.Service, error) {
 	panic(wire.Build(
-		InitNotifyDocumentAnalyzedProducer,
-		wire.Bind(new(analyzesrv.Notify), new(*notify.Producer)),
-		wire.Bind(new(analyzesrv.VectorizerService), new(*vectorizersrv.Service)),
+		ProvideAnalyzeServiceOpts,
+		wire.Bind(new(analyzesrv.VectorizerService), new(*vectorizerrepo.Repository)),
 		wire.Bind(new(analyzesrv.Repository), new(*analyzerepo.Repository)),
 		analyzesrv.NewService,
 	))
 }
 
-func ProvideAnysaveServiceOpts(
-	p *notify.Producer,
-) anysavesrv.Opts {
-	return anysavesrv.Opts{
-		OnSaveAction: func(ctx context.Context, cmd model.FileSaveCommand) error {
-			return p.Notify(ctx, cmd.Item.Sha256, model.NotifyActionFileSaved, nil)
-		},
-	}
+func ProvideAnysaveServiceOpts() anysavesrv.Opts {
+	return anysavesrv.Opts{} //nolint:exhaustruct
 }
 
 func InitAnysaveService(
@@ -232,7 +218,6 @@ func InitAnysaveService(
 	_ *config.Config,
 ) (*anysavesrv.Service, error) {
 	panic(wire.Build(
-		InitNotifyFileSavedProducer,
 		InitDocumentFileRepository,
 		ProvideAnysaveServiceOpts,
 		wire.Bind(new(anysavesrv.Repository), new(*anysaverepo.Repository)),
@@ -240,14 +225,8 @@ func InitAnysaveService(
 	))
 }
 
-func ProvideDocumentServiceOpts(
-	p *notify.Producer,
-) documentsrv.Opts {
-	return documentsrv.Opts{
-		OnSaveAction: func(ctx context.Context, cmd model.DocumentSaveCommand) error {
-			return p.Notify(ctx, cmd.Item.ID, model.NotifyActionDocumentSaved, nil)
-		},
-	}
+func ProvideDocumentServiceOpts() documentsrv.Opts {
+	return documentsrv.Opts{} //nolint:exhaustruct
 }
 
 func InitDocumentService(
@@ -256,7 +235,6 @@ func InitDocumentService(
 	_ *documentrepo.Repository,
 ) (*documentsrv.Service, error) {
 	panic(wire.Build(
-		InitNotifyDocumentSavedProducer,
 		ProvideDocumentServiceOpts,
 		wire.Bind(new(documentsrv.FileRepository), new(*anysavesrv.Service)),
 		wire.Bind(new(documentsrv.Repository), new(*documentrepo.Repository)),
@@ -273,12 +251,14 @@ func InitDocumentHandler(
 	))
 }
 
-func InitFileHandler(
+func InitAnysaveHandler(
+	_ *documentstatussrv.Service,
 	_ *anysavesrv.Service,
-) *fileapi.Handler {
+) *anysaveapi.Handler {
 	panic(wire.Build(
-		wire.Bind(new(fileapi.Service), new(*anysavesrv.Service)),
-		fileapi.NewHandler,
+		wire.Bind(new(anysaveapi.Service), new(*anysavesrv.Service)),
+		wire.Bind(new(anysaveapi.StatusService), new(*documentstatussrv.Service)),
+		anysaveapi.NewHandler,
 	))
 }
 
@@ -301,6 +281,10 @@ func InitRestAPI(
 		ProvideSpec,
 		InitS3,
 		InitElastic,
+		InitNats,
+		InitNatsJetstream,
+		InitDocumentStatusRepository,
+		InitDocumentStatusService,
 		InitDocumentRepository,
 		InitVectorizerClient,
 		InitVectorizerService,
@@ -310,74 +294,80 @@ func InitRestAPI(
 		InitAnalyzedDocumentRepository,
 		InitAnalyzeService,
 		InitAnalyzeHandler,
-		InitFileHandler,
+		InitAnysaveHandler,
 		wire.Bind(new(server.DocumentHandler), new(*documentapi.Handler)),
 		wire.Bind(new(server.AnalyzeHandler), new(*analyzeapi.Handler)),
-		wire.Bind(new(server.FileHandler), new(*fileapi.Handler)),
+		wire.Bind(new(server.FileHandler), new(*anysaveapi.Handler)),
 		wire.FieldsOf(new(*config.Config), "Port"),
 		wire.Struct(new(server.Opts), "*"),
 		server.New,
 	))
 }
 
-func InitAsyncFileSavedHandler(
-	_ *anysavesrv.Service,
+func InitFileSavedHandler(
 	_ *documentsrv.Service,
-) *filesavedapi.Handler {
+	_ *anysavesrv.Service,
+) (*filesavedhandler.Handler, error) {
 	panic(wire.Build(
-		wire.Bind(new(filesavedapi.FileService), new(*anysavesrv.Service)),
-		wire.Bind(new(filesavedapi.DocumentService), new(*documentsrv.Service)),
-		filesavedapi.NewHandler,
+		wire.Bind(new(filesavedhandler.FileService), new(*anysavesrv.Service)),
+		wire.Bind(new(filesavedhandler.DocumentService), new(*documentsrv.Service)),
+		filesavedhandler.NewHandler,
 	))
 }
 
-func InitAsyncDocumentSavedHandler(
+func InitDocumentSavedHandler(
 	_ *documentsrv.Service,
 	_ *analyzesrv.Service,
-) *documentsavedapi.Handler {
+) (*documentsavedhandler.Handler, error) {
 	panic(wire.Build(
-		wire.Bind(new(documentsavedapi.DocumentService), new(*documentsrv.Service)),
-		wire.Bind(new(documentsavedapi.AnalyzeService), new(*analyzesrv.Service)),
-		documentsavedapi.NewHandler,
+		wire.Bind(new(documentsavedhandler.DocumentService), new(*documentsrv.Service)),
+		wire.Bind(new(documentsavedhandler.AnalyzeService), new(*analyzesrv.Service)),
+		documentsavedhandler.NewHandler,
 	))
 }
 
-func InitAsyncDocumentParsing(
-	_ context.Context,
-	_ *config.Config,
-) (*notifyprocessing.Consumer, error) {
-	panic(wire.Build(
-		InitS3,
-		InitElastic,
-		InitDocumentRepository,
-		InitRabbitNotifyFileSavedConsumer,
-		InitAnysaveService,
-		InitDocumentService,
-		InitAsyncFileSavedHandler,
-		wire.Bind(new(notifyprocessing.Handler), new(*filesavedapi.Handler)),
-		wire.Bind(new(notifyprocessing.RMQConsumer), new(*rabbitmq.Consumer)),
-		notifyprocessing.New,
-	))
+func ProvideDocumentPipelineStages(
+	dsh *documentsavedhandler.Handler,
+	fsh *filesavedhandler.Handler,
+) []documentpipeline.Stage {
+	return []documentpipeline.Stage{
+		{
+			Trigger: model.DocumentProcessingStatusFileSaved,
+			Action:  fsh,
+			Next:    model.DocumentProcessingStatusDocumentSaved,
+		},
+		{
+			Trigger: model.DocumentProcessingStatusDocumentSaved,
+			Action:  dsh,
+			Next:    model.DocumentProcessingStatusDocumentAnalyzed,
+		},
+	}
 }
 
-func InitAsyncDocumentAnalysis(
+func InitDocumentPipeline(
 	_ context.Context,
 	_ *config.Config,
-) (*notifyprocessing.Consumer, error) {
+) (*documentpipeline.Service, error) {
 	panic(wire.Build(
 		InitS3,
 		InitElastic,
+		InitNats,
+		InitNatsJetstream,
+		InitDocumentStatusRepository,
+		InitDocumentStatusService,
+		ProvideDocumentStatusJetstreamStream,
 		InitDocumentRepository,
-		InitRabbitNotifyDocumentSavedConsumer,
-		InitAnysaveService,
-		InitDocumentService,
 		InitVectorizerClient,
 		InitVectorizerService,
+		InitAnysaveService,
+		InitDocumentService,
 		InitAnalyzedDocumentRepository,
 		InitAnalyzeService,
-		InitAsyncDocumentSavedHandler,
-		wire.Bind(new(notifyprocessing.Handler), new(*documentsavedapi.Handler)),
-		wire.Bind(new(notifyprocessing.RMQConsumer), new(*rabbitmq.Consumer)),
-		notifyprocessing.New,
+		InitFileSavedHandler,
+		InitDocumentSavedHandler,
+		ProvideDocumentPipelineStages,
+		wire.Bind(new(jetstream.ConsumerManager), new(jetstream.Stream)),
+		wire.Bind(new(documentpipeline.StatusService), new(*documentstatussrv.Service)),
+		documentpipeline.NewService,
 	))
 }

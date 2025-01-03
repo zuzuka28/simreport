@@ -9,21 +9,26 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+type Opts struct {
+	OnSaveAction func(ctx context.Context, cmd model.AnalyzedDocumentSaveCommand) error
+}
+
 type Service struct {
 	vs VectorizerService
 	r  Repository
-	n  Notify
+
+	onSaveAction func(ctx context.Context, cmd model.AnalyzedDocumentSaveCommand) error
 }
 
 func NewService(
+	opts Opts,
 	r Repository,
 	vs VectorizerService,
-	n Notify,
 ) *Service {
 	return &Service{
-		vs: vs,
-		r:  r,
-		n:  n,
+		vs:           vs,
+		r:            r,
+		onSaveAction: opts.OnSaveAction,
 	}
 }
 
@@ -59,13 +64,10 @@ func (s *Service) Save(
 		return fmt.Errorf("save analyzed document: %w", err)
 	}
 
-	if err := s.n.Notify(
-		ctx,
-		cmd.Item.ID,
-		model.NotifyActionDocumentAnalyzed,
-		nil,
-	); err != nil {
-		return fmt.Errorf("notify: %w", err)
+	if s.onSaveAction != nil {
+		if err := s.onSaveAction(ctx, cmd); err != nil {
+			return fmt.Errorf("on save action: %w", err)
+		}
 	}
 
 	return nil

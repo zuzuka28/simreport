@@ -14,19 +14,19 @@ import (
 
 var errBadResponse = errors.New("bad response")
 
-type Service struct {
+type Repository struct {
 	client client.ClientWithResponsesInterface
 }
 
-func NewService(
+func NewRepository(
 	cli client.ClientWithResponsesInterface,
-) *Service {
-	return &Service{
+) *Repository {
+	return &Repository{
 		client: cli,
 	}
 }
 
-func (s *Service) TextToVector(
+func (s *Repository) TextToVector(
 	ctx context.Context,
 	params model.VectorizeTextParams,
 ) (model.Vector, error) {
@@ -49,7 +49,7 @@ func (s *Service) TextToVector(
 	return convertVector(resp.JSON200.Vector), nil
 }
 
-func (s *Service) ImageToVector(
+func (s *Repository) ImageToVector(
 	ctx context.Context,
 	params model.VectorizeImageParams,
 ) (model.Vector, error) {
@@ -84,7 +84,7 @@ func (s *Service) ImageToVector(
 	return convertVector(resp.JSON200.Vector), nil
 }
 
-func (s *Service) ImageToHashes(
+func (s *Repository) ImageToHashes(
 	ctx context.Context,
 	params model.HashImageParams,
 ) (model.HashImage, error) {

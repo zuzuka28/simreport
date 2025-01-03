@@ -8,30 +8,33 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/minio/minio-go/v7"
+	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"io"
 	"os"
-	"simrep/api/amqp/asyncnotify/consumer"
-	"simrep/api/amqp/asyncnotify/handler/documentsaved"
-	"simrep/api/amqp/asyncnotify/handler/filesaved"
-	"simrep/api/amqp/asyncnotify/producer"
 	"simrep/api/rest/server"
 	analyze3 "simrep/api/rest/server/handler/analyze"
+	anysave3 "simrep/api/rest/server/handler/anysave"
 	document3 "simrep/api/rest/server/handler/document"
-	anysave1 "simrep/api/rest/server/handler/anysave"
 	"simrep/internal/config"
 	"simrep/internal/model"
 	"simrep/internal/repository/analyze"
 	"simrep/internal/repository/anysave"
 	"simrep/internal/repository/document"
+	"simrep/internal/repository/documentstatus"
+	"simrep/internal/repository/vectorizer"
 	analyze2 "simrep/internal/service/analyze"
 	anysave2 "simrep/internal/service/anysave"
 	document2 "simrep/internal/service/document"
-	"simrep/internal/service/vectorizer"
+	"simrep/internal/service/documentpipeline"
+	"simrep/internal/service/documentpipeline/handler/documentsaved"
+	"simrep/internal/service/documentpipeline/handler/filesaved"
+	documentstatus2 "simrep/internal/service/documentstatus"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
-	"simrep/pkg/rabbitmq"
 	"simrep/pkg/vectorizerclient"
 )
 
@@ -54,6 +57,20 @@ func InitElastic(contextContext context.Context, configConfig *config.Config) (*
 	return client, nil
 }
 
+func InitNats(contextContext context.Context, configConfig *config.Config) (*nats.Conn, error) {
+	string2 := configConfig.Nats
+	v := _wireValue
+	conn, err := nats.Connect(string2, v...)
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
+var (
+	_wireValue = []nats.Option(nil)
+)
+
 func InitS3(contextContext context.Context, configConfig *config.Config) (*minio.Client, error) {
 	minioutilConfig := configConfig.S3
 	client, err := minioutil.NewClientWithStartup(contextContext, minioutilConfig)
@@ -63,9 +80,22 @@ func InitS3(contextContext context.Context, configConfig *config.Config) (*minio
 	return client, nil
 }
 
+func InitNatsJetstream(conn *nats.Conn) (jetstream.JetStream, error) {
+	v := _wireValue2
+	jetStream, err := jetstream.New(conn, v...)
+	if err != nil {
+		return nil, err
+	}
+	return jetStream, nil
+}
+
+var (
+	_wireValue2 = []jetstream.JetStreamOpt(nil)
+)
+
 func InitVectorizerClient(configConfig *config.Config) (*client.ClientWithResponses, error) {
 	string2 := configConfig.VectorizerService
-	v := _wireValue
+	v := _wireValue3
 	clientWithResponses, err := client.NewClientWithResponses(string2, v...)
 	if err != nil {
 		return nil, err
@@ -74,89 +104,8 @@ func InitVectorizerClient(configConfig *config.Config) (*client.ClientWithRespon
 }
 
 var (
-	_wireValue = []client.ClientOption(nil)
+	_wireValue3 = []client.ClientOption(nil)
 )
-
-func InitRabbitNotifyFileSavedPublisher(configConfig *config.Config) (*rabbitmq.Producer, error) {
-	producerConfig := configConfig.NotifyFileSavedProducer
-	producer, err := rabbitmq.NewProducer(producerConfig)
-	if err != nil {
-		return nil, err
-	}
-	return producer, nil
-}
-
-func InitRabbitNotifyDocumentSavedPublisher(configConfig *config.Config) (*rabbitmq.Producer, error) {
-	producerConfig := configConfig.NotifyDocumentSavedProducer
-	producer, err := rabbitmq.NewProducer(producerConfig)
-	if err != nil {
-		return nil, err
-	}
-	return producer, nil
-}
-
-func InitRabbitNotifyDocumentAnalyzedPublisher(configConfig *config.Config) (*rabbitmq.Producer, error) {
-	producerConfig := configConfig.NotifyDocumentAnalyzedProducer
-	producer, err := rabbitmq.NewProducer(producerConfig)
-	if err != nil {
-		return nil, err
-	}
-	return producer, nil
-}
-
-func InitRabbitNotifyFileSavedConsumer(configConfig *config.Config) (*rabbitmq.Consumer, error) {
-	consumerConfig := configConfig.NotifyFileSavedConsumer
-	consumer, err := rabbitmq.NewConsumer(consumerConfig)
-	if err != nil {
-		return nil, err
-	}
-	return consumer, nil
-}
-
-func InitRabbitNotifyDocumentSavedConsumer(configConfig *config.Config) (*rabbitmq.Consumer, error) {
-	consumerConfig := configConfig.NotifyDocumentSavedConsumer
-	consumer, err := rabbitmq.NewConsumer(consumerConfig)
-	if err != nil {
-		return nil, err
-	}
-	return consumer, nil
-}
-
-func InitRabbitNotifyDocumentAnalyzedConsumer(configConfig *config.Config) (*rabbitmq.Consumer, error) {
-	consumerConfig := configConfig.NotifyDocumentAnalyzedConsumer
-	consumer, err := rabbitmq.NewConsumer(consumerConfig)
-	if err != nil {
-		return nil, err
-	}
-	return consumer, nil
-}
-
-func InitNotifyFileSavedProducer(configConfig *config.Config) (*producer.Producer, error) {
-	rabbitmqProducer, err := InitRabbitNotifyFileSavedPublisher(configConfig)
-	if err != nil {
-		return nil, err
-	}
-	producerProducer := producer.New(rabbitmqProducer)
-	return producerProducer, nil
-}
-
-func InitNotifyDocumentSavedProducer(configConfig *config.Config) (*producer.Producer, error) {
-	rabbitmqProducer, err := InitRabbitNotifyDocumentSavedPublisher(configConfig)
-	if err != nil {
-		return nil, err
-	}
-	producerProducer := producer.New(rabbitmqProducer)
-	return producerProducer, nil
-}
-
-func InitNotifyDocumentAnalyzedProducer(configConfig *config.Config) (*producer.Producer, error) {
-	rabbitmqProducer, err := InitRabbitNotifyDocumentAnalyzedPublisher(configConfig)
-	if err != nil {
-		return nil, err
-	}
-	producerProducer := producer.New(rabbitmqProducer)
-	return producerProducer, nil
-}
 
 func InitDocumentFileRepository(minioClient *minio.Client, configConfig *config.Config) (*anysave.Repository, error) {
 	repository := anysave.NewRepository(minioClient)
@@ -181,26 +130,33 @@ func InitAnalyzedDocumentRepository(elasticsearchClient *elasticsearch.Client, c
 	return repository, nil
 }
 
-func InitVectorizerService(clientWithResponses *client.ClientWithResponses) (*vectorizer.Service, error) {
-	service := vectorizer.NewService(clientWithResponses)
+func InitDocumentStatusRepository(ctx context.Context, js jetstream.JetStream) (*documentstatus.Repository, error) {
+	keyValue, err := ProvideDocumentStatusJetstreamKV(ctx, js)
+	if err != nil {
+		return nil, err
+	}
+	repository := documentstatus.NewRepository(keyValue, js)
+	return repository, nil
+}
+
+func InitDocumentStatusService(repository *documentstatus.Repository) (*documentstatus2.Service, error) {
+	service := documentstatus2.NewService(repository)
 	return service, nil
 }
 
-func InitAnalyzeService(configConfig *config.Config, service *vectorizer.Service, repository *analyze.Repository) (*analyze2.Service, error) {
-	producerProducer, err := InitNotifyDocumentAnalyzedProducer(configConfig)
-	if err != nil {
-		return nil, err
-	}
-	analyzeService := analyze2.NewService(repository, service, producerProducer)
-	return analyzeService, nil
+func InitVectorizerService(clientWithResponses *client.ClientWithResponses) (*vectorizer.Repository, error) {
+	repository := vectorizer.NewRepository(clientWithResponses)
+	return repository, nil
+}
+
+func InitAnalyzeService(configConfig *config.Config, repository *vectorizer.Repository, analyzeRepository *analyze.Repository) (*analyze2.Service, error) {
+	opts := ProvideAnalyzeServiceOpts()
+	service := analyze2.NewService(opts, analyzeRepository, repository)
+	return service, nil
 }
 
 func InitAnysaveService(minioClient *minio.Client, configConfig *config.Config) (*anysave2.Service, error) {
-	producerProducer, err := InitNotifyFileSavedProducer(configConfig)
-	if err != nil {
-		return nil, err
-	}
-	opts := ProvideAnysaveServiceOpts(producerProducer)
+	opts := ProvideAnysaveServiceOpts()
 	repository, err := InitDocumentFileRepository(minioClient, configConfig)
 	if err != nil {
 		return nil, err
@@ -210,11 +166,7 @@ func InitAnysaveService(minioClient *minio.Client, configConfig *config.Config) 
 }
 
 func InitDocumentService(configConfig *config.Config, service *anysave2.Service, repository *document.Repository) (*document2.Service, error) {
-	producerProducer, err := InitNotifyDocumentSavedProducer(configConfig)
-	if err != nil {
-		return nil, err
-	}
-	opts := ProvideDocumentServiceOpts(producerProducer)
+	opts := ProvideDocumentServiceOpts()
 	documentService := document2.NewService(opts, repository, service)
 	return documentService, nil
 }
@@ -224,8 +176,8 @@ func InitDocumentHandler(service *document2.Service) *document3.Handler {
 	return handler
 }
 
-func InitFileHandler(service *anysave2.Service) *anysave1.Handler {
-	handler := anysave1.NewHandler(service)
+func InitAnysaveHandler(service *documentstatus2.Service, anysaveService *anysave2.Service) *anysave3.Handler {
+	handler := anysave3.NewHandler(anysaveService, service)
 	return handler
 }
 
@@ -265,7 +217,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	vectorizerService, err := InitVectorizerService(clientWithResponses)
+	vectorizerRepository, err := InitVectorizerService(clientWithResponses)
 	if err != nil {
 		return nil, err
 	}
@@ -273,18 +225,34 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, vectorizerService, analyzeRepository)
+	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository)
 	if err != nil {
 		return nil, err
 	}
 	analyzeHandler := InitAnalyzeHandler(documentService, analyzeService)
-	fileHandler := InitFileHandler(service)
+	conn, err := InitNats(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	jetStream, err := InitNatsJetstream(conn)
+	if err != nil {
+		return nil, err
+	}
+	documentstatusRepository, err := InitDocumentStatusRepository(contextContext, jetStream)
+	if err != nil {
+		return nil, err
+	}
+	documentstatusService, err := InitDocumentStatusService(documentstatusRepository)
+	if err != nil {
+		return nil, err
+	}
+	anysaveHandler := InitAnysaveHandler(documentstatusService, service)
 	opts := server.Opts{
 		Port:            int2,
 		Spec:            v,
 		DocumentHandler: handler,
 		AnalyzeHandler:  analyzeHandler,
-		FileHandler:     fileHandler,
+		FileHandler:     anysaveHandler,
 	}
 	serverServer, err := server.New(opts)
 	if err != nil {
@@ -293,18 +261,34 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	return serverServer, nil
 }
 
-func InitAsyncFileSavedHandler(service *anysave2.Service, documentService *document2.Service) *filesaved.Handler {
-	handler := filesaved.NewHandler(service, documentService)
-	return handler
+func InitFileSavedHandler(service *document2.Service, anysaveService *anysave2.Service) (*filesaved.Handler, error) {
+	handler := filesaved.NewHandler(anysaveService, service)
+	return handler, nil
 }
 
-func InitAsyncDocumentSavedHandler(service *document2.Service, analyzeService *analyze2.Service) *documentsaved.Handler {
+func InitDocumentSavedHandler(service *document2.Service, analyzeService *analyze2.Service) (*documentsaved.Handler, error) {
 	handler := documentsaved.NewHandler(service, analyzeService)
-	return handler
+	return handler, nil
 }
 
-func InitAsyncDocumentParsing(contextContext context.Context, configConfig *config.Config) (*consumer.Consumer, error) {
-	rabbitmqConsumer, err := InitRabbitNotifyFileSavedConsumer(configConfig)
+func InitDocumentPipeline(contextContext context.Context, configConfig *config.Config) (*documentpipeline.Service, error) {
+	conn, err := InitNats(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	jetStream, err := InitNatsJetstream(conn)
+	if err != nil {
+		return nil, err
+	}
+	stream, err := ProvideDocumentStatusJetstreamStream(contextContext, jetStream)
+	if err != nil {
+		return nil, err
+	}
+	repository, err := InitDocumentStatusRepository(contextContext, jetStream)
+	if err != nil {
+		return nil, err
+	}
+	service, err := InitDocumentStatusService(repository)
 	if err != nil {
 		return nil, err
 	}
@@ -312,7 +296,7 @@ func InitAsyncDocumentParsing(contextContext context.Context, configConfig *conf
 	if err != nil {
 		return nil, err
 	}
-	service, err := InitAnysaveService(minioClient, configConfig)
+	anysaveService, err := InitAnysaveService(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -320,41 +304,11 @@ func InitAsyncDocumentParsing(contextContext context.Context, configConfig *conf
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitDocumentRepository(elasticsearchClient, configConfig)
+	documentRepository, err := InitDocumentRepository(elasticsearchClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(configConfig, service, repository)
-	if err != nil {
-		return nil, err
-	}
-	handler := InitAsyncFileSavedHandler(service, documentService)
-	consumerConsumer := consumer.New(rabbitmqConsumer, handler)
-	return consumerConsumer, nil
-}
-
-func InitAsyncDocumentAnalysis(contextContext context.Context, configConfig *config.Config) (*consumer.Consumer, error) {
-	rabbitmqConsumer, err := InitRabbitNotifyDocumentSavedConsumer(configConfig)
-	if err != nil {
-		return nil, err
-	}
-	minioClient, err := InitS3(contextContext, configConfig)
-	if err != nil {
-		return nil, err
-	}
-	service, err := InitAnysaveService(minioClient, configConfig)
-	if err != nil {
-		return nil, err
-	}
-	elasticsearchClient, err := InitElastic(contextContext, configConfig)
-	if err != nil {
-		return nil, err
-	}
-	repository, err := InitDocumentRepository(elasticsearchClient, configConfig)
-	if err != nil {
-		return nil, err
-	}
-	documentService, err := InitDocumentService(configConfig, service, repository)
+	documentService, err := InitDocumentService(configConfig, anysaveService, documentRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +316,7 @@ func InitAsyncDocumentAnalysis(contextContext context.Context, configConfig *con
 	if err != nil {
 		return nil, err
 	}
-	vectorizerService, err := InitVectorizerService(clientWithResponses)
+	vectorizerRepository, err := InitVectorizerService(clientWithResponses)
 	if err != nil {
 		return nil, err
 	}
@@ -370,13 +324,24 @@ func InitAsyncDocumentAnalysis(contextContext context.Context, configConfig *con
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, vectorizerService, analyzeRepository)
+	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository)
 	if err != nil {
 		return nil, err
 	}
-	handler := InitAsyncDocumentSavedHandler(documentService, analyzeService)
-	consumerConsumer := consumer.New(rabbitmqConsumer, handler)
-	return consumerConsumer, nil
+	handler, err := InitDocumentSavedHandler(documentService, analyzeService)
+	if err != nil {
+		return nil, err
+	}
+	filesavedHandler, err := InitFileSavedHandler(documentService, anysaveService)
+	if err != nil {
+		return nil, err
+	}
+	v := ProvideDocumentPipelineStages(handler, filesavedHandler)
+	documentpipelineService, err := documentpipeline.NewService(contextContext, stream, service, v)
+	if err != nil {
+		return nil, err
+	}
+	return documentpipelineService, nil
 }
 
 // wire.go:
@@ -395,22 +360,62 @@ func ProvideSpec() ([]byte, error) {
 	return spec, nil
 }
 
-func ProvideAnysaveServiceOpts(
-	p *producer.Producer,
-) anysave2.Opts {
-	return anysave2.Opts{
-		OnSaveAction: func(ctx context.Context, cmd model.FileSaveCommand) error {
-			return p.Notify(ctx, cmd.Item.Sha256, model.NotifyActionFileSaved, nil)
-		},
+func ProvideDocumentStatusJetstreamKV(
+	ctx context.Context,
+	js jetstream.JetStream,
+) (jetstream.KeyValue, error) {
+	kv, err := js.CreateOrUpdateKeyValue(ctx, jetstream.KeyValueConfig{
+		Bucket: "documentstatus",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("new kv: %w", err)
 	}
+
+	return kv, nil
 }
 
-func ProvideDocumentServiceOpts(
-	p *producer.Producer,
-) document2.Opts {
-	return document2.Opts{
-		OnSaveAction: func(ctx context.Context, cmd model.DocumentSaveCommand) error {
-			return p.Notify(ctx, cmd.Item.ID, model.NotifyActionDocumentSaved, nil)
+func ProvideDocumentStatusJetstreamStream(
+	ctx context.Context,
+	js jetstream.JetStream,
+) (jetstream.Stream, error) {
+	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
+		Name:      "documentstatus",
+		Subjects:  []string{"documentstatus.>"},
+		Retention: jetstream.WorkQueuePolicy,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("new steream: %w", err)
+	}
+
+	return s, nil
+}
+
+func ProvideAnalyzeServiceOpts() analyze2.Opts {
+	return analyze2.Opts{}
+}
+
+func ProvideAnysaveServiceOpts() anysave2.Opts {
+	return anysave2.Opts{}
+}
+
+func ProvideDocumentServiceOpts() document2.Opts {
+	return document2.Opts{}
+}
+
+func ProvideDocumentPipelineStages(
+	dsh *documentsaved.Handler,
+	fsh *filesaved.Handler,
+) []documentpipeline.Stage {
+	return []documentpipeline.Stage{
+		{
+			Trigger: model.DocumentProcessingStatusFileSaved,
+			Action:  fsh,
+			Next:    model.DocumentProcessingStatusDocumentSaved,
+		},
+		{
+			Trigger: model.DocumentProcessingStatusDocumentSaved,
+			Action:  dsh,
+			Next:    model.DocumentProcessingStatusDocumentAnalyzed,
 		},
 	}
 }

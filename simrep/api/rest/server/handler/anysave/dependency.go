@@ -16,4 +16,11 @@ type (
 			query model.FileQuery,
 		) (model.File, error)
 	}
+
+	StatusService interface {
+		Update(
+			ctx context.Context,
+			cmd model.DocumentStatusUpdateCommand,
+		) error
+	}
 )

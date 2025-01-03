@@ -6,7 +6,6 @@ import (
 	"simrep/internal/repository/document"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
-	"simrep/pkg/rabbitmq"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
@@ -26,18 +25,13 @@ type Elastic struct {
 }
 
 type Config struct {
-	Port                           int                     `yaml:"port"`
-	S3                             minioutil.Config        `yaml:"s3"`
-	Elastic                        elasticutil.Config      `yaml:"elastic"`
-	VectorizerService              string                  `yaml:"vectorizerService"`
-	NotifyFileSavedProducer        rabbitmq.ProducerConfig `yaml:"notifyFileSavedProducer"`
-	NotifyDocumentSavedProducer    rabbitmq.ProducerConfig `yaml:"notifyDocumentSavedProducer"`
-	NotifyDocumentAnalyzedProducer rabbitmq.ProducerConfig `yaml:"notifyDocumentAnalyzedProducer"`
-	NotifyFileSavedConsumer        rabbitmq.ConsumerConfig `yaml:"notifyFileSavedConsumer"`
-	NotifyDocumentSavedConsumer    rabbitmq.ConsumerConfig `yaml:"notifyDocumentSavedConsumer"`
-	NotifyDocumentAnalyzedConsumer rabbitmq.ConsumerConfig `yaml:"notifyDocumentAnalyzedConsumer"`
-	DocumentRepo                   document.Opts           `yaml:"documentRepo"`
-	AnalyzedDocumentRepo           analyze.Opts            `yaml:"analyzedDocumentRepo"`
+	Port                 int                `yaml:"port"`
+	S3                   minioutil.Config   `yaml:"s3"`
+	Nats                 string             `yaml:"nats"`
+	Elastic              elasticutil.Config `yaml:"elastic"`
+	VectorizerService    string             `yaml:"vectorizerService"`
+	DocumentRepo         document.Opts      `yaml:"documentRepo"`
+	AnalyzedDocumentRepo analyze.Opts       `yaml:"analyzedDocumentRepo"`
 }
 
 func New(path string) (*Config, error) {
