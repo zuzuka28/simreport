@@ -1,6 +1,6 @@
 .document_manager_container {
     display: flex;
-    flex: 1;
+    justify-content: stretch;
     flex-direction: column;
     row-gap: 20px;
     width: 100%;
@@ -9,4 +9,5 @@
 .action-section {
     display: flex;
     align-items: center;
+    width: 100%;
 }

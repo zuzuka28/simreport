@@ -13,7 +13,7 @@ export const DocumentUploader: FC<DocumentUploaderProps> = ({
   const [dragActive, setDragActive] = useState<boolean>(false);
 
   if (onDocumentUploaded == undefined) {
-    onDocumentUploaded = (_: string) => {}; // eslint-disable-line
+    onDocumentUploaded = (_: string) => { }; // eslint-disable-line
   }
 
   const handleDragEnter = (e: DragEvent<HTMLFormElement>): void => {
