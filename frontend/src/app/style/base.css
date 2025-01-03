@@ -2,14 +2,14 @@ html {}
 
 body {
   display: flex;
+  height: 100vh;
   flex-direction: column;
-  align-items: center;
   background-color: var(--bg-color);
 }
 
 #root {
   width: 100%;
-  max-width: 1313px;
+  height: 100%;
   display: flex;
   flex-direction: column;
 }

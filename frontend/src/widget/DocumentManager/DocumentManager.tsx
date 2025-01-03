@@ -6,26 +6,28 @@ import { DocumentUploader } from "widget/DocumentUploader";
 import "./style.css";
 
 export const DocumentManager: FC = () => {
-    const [query, setQuery] = useState("");
-    const { documents, loading, error } = useDocuments(query);
+  const [query, setQuery] = useState("");
+  const { documents, loading, error } = useDocuments(query);
 
-    const handleSearch = () => {
-        if (query.trim() === "") {
-            alert("Please enter a search term.");
-        }
-    };
+  const handleSearch = () => {
+    if (query.trim() === "") {
+      alert("Please enter a search term.");
+    }
+  };
 
-    return (
-        <div>
-            <div className="action-section">
-                <SearchBar
-                    query={query}
-                    onQueryChange={setQuery}
-                    onSearch={handleSearch}
-                />
-                <DocumentUploader />
-            </div>
-            <DocumentList documents={documents} loading={loading} error={error} />
+  return (
+    <>
+      <div className="document_manager_container">
+        <DocumentUploader />
+        <div className="action-section">
+          <SearchBar
+            query={query}
+            onQueryChange={setQuery}
+            onSearch={handleSearch}
+          />
         </div>
-    );
+        <DocumentList documents={documents} loading={loading} error={error} />
+      </div>
+    </>
+  );
 };

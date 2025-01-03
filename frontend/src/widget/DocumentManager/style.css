@@ -1,6 +1,12 @@
+.document_manager_container {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    row-gap: 20px;
+    width: 100%;
+}
+
 .action-section {
     display: flex;
     align-items: center;
-    margin-bottom: 20px;
-    row-gap: 10px;
 }
