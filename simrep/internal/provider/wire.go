@@ -15,13 +15,13 @@ import (
 	documentapi "simrep/api/rest/server/handler/document"
 	fileapi "simrep/api/rest/server/handler/file"
 	"simrep/internal/config"
+	"simrep/internal/model"
 	analyzerepo "simrep/internal/repository/analyze"
+	anysaverepo "simrep/internal/repository/anysave"
 	documentrepo "simrep/internal/repository/document"
-	filerepo "simrep/internal/repository/file"
 	analyzesrv "simrep/internal/service/analyze"
+	anysavesrv "simrep/internal/service/anysave"
 	documentsrv "simrep/internal/service/document"
-	documentfilesrv "simrep/internal/service/documentfile"
-	imagefilesrv "simrep/internal/service/imagefile"
 	vectorizersrv "simrep/internal/service/vectorizer"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
@@ -168,20 +168,9 @@ func InitNotifyDocumentAnalyzedProducer(
 func InitDocumentFileRepository(
 	_ *minio.Client,
 	_ *config.Config,
-) (*filerepo.Repository, error) {
+) (*anysaverepo.Repository, error) {
 	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "DocumentFileRepo"),
-		filerepo.NewRepository,
-	))
-}
-
-func InitImageFileRepository(
-	_ *minio.Client,
-	_ *config.Config,
-) (*filerepo.Repository, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "ImageRepo"),
-		filerepo.NewRepository,
+		anysaverepo.NewRepository,
 	))
 }
 
@@ -228,41 +217,48 @@ func InitAnalyzeService(
 	))
 }
 
-func InitDocumentFileService(
+func ProvideAnysaveServiceOpts(
+	p *notify.Producer,
+) anysavesrv.Opts {
+	return anysavesrv.Opts{
+		OnSaveAction: func(ctx context.Context, cmd model.FileSaveCommand) error {
+			return p.Notify(ctx, cmd.Item.Sha256, model.NotifyActionFileSaved, nil)
+		},
+	}
+}
+
+func InitAnysaveService(
 	_ *minio.Client,
 	_ *config.Config,
-) (*documentfilesrv.Service, error) {
+) (*anysavesrv.Service, error) {
 	panic(wire.Build(
 		InitNotifyFileSavedProducer,
 		InitDocumentFileRepository,
-		wire.Bind(new(documentfilesrv.Repository), new(*filerepo.Repository)),
-		wire.Bind(new(documentfilesrv.Notify), new(*notify.Producer)),
-		documentfilesrv.NewService,
+		ProvideAnysaveServiceOpts,
+		wire.Bind(new(anysavesrv.Repository), new(*anysaverepo.Repository)),
+		anysavesrv.NewService,
 	))
 }
 
-func InitImageFileService(
-	_ *minio.Client,
-	_ *config.Config,
-) (*imagefilesrv.Service, error) {
-	panic(wire.Build(
-		InitImageFileRepository,
-		wire.Bind(new(imagefilesrv.Repository), new(*filerepo.Repository)),
-		imagefilesrv.NewService,
-	))
+func ProvideDocumentServiceOpts(
+	p *notify.Producer,
+) documentsrv.Opts {
+	return documentsrv.Opts{
+		OnSaveAction: func(ctx context.Context, cmd model.DocumentSaveCommand) error {
+			return p.Notify(ctx, cmd.Item.ID, model.NotifyActionDocumentSaved, nil)
+		},
+	}
 }
 
 func InitDocumentService(
 	_ *config.Config,
-	_ *imagefilesrv.Service,
-	_ *documentfilesrv.Service,
+	_ *anysavesrv.Service,
 	_ *documentrepo.Repository,
 ) (*documentsrv.Service, error) {
 	panic(wire.Build(
 		InitNotifyDocumentSavedProducer,
-		wire.Bind(new(documentsrv.Notify), new(*notify.Producer)),
-		wire.Bind(new(documentsrv.FileRepository), new(*documentfilesrv.Service)),
-		wire.Bind(new(documentsrv.ImageRepository), new(*imagefilesrv.Service)),
+		ProvideDocumentServiceOpts,
+		wire.Bind(new(documentsrv.FileRepository), new(*anysavesrv.Service)),
 		wire.Bind(new(documentsrv.Repository), new(*documentrepo.Repository)),
 		documentsrv.NewService,
 	))
@@ -278,10 +274,10 @@ func InitDocumentHandler(
 }
 
 func InitFileHandler(
-	_ *documentfilesrv.Service,
+	_ *anysavesrv.Service,
 ) *fileapi.Handler {
 	panic(wire.Build(
-		wire.Bind(new(fileapi.Service), new(*documentfilesrv.Service)),
+		wire.Bind(new(fileapi.Service), new(*anysavesrv.Service)),
 		fileapi.NewHandler,
 	))
 }
@@ -305,11 +301,10 @@ func InitRestAPI(
 		ProvideSpec,
 		InitS3,
 		InitElastic,
+		InitDocumentRepository,
 		InitVectorizerClient,
 		InitVectorizerService,
-		InitDocumentFileService,
-		InitImageFileService,
-		InitDocumentRepository,
+		InitAnysaveService,
 		InitDocumentService,
 		InitDocumentHandler,
 		InitAnalyzedDocumentRepository,
@@ -326,11 +321,11 @@ func InitRestAPI(
 }
 
 func InitAsyncFileSavedHandler(
-	_ *documentfilesrv.Service,
+	_ *anysavesrv.Service,
 	_ *documentsrv.Service,
 ) *filesavedapi.Handler {
 	panic(wire.Build(
-		wire.Bind(new(filesavedapi.FileService), new(*documentfilesrv.Service)),
+		wire.Bind(new(filesavedapi.FileService), new(*anysavesrv.Service)),
 		wire.Bind(new(filesavedapi.DocumentService), new(*documentsrv.Service)),
 		filesavedapi.NewHandler,
 	))
@@ -354,10 +349,9 @@ func InitAsyncDocumentParsing(
 	panic(wire.Build(
 		InitS3,
 		InitElastic,
-		InitRabbitNotifyFileSavedConsumer,
-		InitDocumentFileService,
-		InitImageFileService,
 		InitDocumentRepository,
+		InitRabbitNotifyFileSavedConsumer,
+		InitAnysaveService,
 		InitDocumentService,
 		InitAsyncFileSavedHandler,
 		wire.Bind(new(notifyprocessing.Handler), new(*filesavedapi.Handler)),
@@ -373,10 +367,9 @@ func InitAsyncDocumentAnalysis(
 	panic(wire.Build(
 		InitS3,
 		InitElastic,
-		InitRabbitNotifyDocumentSavedConsumer,
-		InitDocumentFileService,
-		InitImageFileService,
 		InitDocumentRepository,
+		InitRabbitNotifyDocumentSavedConsumer,
+		InitAnysaveService,
 		InitDocumentService,
 		InitVectorizerClient,
 		InitVectorizerService,

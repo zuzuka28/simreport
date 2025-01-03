@@ -43,7 +43,7 @@ func Parse(item model.File) (model.Document, error) {
 		ID:          item.Sha256,
 		Name:        item.Name,
 		ImageIDs:    imageIDs,
-		TextContent: text,
+		TextID:      text,
 		LastUpdated: time.Now(),
 		Source:      item,
 		Images:      images,

@@ -15,17 +15,6 @@ type (
 		) error
 	}
 
-	ImageRepository interface {
-		Save(
-			ctx context.Context,
-			cmd model.FileSaveCommand,
-		) error
-		Fetch(
-			ctx context.Context,
-			query model.FileQuery,
-		) (model.File, error)
-	}
-
 	FileRepository interface {
 		Save(
 			ctx context.Context,

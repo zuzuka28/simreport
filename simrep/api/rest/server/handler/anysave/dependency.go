@@ -1,4 +1,4 @@
-package imagefile
+package anysave
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 )
 
 type (
-	Repository interface {
+	Service interface {
 		Save(
 			ctx context.Context,
 			cmd model.FileSaveCommand,

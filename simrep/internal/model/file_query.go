@@ -1,5 +1,6 @@
 package model
 
 type FileQuery struct {
-	ID string
+	Bucket string
+	ID     string
 }

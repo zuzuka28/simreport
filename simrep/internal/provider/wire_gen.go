@@ -19,15 +19,15 @@ import (
 	"simrep/api/rest/server"
 	analyze3 "simrep/api/rest/server/handler/analyze"
 	document3 "simrep/api/rest/server/handler/document"
-	file2 "simrep/api/rest/server/handler/file"
+	anysave1 "simrep/api/rest/server/handler/anysave"
 	"simrep/internal/config"
+	"simrep/internal/model"
 	"simrep/internal/repository/analyze"
+	"simrep/internal/repository/anysave"
 	"simrep/internal/repository/document"
-	"simrep/internal/repository/file"
 	analyze2 "simrep/internal/service/analyze"
+	anysave2 "simrep/internal/service/anysave"
 	document2 "simrep/internal/service/document"
-	"simrep/internal/service/documentfile"
-	"simrep/internal/service/imagefile"
 	"simrep/internal/service/vectorizer"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
@@ -158,15 +158,8 @@ func InitNotifyDocumentAnalyzedProducer(configConfig *config.Config) (*producer.
 	return producerProducer, nil
 }
 
-func InitDocumentFileRepository(minioClient *minio.Client, configConfig *config.Config) (*file.Repository, error) {
-	opts := configConfig.DocumentFileRepo
-	repository := file.NewRepository(opts, minioClient)
-	return repository, nil
-}
-
-func InitImageFileRepository(minioClient *minio.Client, configConfig *config.Config) (*file.Repository, error) {
-	opts := configConfig.ImageRepo
-	repository := file.NewRepository(opts, minioClient)
+func InitDocumentFileRepository(minioClient *minio.Client, configConfig *config.Config) (*anysave.Repository, error) {
+	repository := anysave.NewRepository(minioClient)
 	return repository, nil
 }
 
@@ -202,34 +195,27 @@ func InitAnalyzeService(configConfig *config.Config, service *vectorizer.Service
 	return analyzeService, nil
 }
 
-func InitDocumentFileService(minioClient *minio.Client, configConfig *config.Config) (*documentfile.Service, error) {
-	repository, err := InitDocumentFileRepository(minioClient, configConfig)
-	if err != nil {
-		return nil, err
-	}
+func InitAnysaveService(minioClient *minio.Client, configConfig *config.Config) (*anysave2.Service, error) {
 	producerProducer, err := InitNotifyFileSavedProducer(configConfig)
 	if err != nil {
 		return nil, err
 	}
-	service := documentfile.NewService(repository, producerProducer)
-	return service, nil
-}
-
-func InitImageFileService(minioClient *minio.Client, configConfig *config.Config) (*imagefile.Service, error) {
-	repository, err := InitImageFileRepository(minioClient, configConfig)
+	opts := ProvideAnysaveServiceOpts(producerProducer)
+	repository, err := InitDocumentFileRepository(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	service := imagefile.NewService(repository)
+	service := anysave2.NewService(opts, repository)
 	return service, nil
 }
 
-func InitDocumentService(configConfig *config.Config, service *imagefile.Service, documentfileService *documentfile.Service, repository *document.Repository) (*document2.Service, error) {
+func InitDocumentService(configConfig *config.Config, service *anysave2.Service, repository *document.Repository) (*document2.Service, error) {
 	producerProducer, err := InitNotifyDocumentSavedProducer(configConfig)
 	if err != nil {
 		return nil, err
 	}
-	documentService := document2.NewService(repository, service, documentfileService, producerProducer)
+	opts := ProvideDocumentServiceOpts(producerProducer)
+	documentService := document2.NewService(opts, repository, service)
 	return documentService, nil
 }
 
@@ -238,8 +224,8 @@ func InitDocumentHandler(service *document2.Service) *document3.Handler {
 	return handler
 }
 
-func InitFileHandler(service *documentfile.Service) *file2.Handler {
-	handler := file2.NewHandler(service)
+func InitFileHandler(service *anysave2.Service) *anysave1.Handler {
+	handler := anysave1.NewHandler(service)
 	return handler
 }
 
@@ -258,11 +244,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	service, err := InitImageFileService(minioClient, configConfig)
-	if err != nil {
-		return nil, err
-	}
-	documentfileService, err := InitDocumentFileService(minioClient, configConfig)
+	service, err := InitAnysaveService(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +256,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(configConfig, service, documentfileService, repository)
+	documentService, err := InitDocumentService(configConfig, service, repository)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +278,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 		return nil, err
 	}
 	analyzeHandler := InitAnalyzeHandler(documentService, analyzeService)
-	fileHandler := InitFileHandler(documentfileService)
+	fileHandler := InitFileHandler(service)
 	opts := server.Opts{
 		Port:            int2,
 		Spec:            v,
@@ -311,7 +293,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	return serverServer, nil
 }
 
-func InitAsyncFileSavedHandler(service *documentfile.Service, documentService *document2.Service) *filesaved.Handler {
+func InitAsyncFileSavedHandler(service *anysave2.Service, documentService *document2.Service) *filesaved.Handler {
 	handler := filesaved.NewHandler(service, documentService)
 	return handler
 }
@@ -330,11 +312,7 @@ func InitAsyncDocumentParsing(contextContext context.Context, configConfig *conf
 	if err != nil {
 		return nil, err
 	}
-	service, err := InitDocumentFileService(minioClient, configConfig)
-	if err != nil {
-		return nil, err
-	}
-	imagefileService, err := InitImageFileService(minioClient, configConfig)
+	service, err := InitAnysaveService(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -346,7 +324,7 @@ func InitAsyncDocumentParsing(contextContext context.Context, configConfig *conf
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(configConfig, imagefileService, service, repository)
+	documentService, err := InitDocumentService(configConfig, service, repository)
 	if err != nil {
 		return nil, err
 	}
@@ -364,11 +342,7 @@ func InitAsyncDocumentAnalysis(contextContext context.Context, configConfig *con
 	if err != nil {
 		return nil, err
 	}
-	service, err := InitImageFileService(minioClient, configConfig)
-	if err != nil {
-		return nil, err
-	}
-	documentfileService, err := InitDocumentFileService(minioClient, configConfig)
+	service, err := InitAnysaveService(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -380,7 +354,7 @@ func InitAsyncDocumentAnalysis(contextContext context.Context, configConfig *con
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(configConfig, service, documentfileService, repository)
+	documentService, err := InitDocumentService(configConfig, service, repository)
 	if err != nil {
 		return nil, err
 	}
@@ -419,4 +393,24 @@ func ProvideSpec() ([]byte, error) {
 	}
 
 	return spec, nil
+}
+
+func ProvideAnysaveServiceOpts(
+	p *producer.Producer,
+) anysave2.Opts {
+	return anysave2.Opts{
+		OnSaveAction: func(ctx context.Context, cmd model.FileSaveCommand) error {
+			return p.Notify(ctx, cmd.Item.Sha256, model.NotifyActionFileSaved, nil)
+		},
+	}
+}
+
+func ProvideDocumentServiceOpts(
+	p *producer.Producer,
+) document2.Opts {
+	return document2.Opts{
+		OnSaveAction: func(ctx context.Context, cmd model.DocumentSaveCommand) error {
+			return p.Notify(ctx, cmd.Item.ID, model.NotifyActionDocumentSaved, nil)
+		},
+	}
 }

@@ -1,5 +1,6 @@
 package model
 
 type FileSaveCommand struct {
-	Item File
+	Bucket string
+	Item   File
 }

@@ -81,7 +81,7 @@ func (s *Service) Analyze(
 
 	g.Go(func() error {
 		r, err := s.vs.TextToVector(gCtx, model.VectorizeTextParams{
-			Text: item.TextContent,
+			Text: item.TextID,
 		})
 		if err != nil {
 			return fmt.Errorf("vectorize text: %w", err)
@@ -118,7 +118,7 @@ func (s *Service) Analyze(
 
 	return model.AnalyzedDocument{
 		ID:         item.ID,
-		Text:       item.TextContent,
+		Text:       item.TextID,
 		TextVector: textVector,
 		Images:     imgs,
 	}, nil

@@ -5,11 +5,13 @@ import "time"
 type Document struct {
 	ID          string
 	Name        string
-	ImageIDs    []string
-	TextContent string
 	LastUpdated time.Time
+
+	ImageIDs []string
+	TextID   string
 
 	WithContent bool
 	Source      File
+	Text        File
 	Images      []File
 }

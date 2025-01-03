@@ -1,4 +1,4 @@
-package file
+package anysave
 
 import (
 	"bytes"
@@ -28,7 +28,8 @@ func mapUploadRequestToCommand(
 	}
 
 	return model.FileSaveCommand{
-		Item: file,
+		Bucket: "",
+		Item:   file,
 	}, nil
 }
 

@@ -10,24 +10,31 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const (
+	bucketText  = "texts"
+	bucketImage = "images"
+)
+
+type Opts struct {
+	OnSaveAction func(ctx context.Context, cmd model.DocumentSaveCommand) error
+}
+
 type Service struct {
-	r     Repository
-	imgR  ImageRepository
-	fileR FileRepository
-	n     Notify
+	r  Repository
+	fr FileRepository
+
+	onSaveAction func(ctx context.Context, cmd model.DocumentSaveCommand) error
 }
 
 func NewService(
+	opts Opts,
 	r Repository,
-	imgR ImageRepository,
-	fileR FileRepository,
-	n Notify,
+	fr FileRepository,
 ) *Service {
 	return &Service{
-		r:     r,
-		imgR:  imgR,
-		fileR: fileR,
-		n:     n,
+		r:            r,
+		fr:           fr,
+		onSaveAction: opts.OnSaveAction,
 	}
 }
 
@@ -87,15 +94,24 @@ func (s *Service) Save(
 	})
 
 	g.Go(func() error {
-		return s.fileR.Save(gCtx, model.FileSaveCommand{
-			Item: cmd.Item.Source,
+		return s.fr.Save(gCtx, model.FileSaveCommand{
+			Bucket: "",
+			Item:   cmd.Item.Text,
+		})
+	})
+
+	g.Go(func() error {
+		return s.fr.Save(gCtx, model.FileSaveCommand{
+			Bucket: "",
+			Item:   cmd.Item.Source,
 		})
 	})
 
 	for _, img := range cmd.Item.Images {
 		g.Go(func() error {
-			return s.imgR.Save(gCtx, model.FileSaveCommand{
-				Item: img,
+			return s.fr.Save(gCtx, model.FileSaveCommand{
+				Bucket: bucketImage,
+				Item:   img,
 			})
 		})
 	}
@@ -104,13 +120,10 @@ func (s *Service) Save(
 		return fmt.Errorf("save file resources: %w", err)
 	}
 
-	if err := s.n.Notify(
-		ctx,
-		cmd.Item.ID,
-		model.NotifyActionDocumentSaved,
-		nil,
-	); err != nil {
-		return fmt.Errorf("notify: %w", err)
+	if s.onSaveAction != nil {
+		if err := s.onSaveAction(ctx, cmd); err != nil {
+			return fmt.Errorf("on save action: %w", err)
+		}
 	}
 
 	return nil
@@ -120,13 +133,14 @@ func (s *Service) enrichContent(
 	ctx context.Context,
 	doc model.Document,
 ) (model.Document, error) {
-	g, gCtx := errgroup.WithContext(ctx)
+	eg, egCtx := errgroup.WithContext(ctx)
 
 	var main model.File
 
-	g.Go(func() error {
-		r, err := s.fileR.Fetch(gCtx, model.FileQuery{
-			ID: doc.ID,
+	eg.Go(func() error {
+		r, err := s.fr.Fetch(egCtx, model.FileQuery{
+			Bucket: "",
+			ID:     doc.ID,
 		})
 		if err != nil {
 			return fmt.Errorf("fetch document file: %w", err)
@@ -137,15 +151,32 @@ func (s *Service) enrichContent(
 		return nil
 	})
 
+	var text model.File
+
+	eg.Go(func() error {
+		r, err := s.fr.Fetch(egCtx, model.FileQuery{
+			Bucket: bucketText,
+			ID:     doc.TextID,
+		})
+		if err != nil {
+			return fmt.Errorf("fetch text file: %w", err)
+		}
+
+		text = r
+
+		return nil
+	})
+
 	var (
 		media   []model.File
 		mediaMu sync.Mutex
 	)
 
 	for _, id := range doc.ImageIDs {
-		g.Go(func() error {
-			r, err := s.imgR.Fetch(gCtx, model.FileQuery{
-				ID: id,
+		eg.Go(func() error {
+			r, err := s.fr.Fetch(egCtx, model.FileQuery{
+				Bucket: bucketImage,
+				ID:     id,
 			})
 			if err != nil {
 				return fmt.Errorf("fetch image file: %w", err)
@@ -159,18 +190,19 @@ func (s *Service) enrichContent(
 		})
 	}
 
-	if err := g.Wait(); err != nil {
+	if err := eg.Wait(); err != nil {
 		return model.Document{}, fmt.Errorf("fetch: %w", err)
 	}
 
 	return model.Document{
 		ID:          doc.ID,
 		Name:        doc.Name,
-		ImageIDs:    doc.ImageIDs,
-		TextContent: doc.TextContent,
 		LastUpdated: doc.LastUpdated,
+		ImageIDs:    doc.ImageIDs,
+		TextID:      doc.TextID,
 		WithContent: true,
 		Source:      main,
+		Text:        text,
 		Images:      media,
 	}, nil
 }

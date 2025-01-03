@@ -1,4 +1,4 @@
-package documentfile
+package anysave
 
 import (
 	"context"
@@ -6,15 +6,6 @@ import (
 )
 
 type (
-	Notify interface {
-		Notify(
-			ctx context.Context,
-			documentID string,
-			action model.NotifyAction,
-			userdata any,
-		) error
-	}
-
 	Repository interface {
 		Save(
 			ctx context.Context,

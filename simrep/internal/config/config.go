@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"simrep/internal/repository/analyze"
 	"simrep/internal/repository/document"
-	filerepo "simrep/internal/repository/file"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
 	"simrep/pkg/rabbitmq"
@@ -37,8 +36,6 @@ type Config struct {
 	NotifyFileSavedConsumer        rabbitmq.ConsumerConfig `yaml:"notifyFileSavedConsumer"`
 	NotifyDocumentSavedConsumer    rabbitmq.ConsumerConfig `yaml:"notifyDocumentSavedConsumer"`
 	NotifyDocumentAnalyzedConsumer rabbitmq.ConsumerConfig `yaml:"notifyDocumentAnalyzedConsumer"`
-	ImageRepo                      filerepo.Opts           `yaml:"imageRepo"`
-	DocumentFileRepo               filerepo.Opts           `yaml:"documentFileRepo"`
 	DocumentRepo                   document.Opts           `yaml:"documentRepo"`
 	AnalyzedDocumentRepo           analyze.Opts            `yaml:"analyzedDocumentRepo"`
 }

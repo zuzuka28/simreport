@@ -1,4 +1,4 @@
-package file
+package anysave
 
 import (
 	"bytes"
@@ -13,22 +13,15 @@ import (
 
 const userMetadataNameKey = "Name"
 
-type Opts struct {
-	Bucket string `yaml:"bucket"`
-}
-
 type Repository struct {
-	cli    *minio.Client
-	bucket string
+	cli *minio.Client
 }
 
 func NewRepository(
-	opts Opts,
 	s3 *minio.Client,
 ) *Repository {
 	return &Repository{
-		cli:    s3,
-		bucket: opts.Bucket,
+		cli: s3,
 	}
 }
 
@@ -38,7 +31,8 @@ func (r *Repository) SaveMany(ctx context.Context, cmd model.FileSaveManyCommand
 	for _, item := range cmd.Items {
 		g.Go(func() error {
 			return r.Save(gCtx, model.FileSaveCommand{
-				Item: item,
+				Bucket: cmd.Bucket,
+				Item:   item,
 			})
 		})
 	}
@@ -53,7 +47,7 @@ func (r *Repository) SaveMany(ctx context.Context, cmd model.FileSaveManyCommand
 func (r *Repository) Save(ctx context.Context, cmd model.FileSaveCommand) error {
 	_, err := r.cli.PutObject(
 		ctx,
-		r.bucket,
+		cmd.Bucket,
 		cmd.Item.Sha256,
 		bytes.NewReader(cmd.Item.Content),
 		int64(len(cmd.Item.Content)),
@@ -74,7 +68,7 @@ func (r *Repository) Fetch(
 ) (model.File, error) {
 	objectInfo, err := r.cli.StatObject(
 		ctx,
-		r.bucket,
+		query.Bucket,
 		query.ID,
 		minio.StatObjectOptions{}, //nolint:exhaustruct
 	)
@@ -84,7 +78,7 @@ func (r *Repository) Fetch(
 
 	object, err := r.cli.GetObject(
 		ctx,
-		r.bucket,
+		query.Bucket,
 		query.ID,
 		minio.GetObjectOptions{}, //nolint:exhaustruct
 	)

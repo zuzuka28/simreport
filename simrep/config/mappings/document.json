@@ -7,8 +7,8 @@
       "imageIDs": {
         "type": "keyword"
       },
-      "textContent": {
-        "type": "text"
+      "textID": {
+        "type": "keyword"
       },
       "lastUpdated": {
         "type": "date"
