@@ -15,3 +15,6 @@ run_api:
 
 run_async_processing:
 	go run cmd/simrep/*.go --config config/config.yaml run-async-processing
+
+run_app:
+	go run cmd/simrep/*.go --config config/config.yaml
