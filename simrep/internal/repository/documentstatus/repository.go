@@ -11,7 +11,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-const subject = "documentstatus"
+const subject = "document.status"
 
 type Repository struct {
 	kv jetstream.KeyValue
