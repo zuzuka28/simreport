@@ -1,4 +1,4 @@
-//go:build wireinject
+// //go:build wireinject
 
 package provider
 
@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"simrep/api/rest/server"
 	analyzeapi "simrep/api/rest/server/handler/analyze"
@@ -21,12 +22,15 @@ import (
 	analyzesrv "simrep/internal/service/analyze"
 	anysavesrv "simrep/internal/service/anysave"
 	documentsrv "simrep/internal/service/document"
+	"simrep/internal/service/documentparser"
+	documentparsersrv "simrep/internal/service/documentparser"
 	"simrep/internal/service/documentpipeline"
 	documentsavedhandler "simrep/internal/service/documentpipeline/handler/documentsaved"
 	filesavedhandler "simrep/internal/service/documentpipeline/handler/filesaved"
 	documentstatussrv "simrep/internal/service/documentstatus"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
+	"simrep/pkg/tikaclient"
 	vectorizerclient "simrep/pkg/vectorizerclient"
 
 	"github.com/elastic/go-elasticsearch/v8"
@@ -75,6 +79,17 @@ func InitNats(
 	))
 }
 
+func InitTika(
+	_ context.Context,
+	_ *config.Config,
+) (*tikaclient.Client, error) {
+	panic(wire.Build(
+		wire.Value(http.DefaultClient),
+		wire.FieldsOf(new(*config.Config), "Tika"),
+		tikaclient.New,
+	))
+}
+
 func InitS3(
 	_ context.Context,
 	_ *config.Config,
@@ -86,7 +101,7 @@ func InitS3(
 }
 
 func InitNatsJetstream(
-	conn *nats.Conn,
+	_ *nats.Conn,
 ) (jetstream.JetStream, error) {
 	panic(wire.Build(
 		wire.Value([]jetstream.JetStreamOpt(nil)),
@@ -229,15 +244,26 @@ func ProvideDocumentServiceOpts() documentsrv.Opts {
 	return documentsrv.Opts{} //nolint:exhaustruct
 }
 
+func InitDocumentParserService(
+	_ *tikaclient.Client,
+) (*documentparsersrv.Service, error) {
+	panic(wire.Build(
+		documentparsersrv.NewService,
+	))
+}
+
 func InitDocumentService(
 	_ *config.Config,
+	_ *tikaclient.Client,
 	_ *anysavesrv.Service,
 	_ *documentrepo.Repository,
 ) (*documentsrv.Service, error) {
 	panic(wire.Build(
 		ProvideDocumentServiceOpts,
+		InitDocumentParserService,
 		wire.Bind(new(documentsrv.FileRepository), new(*anysavesrv.Service)),
 		wire.Bind(new(documentsrv.Repository), new(*documentrepo.Repository)),
+		wire.Bind(new(documentsrv.Parser), new(*documentparser.Service)),
 		documentsrv.NewService,
 	))
 }
@@ -283,6 +309,8 @@ func InitRestAPI(
 		InitElastic,
 		InitNats,
 		InitNatsJetstream,
+		InitTika,
+		// ProvideDocumentStatusJetstreamStream,
 		InitDocumentStatusRepository,
 		InitDocumentStatusService,
 		InitDocumentRepository,
@@ -353,9 +381,10 @@ func InitDocumentPipeline(
 		InitElastic,
 		InitNats,
 		InitNatsJetstream,
+		InitTika,
+		ProvideDocumentStatusJetstreamStream,
 		InitDocumentStatusRepository,
 		InitDocumentStatusService,
-		ProvideDocumentStatusJetstreamStream,
 		InitDocumentRepository,
 		InitVectorizerClient,
 		InitVectorizerService,

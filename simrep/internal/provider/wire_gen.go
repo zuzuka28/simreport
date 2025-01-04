@@ -14,6 +14,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"io"
+	"net/http"
 	"os"
 	"simrep/api/rest/server"
 	analyze3 "simrep/api/rest/server/handler/analyze"
@@ -29,12 +30,14 @@ import (
 	analyze2 "simrep/internal/service/analyze"
 	anysave2 "simrep/internal/service/anysave"
 	document2 "simrep/internal/service/document"
+	"simrep/internal/service/documentparser"
 	"simrep/internal/service/documentpipeline"
 	"simrep/internal/service/documentpipeline/handler/documentsaved"
 	"simrep/internal/service/documentpipeline/handler/filesaved"
 	documentstatus2 "simrep/internal/service/documentstatus"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
+	"simrep/pkg/tikaclient"
 	"simrep/pkg/vectorizerclient"
 )
 
@@ -69,6 +72,17 @@ func InitNats(contextContext context.Context, configConfig *config.Config) (*nat
 
 var (
 	_wireValue = []nats.Option(nil)
+)
+
+func InitTika(contextContext context.Context, configConfig *config.Config) (*tikaclient.Client, error) {
+	client := _wireClientValue
+	string2 := configConfig.Tika
+	tikaclientClient := tikaclient.New(client, string2)
+	return tikaclientClient, nil
+}
+
+var (
+	_wireClientValue = http.DefaultClient
 )
 
 func InitS3(contextContext context.Context, configConfig *config.Config) (*minio.Client, error) {
@@ -165,9 +179,18 @@ func InitAnysaveService(minioClient *minio.Client, configConfig *config.Config) 
 	return service, nil
 }
 
-func InitDocumentService(configConfig *config.Config, service *anysave2.Service, repository *document.Repository) (*document2.Service, error) {
+func InitDocumentParserService(tikaclientClient *tikaclient.Client) (*documentparser.Service, error) {
+	service := documentparser.NewService(tikaclientClient)
+	return service, nil
+}
+
+func InitDocumentService(configConfig *config.Config, tikaclientClient *tikaclient.Client, service *anysave2.Service, repository *document.Repository) (*document2.Service, error) {
 	opts := ProvideDocumentServiceOpts()
-	documentService := document2.NewService(opts, repository, service)
+	documentparserService, err := InitDocumentParserService(tikaclientClient)
+	if err != nil {
+		return nil, err
+	}
+	documentService := document2.NewService(opts, repository, service, documentparserService)
 	return documentService, nil
 }
 
@@ -192,6 +215,10 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
+	tikaclientClient, err := InitTika(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
 	minioClient, err := InitS3(contextContext, configConfig)
 	if err != nil {
 		return nil, err
@@ -208,7 +235,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(configConfig, service, repository)
+	documentService, err := InitDocumentService(configConfig, tikaclientClient, service, repository)
 	if err != nil {
 		return nil, err
 	}
@@ -292,6 +319,10 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
+	tikaclientClient, err := InitTika(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
 	minioClient, err := InitS3(contextContext, configConfig)
 	if err != nil {
 		return nil, err
@@ -308,7 +339,7 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(configConfig, anysaveService, documentRepository)
+	documentService, err := InitDocumentService(configConfig, tikaclientClient, anysaveService, documentRepository)
 	if err != nil {
 		return nil, err
 	}

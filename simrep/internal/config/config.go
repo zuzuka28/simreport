@@ -28,6 +28,7 @@ type Config struct {
 	Port                 int                `yaml:"port"`
 	S3                   minioutil.Config   `yaml:"s3"`
 	Nats                 string             `yaml:"nats"`
+	Tika                 string             `yaml:"tika"`
 	Elastic              elasticutil.Config `yaml:"elastic"`
 	VectorizerService    string             `yaml:"vectorizerService"`
 	DocumentRepo         document.Opts      `yaml:"documentRepo"`

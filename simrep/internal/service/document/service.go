@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"simrep/internal/model"
-	"simrep/internal/service/document/docxparser"
 	"sync"
 
 	"golang.org/x/sync/errgroup"
@@ -22,6 +21,7 @@ type Opts struct {
 type Service struct {
 	r  Repository
 	fr FileRepository
+	p  Parser
 
 	onSaveAction func(ctx context.Context, cmd model.DocumentSaveCommand) error
 }
@@ -30,10 +30,12 @@ func NewService(
 	opts Opts,
 	r Repository,
 	fr FileRepository,
+	p Parser,
 ) *Service {
 	return &Service{
 		r:            r,
 		fr:           fr,
+		p:            p,
 		onSaveAction: opts.OnSaveAction,
 	}
 }
@@ -69,11 +71,11 @@ func (s *Service) Search(
 	return res, nil
 }
 
-func (*Service) Parse(
-	_ context.Context,
+func (s *Service) Parse(
+	ctx context.Context,
 	item model.File,
 ) (model.Document, error) {
-	parsed, err := docxparser.Parse(item)
+	parsed, err := s.p.Parse(ctx, item)
 	if err != nil {
 		return model.Document{}, fmt.Errorf("parse document: %w", err)
 	}

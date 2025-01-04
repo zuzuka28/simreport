@@ -6,6 +6,8 @@ s3:
   buckets:
     - document
     - image
+nats: nats://localhost:4222
+tika: http://localhost:9998
 elastic:
   hosts:
     - http://localhost:9200/
@@ -24,45 +26,8 @@ elastic:
       alias: ""
       shards: 1
       replics: 1
-imageRepo:
-  bucket: "image"
-documentFileRepo:
-  bucket: "document"
 documentRepo:
   index: "document"
 analyzedDocumentRepo:
   index: "analyzed_document"
 vectorizerService: "http://localhost:8081"
-notifyFileSavedProducer:
-  dsn: "amqp://localhost:5672/"
-  exchangeName: "notification_exchange"
-  routingKey: "file_saved"
-  maxRetries: 5
-notifyDocumentSavedProducer:
-  dsn: "amqp://localhost:5672/"
-  exchangeName: "notification_exchange"
-  routingKey: "document_saved"
-  maxRetries: 5
-notifyDocumentAnalyzedProducer:
-  dsn: "amqp://localhost:5672/"
-  exchangeName: "notification_exchange"
-  routingKey: "document_analyzed"
-  maxRetries: 5
-notifyFileSavedConsumer:
-  dsn: "amqp://localhost:5672/"
-  queueName: "saved_file_queue"
-  exchangeName: "notification_exchange"
-  routingKey: "file_saved"
-  maxRetries: 5
-notifyDocumentSavedConsumer:
-  dsn: "amqp://localhost:5672/"
-  queueName: "saved_document_queue"
-  exchangeName: "notification_exchange"
-  routingKey: "document_saved"
-  maxRetries: 5
-notifyDocumentAnalyzedConsumer:
-  dsn: "amqp://localhost:5672/"
-  queueName: "analyzed_document_queue"
-  exchangeName: "notification_exchange"
-  routingKey: "document_analyzed"
-  maxRetries: 5

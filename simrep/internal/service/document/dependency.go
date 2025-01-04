@@ -6,6 +6,10 @@ import (
 )
 
 type (
+	Parser interface {
+		Parse(ctx context.Context, item model.File) (model.Document, error)
+	}
+
 	FileRepository interface {
 		Save(
 			ctx context.Context,
