@@ -89,33 +89,42 @@ func (s *Service) Save(
 ) error {
 	g, gCtx := errgroup.WithContext(ctx)
 
-	g.Go(func() error {
-		return s.r.Save(gCtx, model.DocumentSaveCommand{
-			Item: mapDocumentWithContentToDocument(cmd.Item),
-		})
-	})
-
-	g.Go(func() error {
-		return s.fr.Save(gCtx, model.FileSaveCommand{
-			Bucket: "",
-			Item:   cmd.Item.Text,
-		})
-	})
-
-	g.Go(func() error {
-		return s.fr.Save(gCtx, model.FileSaveCommand{
-			Bucket: "",
-			Item:   cmd.Item.Source,
-		})
-	})
-
-	for _, img := range cmd.Item.Images {
+	if cmd.Item.ID != "" {
 		g.Go(func() error {
-			return s.fr.Save(gCtx, model.FileSaveCommand{
-				Bucket: bucketImage,
-				Item:   img,
+			return s.r.Save(gCtx, model.DocumentSaveCommand{
+				Item: mapDocumentWithContentToDocument(cmd.Item),
 			})
 		})
+
+	}
+
+	if cmd.Item.Text.Sha256 != "" {
+		g.Go(func() error {
+			return s.fr.Save(gCtx, model.FileSaveCommand{
+				Bucket: bucketText,
+				Item:   cmd.Item.Text,
+			})
+		})
+	}
+
+	if cmd.Item.Source.Sha256 != "" {
+		g.Go(func() error {
+			return s.fr.Save(gCtx, model.FileSaveCommand{
+				Bucket: "",
+				Item:   cmd.Item.Source,
+			})
+		})
+	}
+
+	for _, img := range cmd.Item.Images {
+		if img.Sha256 != "" {
+			g.Go(func() error {
+				return s.fr.Save(gCtx, model.FileSaveCommand{
+					Bucket: bucketImage,
+					Item:   img,
+				})
+			})
+		}
 	}
 
 	if err := g.Wait(); err != nil {
@@ -139,35 +148,39 @@ func (s *Service) enrichContent(
 
 	var main model.File
 
-	eg.Go(func() error {
-		r, err := s.fr.Fetch(egCtx, model.FileQuery{
-			Bucket: "",
-			ID:     doc.ID,
+	if doc.ID != "" {
+		eg.Go(func() error {
+			r, err := s.fr.Fetch(egCtx, model.FileQuery{
+				Bucket: "",
+				ID:     doc.ID,
+			})
+			if err != nil {
+				return fmt.Errorf("fetch document file: %w", err)
+			}
+
+			main = r
+
+			return nil
 		})
-		if err != nil {
-			return fmt.Errorf("fetch document file: %w", err)
-		}
-
-		main = r
-
-		return nil
-	})
+	}
 
 	var text model.File
 
-	eg.Go(func() error {
-		r, err := s.fr.Fetch(egCtx, model.FileQuery{
-			Bucket: bucketText,
-			ID:     doc.TextID,
+	if doc.TextID != "" {
+		eg.Go(func() error {
+			r, err := s.fr.Fetch(egCtx, model.FileQuery{
+				Bucket: bucketText,
+				ID:     doc.TextID,
+			})
+			if err != nil {
+				return fmt.Errorf("fetch text file: %w", err)
+			}
+
+			text = r
+
+			return nil
 		})
-		if err != nil {
-			return fmt.Errorf("fetch text file: %w", err)
-		}
-
-		text = r
-
-		return nil
-	})
+	}
 
 	var (
 		media   []model.File

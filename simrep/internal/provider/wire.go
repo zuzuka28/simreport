@@ -8,7 +8,9 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"simrep/api/rest/server"
+	documentnats "simrep/api/nats/handler/document"
+	servernats "simrep/api/nats/server"
+	serverhttp "simrep/api/rest/server"
 	analyzeapi "simrep/api/rest/server/handler/analyze"
 	anysaveapi "simrep/api/rest/server/handler/anysave"
 	documentapi "simrep/api/rest/server/handler/document"
@@ -101,7 +103,7 @@ func InitS3(
 }
 
 func InitNatsJetstream(
-	_ *nats.Conn,
+	conn *nats.Conn,
 ) (jetstream.JetStream, error) {
 	panic(wire.Build(
 		wire.Value([]jetstream.JetStreamOpt(nil)),
@@ -129,7 +131,7 @@ func ProvideDocumentStatusJetstreamStream(
 ) (jetstream.Stream, error) {
 	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{ //nolint:exhaustruct
 		Name:      "documentstatus",
-		Subjects:  []string{"document.status.>"},
+		Subjects:  []string{"documentstatus.>"},
 		Retention: jetstream.WorkQueuePolicy,
 	})
 	if err != nil {
@@ -302,7 +304,7 @@ func InitAnalyzeHandler(
 func InitRestAPI(
 	_ context.Context,
 	_ *config.Config,
-) (*server.Server, error) {
+) (*serverhttp.Server, error) {
 	panic(wire.Build(
 		ProvideSpec,
 		InitS3,
@@ -323,12 +325,12 @@ func InitRestAPI(
 		InitAnalyzeService,
 		InitAnalyzeHandler,
 		InitAnysaveHandler,
-		wire.Bind(new(server.DocumentHandler), new(*documentapi.Handler)),
-		wire.Bind(new(server.AnalyzeHandler), new(*analyzeapi.Handler)),
-		wire.Bind(new(server.FileHandler), new(*anysaveapi.Handler)),
+		wire.Bind(new(serverhttp.DocumentHandler), new(*documentapi.Handler)),
+		wire.Bind(new(serverhttp.AnalyzeHandler), new(*analyzeapi.Handler)),
+		wire.Bind(new(serverhttp.FileHandler), new(*anysaveapi.Handler)),
 		wire.FieldsOf(new(*config.Config), "Port"),
-		wire.Struct(new(server.Opts), "*"),
-		server.New,
+		wire.Struct(new(serverhttp.Opts), "*"),
+		serverhttp.New,
 	))
 }
 
@@ -354,6 +356,33 @@ func InitDocumentSavedHandler(
 	))
 }
 
+func InitDocumentNatsHandler(
+	_ *documentsrv.Service,
+) *documentnats.Handler {
+	panic(wire.Build(
+		wire.Bind(new(documentnats.Service), new(*documentsrv.Service)),
+		documentnats.NewHandler,
+	))
+}
+
+func InitNatsAPI(
+	_ context.Context,
+	_ *config.Config,
+) (*servernats.Server, error) {
+	panic(wire.Build(
+		InitS3,
+		InitElastic,
+		InitNats,
+		InitTika,
+		InitDocumentRepository,
+		InitAnysaveService,
+		InitDocumentService,
+		InitDocumentNatsHandler,
+		wire.Bind(new(servernats.DocumentHandler), new(*documentnats.Handler)),
+		servernats.NewServer,
+	))
+}
+
 func ProvideDocumentPipelineStages(
 	dsh *documentsavedhandler.Handler,
 	fsh *filesavedhandler.Handler,
@@ -364,11 +393,11 @@ func ProvideDocumentPipelineStages(
 			Action:  fsh,
 			Next:    model.DocumentProcessingStatusDocumentSaved,
 		},
-		{
-			Trigger: model.DocumentProcessingStatusDocumentSaved,
-			Action:  dsh,
-			Next:    model.DocumentProcessingStatusDocumentAnalyzed,
-		},
+		// {
+		// 	Trigger: model.DocumentProcessingStatusDocumentSaved,
+		// 	Action:  dsh,
+		// 	Next:    model.DocumentProcessingStatusDocumentAnalyzed,
+		// },
 	}
 }
 

@@ -45,6 +45,14 @@ func (r *Repository) SaveMany(ctx context.Context, cmd model.FileSaveManyCommand
 }
 
 func (r *Repository) Save(ctx context.Context, cmd model.FileSaveCommand) error {
+	opts := minio.PutObjectOptions{ //nolint:exhaustruct
+		UserMetadata: map[string]string{},
+	}
+
+	if cmd.Item.Name != "" {
+		opts.UserMetadata[userMetadataNameKey] = cmd.Item.Name
+	}
+
 	_, err := r.cli.PutObject(
 		ctx,
 		cmd.Bucket,

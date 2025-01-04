@@ -23,7 +23,7 @@ func main() {
 			{
 				Name:   "run-api",
 				Usage:  "run simrep rest api",
-				Action: runServer,
+				Action: runRestServer,
 			},
 			{
 				Name:   "run-async-processing",

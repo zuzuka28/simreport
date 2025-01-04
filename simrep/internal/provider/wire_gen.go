@@ -16,6 +16,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	document4 "simrep/api/nats/handler/document"
+	server2 "simrep/api/nats/server"
 	"simrep/api/rest/server"
 	analyze3 "simrep/api/rest/server/handler/analyze"
 	anysave3 "simrep/api/rest/server/handler/anysave"
@@ -298,6 +300,45 @@ func InitDocumentSavedHandler(service *document2.Service, analyzeService *analyz
 	return handler, nil
 }
 
+func InitDocumentNatsHandler(service *document2.Service) *document4.Handler {
+	handler := document4.NewHandler(service)
+	return handler
+}
+
+func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*server2.Server, error) {
+	conn, err := InitNats(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	tikaclientClient, err := InitTika(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	minioClient, err := InitS3(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	service, err := InitAnysaveService(minioClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	elasticsearchClient, err := InitElastic(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	repository, err := InitDocumentRepository(elasticsearchClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	documentService, err := InitDocumentService(configConfig, tikaclientClient, service, repository)
+	if err != nil {
+		return nil, err
+	}
+	handler := InitDocumentNatsHandler(documentService)
+	serverServer := server2.NewServer(conn, handler)
+	return serverServer, nil
+}
+
 func InitDocumentPipeline(contextContext context.Context, configConfig *config.Config) (*documentpipeline.Service, error) {
 	conn, err := InitNats(contextContext, configConfig)
 	if err != nil {
@@ -411,7 +452,7 @@ func ProvideDocumentStatusJetstreamStream(
 ) (jetstream.Stream, error) {
 	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:      "documentstatus",
-		Subjects:  []string{"document.status.>"},
+		Subjects:  []string{"documentstatus.>"},
 		Retention: jetstream.WorkQueuePolicy,
 	})
 	if err != nil {
@@ -442,11 +483,6 @@ func ProvideDocumentPipelineStages(
 			Trigger: model.DocumentProcessingStatusFileSaved,
 			Action:  fsh,
 			Next:    model.DocumentProcessingStatusDocumentSaved,
-		},
-		{
-			Trigger: model.DocumentProcessingStatusDocumentSaved,
-			Action:  dsh,
-			Next:    model.DocumentProcessingStatusDocumentAnalyzed,
 		},
 	}
 }

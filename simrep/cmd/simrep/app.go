@@ -18,9 +18,14 @@ func runApp(c *cli.Context) error {
 		return fmt.Errorf("read config: %w", err)
 	}
 
-	api, err := provider.InitRestAPI(c.Context, cfg)
+	restapi, err := provider.InitRestAPI(c.Context, cfg)
 	if err != nil {
-		return fmt.Errorf("init api: %w", err)
+		return fmt.Errorf("init rest api: %w", err)
+	}
+
+	natsapi, err := provider.InitNatsAPI(c.Context, cfg)
+	if err != nil {
+		return fmt.Errorf("init nats api: %w", err)
 	}
 
 	processing, err := provider.InitDocumentPipeline(c.Context, cfg)
@@ -34,11 +39,15 @@ func runApp(c *cli.Context) error {
 		eg, egCtx := errgroup.WithContext(c.Context)
 
 		eg.Go(func() error {
-			return api.Start(egCtx)
+			return restapi.Start(egCtx)
 		})
 
 		eg.Go(func() error {
 			return processing.Start(c.Context)
+		})
+
+		eg.Go(func() error {
+			return natsapi.Start(egCtx)
 		})
 
 		if err := eg.Wait(); err != nil {

@@ -53,6 +53,8 @@ func (s *Service) Parse(ctx context.Context, item model.File) (model.Document, e
 			LastUpdated: doc.LastUpdated,
 		}
 
+		doc.TextID = text.Sha256
+
 		return nil
 	})
 
@@ -83,6 +85,10 @@ func (s *Service) Parse(ctx context.Context, item model.File) (model.Document, e
 
 		return nil
 	})
+
+	if err := eg.Wait(); err != nil {
+		return model.Document{}, fmt.Errorf("parse document: %w", err)
+	}
 
 	return doc, nil
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-const subject = "document.status"
+const subject = "documentstatus"
 
 type stageHandler struct {
 	ss    StatusService
@@ -53,6 +53,7 @@ func (h *stageHandler) Start(ctx context.Context) error {
 		}
 
 		if err := h.stage.Action.Serve(ctx, string(msg.Data())); err != nil {
+			_ = msg.Nak()
 			return fmt.Errorf("call action: %w", err)
 		}
 
@@ -60,6 +61,7 @@ func (h *stageHandler) Start(ctx context.Context) error {
 			ID:     string(msg.Data()),
 			Status: h.stage.Next,
 		}); err != nil {
+			_ = msg.Nak()
 			return fmt.Errorf("set next status: %w", err)
 		}
 
