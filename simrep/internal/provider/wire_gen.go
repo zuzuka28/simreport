@@ -411,7 +411,7 @@ func ProvideDocumentStatusJetstreamStream(
 ) (jetstream.Stream, error) {
 	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:      "documentstatus",
-		Subjects:  []string{"documentstatus.>"},
+		Subjects:  []string{"document.status.>"},
 		Retention: jetstream.WorkQueuePolicy,
 	})
 	if err != nil {

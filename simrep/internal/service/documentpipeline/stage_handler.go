@@ -8,7 +8,7 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-const subject = "documentstatus"
+const subject = "document.status"
 
 type stageHandler struct {
 	ss    StatusService

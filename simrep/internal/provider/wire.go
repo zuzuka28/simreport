@@ -1,4 +1,4 @@
-// //go:build wireinject
+//go:build wireinject
 
 package provider
 
@@ -129,7 +129,7 @@ func ProvideDocumentStatusJetstreamStream(
 ) (jetstream.Stream, error) {
 	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{ //nolint:exhaustruct
 		Name:      "documentstatus",
-		Subjects:  []string{"documentstatus.>"},
+		Subjects:  []string{"document.status.>"},
 		Retention: jetstream.WorkQueuePolicy,
 	})
 	if err != nil {

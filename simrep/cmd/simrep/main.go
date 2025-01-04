@@ -18,7 +18,7 @@ func main() {
 				Usage: "path to the config file",
 			},
 		},
-		Action: runServer,
+		Action: runApp,
 		Commands: []*cli.Command{
 			{
 				Name:   "run-api",
