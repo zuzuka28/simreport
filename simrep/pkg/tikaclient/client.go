@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -82,6 +83,11 @@ func (c *Client) ParseEmbedded(ctx context.Context, r io.Reader) ([]Result, erro
 
 	body, err := c.call(ctx, http.MethodPut, "/unpack", header, r)
 	if err != nil {
+		var cerr ClientError
+		if errors.As(err, &cerr); cerr.StatusCode == http.StatusNoContent {
+			return nil, nil
+		}
+
 		return nil, fmt.Errorf("call api: %w", err)
 	}
 
