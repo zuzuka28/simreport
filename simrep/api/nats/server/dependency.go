@@ -1,9 +1,11 @@
 package server
 
-import "github.com/nats-io/nats.go"
+import (
+	"github.com/nats-io/nats.go/micro"
+)
 
 type (
 	DocumentHandler interface {
-		Fetch(msg *nats.Msg)
+		Fetch(req micro.Request)
 	}
 )

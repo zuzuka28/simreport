@@ -2,14 +2,15 @@ package document
 
 import (
 	"context"
-	"encoding/json"
 	"simrep/internal/model"
 	"time"
 
-	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/micro"
 )
 
-const requestTimeout = 5 * time.Second
+const requestTimeout = 60 * time.Second
+
+const statusInternalServerError = "500"
 
 type Handler struct {
 	s Service
@@ -23,24 +24,20 @@ func NewHandler(
 	}
 }
 
-func (h *Handler) Fetch(msg *nats.Msg) {
+func (h *Handler) Fetch(msg micro.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
 	defer cancel()
 
-	id := string(msg.Data)
+	id := string(msg.Data())
 
 	doc, err := h.s.Fetch(ctx, model.DocumentQuery{
 		ID:          id,
 		WithContent: true,
 	})
 	if err != nil {
+		_ = msg.Error(statusInternalServerError, err.Error(), nil)
 		return
 	}
 
-	res, err := json.Marshal(mapDocumentToResponse(doc))
-	if err != nil {
-		return
-	}
-
-	_ = msg.Respond(res)
+	_ = msg.RespondJSON(mapDocumentToResponse(doc))
 }
