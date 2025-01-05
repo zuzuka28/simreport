@@ -121,37 +121,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/analyze/similar": {
+    "/analyze/{document_id}/similar": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get?: never;
-        put?: never;
         /**
          * Поиск подожих документов
          * @description Получить список документов, наиболее похожих на загруженный
          */
-        post: {
+        get: {
             parameters: {
                 query?: never;
                 header?: never;
-                path?: never;
+                path: {
+                    /** @description Уникальный идентификатор документа */
+                    document_id: components["parameters"]["DocumentId"];
+                };
                 cookie?: never;
             };
-            requestBody: {
-                content: {
-                    "multipart/form-data": components["schemas"]["UploadRequest"];
-                };
-            };
+            requestBody?: never;
             responses: {
                 200: components["responses"]["SimilaritySearchResult"];
                 400: components["responses"]["BadRequest"];
                 500: components["responses"]["ServerError"];
             };
         };
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;

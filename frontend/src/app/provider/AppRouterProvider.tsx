@@ -7,6 +7,7 @@ import {
 import { Toolbar } from "widget/Toolbar/Toolbar";
 import { Layout } from "app/Layout/Layout";
 import { DocumentManager } from "page/DocumentManager";
+import { SimilarityCheck } from "page/SimilarityCheck/SimilarityCheck";
 
 const routes: RouteObject = {
   path: "/",
@@ -37,7 +38,7 @@ const routes: RouteObject = {
     },
     {
       path: "similarity",
-      element: <DocumentManager />,
+      element: <SimilarityCheck />,
       errorElement: <div>Page 404</div>,
     },
   ],

@@ -8,7 +8,7 @@ export type SearchDocumentsRequest =
 export type SearchDocumentsResponse =
     paths["/document/search"]["post"]["responses"]["200"]["content"]["application/json"];
 export type SimilarDocumentsResponse =
-    paths["/analyze/similar"]["post"]["responses"]["200"]["content"]["application/json"];
+    paths["/analyze/{document_id}/similar"]["get"]["responses"]["200"]["content"]["application/json"];
 
 export class DocumentApi {
     private axiosInstance: AxiosInstance;
@@ -56,15 +56,9 @@ export class AnalyzeApi {
         this.axiosInstance = axiosInstance;
     }
 
-    async findSimilarDocuments(
-        formData: FormData,
-    ): Promise<SimilarDocumentsResponse> {
-        const response = await this.axiosInstance.post<SimilarDocumentsResponse>(
-            "/analyze/similar",
-            formData,
-            {
-                headers: { "Content-Type": "multipart/form-data" },
-            },
+    async findSimilarDocuments(id: string): Promise<SimilarDocumentsResponse> {
+        const response = await this.axiosInstance.get<SimilarDocumentsResponse>(
+            `/analyze/${id}/similar`,
         );
         return response.data;
     }

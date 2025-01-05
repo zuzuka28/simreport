@@ -1,9 +1,9 @@
 import { FC, useState } from "react";
 import { SearchBar } from "widget/SearchBar";
 import { DocumentList } from "widget/DocumentList";
-import { useDocuments } from "./hook";
 import { DocumentUploader } from "widget/DocumentUploader";
 import "./style.css";
+import { useDocuments } from "shared/hook";
 
 export const DocumentManager: FC = () => {
   const [query, setQuery] = useState("");
