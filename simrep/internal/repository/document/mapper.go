@@ -74,6 +74,12 @@ func buildSearchQuery(query model.DocumentSearchQuery) ([]byte, error) {
 		}
 	}
 
+	searchQuery["sort"] = map_{
+		"lastUpdated": map_{
+			"order": "desc",
+		},
+	}
+
 	m, err := json.Marshal(searchQuery)
 	if err != nil {
 		return nil, fmt.Errorf("marshal query: %w", err)
