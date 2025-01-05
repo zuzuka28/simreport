@@ -5,35 +5,55 @@ import "./style.css";
 type Document = components["schemas"]["DocumentSummary"];
 
 type DocumentListProps = {
-  documents: Document[];
-  loading: boolean;
-  error: string | null;
+    documents: Document[];
+    loading: boolean;
+    error: string | null;
+    onDocumentClick?: (id: string) => void;
 };
 
 export const DocumentList: FC<DocumentListProps> = ({
-  documents,
-  loading,
-  error,
+    documents,
+    loading,
+    error,
+    onDocumentClick,
 }) => {
-  if (loading) {
-    return <p className="loading">Loading...</p>;
-  }
+    if (onDocumentClick == undefined) {
+        onDocumentClick = (_: string) => { }; // eslint-disable-line
+    }
 
-  if (error) {
-    return <p className="error">{error}</p>;
-  }
+    if (loading) {
+        return <p className="loading">Loading...</p>;
+    }
 
-  return (
-    <div className="document-list">
-      {documents.length > 0 ? (
-        <ul>
-          {documents.map((doc) => (
-            <li key={doc.id}>{doc.name}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>No documents found</p>
-      )}
-    </div>
-  );
+    if (error) {
+        return <p className="error">{error}</p>;
+    }
+
+    return (
+        <div className="document-list">
+            {documents.length > 0 ? (
+                <ul className="styled-list">
+                    {documents.map((doc) => (
+                        <li key={doc.id} className="styled-item">
+                            <DocumentListItem doc={doc} onClick={onDocumentClick} />
+                        </li>
+                    ))}
+                </ul>
+            ) : (
+                <p>No documents found</p>
+            )}
+        </div>
+    );
+};
+
+export const DocumentListItem: FC<{
+    doc: Document;
+    onClick: (id: string) => void;
+}> = ({ doc, onClick }) => {
+    return (
+        <div className="document-card" onClick={() => onClick(doc.id || "")}>
+            <h3 className="doc-title">{doc.name}</h3>
+            <p className="doc-description">{doc.lastUpdated}</p>
+        </div>
+    );
 };

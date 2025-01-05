@@ -72,6 +72,8 @@ export const DocumentUploader: FC<DocumentUploaderProps> = ({
         alert("Failed to upload the document.");
       }
     }
+
+    setFiles([]);
   };
 
   return (
