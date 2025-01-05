@@ -23,11 +23,7 @@ export const useDocuments = (query: string) => {
       }
     };
 
-    if (query.length > 0) {
-      void fetchDocuments();
-    } else {
-      setDocuments([]);
-    }
+    void fetchDocuments();
   }, [query]);
 
   return { documents, loading, error };
