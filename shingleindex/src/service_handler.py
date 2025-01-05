@@ -10,11 +10,23 @@ import nats.micro
 
 from nats.aio.client import Client as NATS
 
-import service
-import model
+import src.service as service
+import src.model as model
+
+from pydantic.json import pydantic_encoder
+
+
+class NotFoundException(BaseException):
+    pass
+
+
+class InternalException(BaseException):
+    pass
 
 
 class ServiceHandler:
+    nats_status_header = "Nats-Service-Error-Code"
+
     def __init__(
         self,
         nc: NATS,
@@ -26,47 +38,52 @@ class ServiceHandler:
         self.document_by_id_subject = "document.byid"
 
     def similarity_handler(self):
-        async def callback(msg):
-            id = msg.subject.split(".")[:-1]
+        async def callback(msg: nats.micro.request.Request):
+            id = msg.data.decode()
 
-            doc = await self._fetch_document(id)
+            try:
+                doc = await self._fetch_document(id)
+            except NotFoundException:
+                await msg.respond_error("404", "document not found")
+                return
+            except BaseException:
+                await msg.respond_error("500", "internal error")
+                return
 
             result = self.service.search_similar(doc)
 
-            await msg.respond(result)
-
-        return callback
-
-    def indexer_handler(self):
-        async def callback(msg):
-            id: bytes = msg.data
-
-            doc = await self._fetch_document(id.decode())
-
-            self.service.index_content(doc)
-
-            await msg.ack_sync()
+            await msg.respond(json.dumps(result, default=pydantic_encoder).encode())
 
         return callback
 
     async def _fetch_document(self, id: str) -> model.Document:
-        doc = await self.nc.request(
+        resp = await self.nc.request(
             self.document_by_id_subject, id.encode(), timeout=60
         )
 
-        raw = json.loads(doc.data)
+        if resp.headers and resp.headers.get(self.nats_status_header, None) is not None:
+            if resp.headers.get(self.nats_status_header, None) == "404":
+                raise NotFoundException()
+            else:
+                raise InternalException()
+
+        raw = json.loads(resp.data)
 
         return model.Document(**raw)
 
 
 async def main():
     nats_url = os.getenv("NATS_URL", "nats://localhost:4222")
-    redis_url = os.getenv("REDIS_DSN", "")
+    redis_host = os.getenv("REDIS_HOST", "localhost")
+    redis_port = os.getenv("REDIS_PORT", "6379")
 
     root = logging.getLogger()
     root.setLevel(logging.INFO)
 
-    srv = service.Service(redis_url)
+    srv = service.Service(
+        redis_host,
+        int(redis_port),
+    )
 
     quit_event = asyncio.Event()
 
@@ -89,6 +106,8 @@ async def main():
             name="search",
             handler=srv_handler.similarity_handler(),
         )
+
+        logging.info("nats handlers started")
 
         await quit_event.wait()
 

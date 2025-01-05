@@ -5,8 +5,8 @@ import logging
 
 from nats.aio.client import Client as NATS
 
-import service
-import model
+import src.service as service
+import src.model as model
 
 
 class IndexerHandler:
@@ -64,12 +64,16 @@ class IndexerHandler:
 
 async def main(loop):
     nats_url = os.getenv("NATS_URL", "nats://localhost:4222")
-    redis_url = os.getenv("REDIS_DSN", "")
+    redis_host = os.getenv("REDIS_HOST", "localhost")
+    redis_port = os.getenv("REDIS_PORT", "6379")
 
     root = logging.getLogger()
     root.setLevel(logging.INFO)
 
-    svc = service.Service(redis_url)
+    svc = service.Service(
+        redis_host,
+        int(redis_port),
+    )
 
     nats_handler = IndexerHandler(nats_url, svc)
 

@@ -2,6 +2,7 @@ import pydantic
 
 
 class Document(pydantic.BaseModel):
+    id: str
     text: bytes
 
 
