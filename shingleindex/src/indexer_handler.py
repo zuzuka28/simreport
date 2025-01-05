@@ -4,61 +4,30 @@ import json
 import logging
 
 from nats.aio.client import Client as NATS
-import pydantic
+
+import service
+import model
 
 
-class Document(pydantic.BaseModel):
-    text: bytes
-
-
-class SimilarDocument(pydantic.BaseModel):
-    id: str
-    rate: float
-    highlights: list[str]
-    similarImages: list[str]
-
-
-class Service:
-    def __init__(
-        self,
-        redis_url: str,
-    ):
-        pass
-
-    def search_similar(self, doc: Document) -> list[SimilarDocument]:
-        print(f"got document on search_similar: {doc}")
-        return []
-
-    def index_content(self, doc: Document):
-        print(f"got document on index_content: {doc}")
-        pass
-
-
-class Handler:
+class IndexerHandler:
     def __init__(
         self,
         nats_url: str,
-        service: Service,
+        service: service.Service,
     ):
         self.nats_url = nats_url
         self.nc = NATS()
 
         self.service = service
 
-        self.document_by_id_prefix = "document.byid"
+        self.document_by_id_subject = "document.byid"
 
         self.document_status_stream = "documentstatus"
         self.document_indexer_subject = "documentstatus.document_parsed"
 
-        self.document_similarity_subject = "document.similarity.*"
-
     async def start(self):
         await self.nc.connect(
             self.nats_url,
-        )
-
-        await self.nc.subscribe(
-            self.document_similarity_subject, cb=self.similarity_handler()
         )
 
         await self.nc.jetstream().subscribe(
@@ -73,18 +42,6 @@ class Handler:
         await self.nc.close()
         logging.info("nats handlers stopped")
 
-    def similarity_handler(self):
-        async def callback(msg):
-            id = msg.subject.split(".")[:-1]
-
-            doc = await self._fetch_document(id)
-
-            result = self.service.search_similar(doc)
-
-            await msg.respond(result)
-
-        return callback
-
     def indexer_handler(self):
         async def callback(msg):
             id: bytes = msg.data
@@ -97,12 +54,12 @@ class Handler:
 
         return callback
 
-    async def _fetch_document(self, id: str) -> Document:
-        doc = await self.nc.request(self.document_by_id_prefix, id.encode(), timeout=5)
+    async def _fetch_document(self, id: str) -> model.Document:
+        doc = await self.nc.request(self.document_by_id_subject, id.encode(), timeout=5)
 
         raw = json.loads(doc.data)
 
-        return Document(**raw)
+        return model.Document(**raw)
 
 
 async def main(loop):
@@ -112,9 +69,9 @@ async def main(loop):
     root = logging.getLogger()
     root.setLevel(logging.INFO)
 
-    service = Service(redis_url)
+    svc = service.Service(redis_url)
 
-    nats_handler = Handler(nats_url, service)
+    nats_handler = IndexerHandler(nats_url, svc)
 
     await nats_handler.start()
 

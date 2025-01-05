@@ -11,6 +11,11 @@ shutdown_env:
 run_api:
 	( \
        source ./.venv/bin/activate; \
-       python3.11 -m src.handler; \
+       python3.11 -m src.service_handler; \
     )
 
+run_indexer:
+	( \
+       source ./.venv/bin/activate; \
+       python3.11 -m src.indexer_handler; \
+    )
