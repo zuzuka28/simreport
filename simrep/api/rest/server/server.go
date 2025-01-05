@@ -12,6 +12,7 @@ import (
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/gorilla/mux"
 	openapimw "github.com/oapi-codegen/nethttp-middleware"
+	"github.com/rs/cors"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -23,7 +24,7 @@ const (
 
 type Server struct {
 	addr   string
-	router *mux.Router
+	router http.Handler
 }
 
 type Opts struct {
@@ -68,11 +69,16 @@ func New(
 			ResponseErrorHandlerFunc: responseErrorHandler,
 		},
 	)
+
 	router.PathPrefix("").Handler(openapi.Handler(stricthandler))
+
+	handler := cors.New(cors.Options{ //nolint:exhaustruct
+		AllowedOrigins: []string{"*"},
+	}).Handler(router)
 
 	return &Server{
 		addr:   fmt.Sprintf(":%d", opts.Port),
-		router: router,
+		router: handler,
 	}, nil
 }
 
