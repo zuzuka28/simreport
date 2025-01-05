@@ -2,6 +2,7 @@ package document
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"simrep/internal/model"
 	"simrep/pkg/elasticutil"
@@ -79,4 +80,17 @@ func buildSearchQuery(query model.DocumentSearchQuery) ([]byte, error) {
 	}
 
 	return m, nil
+}
+
+func mapErrorToModel(err error) error {
+	switch {
+	case errors.Is(err, elasticutil.ErrInvalid):
+		return errors.Join(err, model.ErrInvalid)
+
+	case errors.Is(err, elasticutil.ErrNotFound):
+		return errors.Join(err, model.ErrNotFound)
+
+	default:
+		return err
+	}
 }

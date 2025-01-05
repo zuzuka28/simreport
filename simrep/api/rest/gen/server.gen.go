@@ -91,9 +91,6 @@ type UploadSuccess struct {
 	DocumentID *string `json:"documentID,omitempty"`
 }
 
-// PostAnalyzeSimilarMultipartRequestBody defines body for PostAnalyzeSimilar for multipart/form-data ContentType.
-type PostAnalyzeSimilarMultipartRequestBody = UploadRequest
-
 // PostDocumentSearchJSONRequestBody defines body for PostDocumentSearch for application/json ContentType.
 type PostDocumentSearchJSONRequestBody = SearchRequest
 
@@ -103,8 +100,8 @@ type PostDocumentUploadMultipartRequestBody = UploadRequest
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Поиск подожих документов
-	// (POST /analyze/similar)
-	PostAnalyzeSimilar(w http.ResponseWriter, r *http.Request)
+	// (GET /analyze/{document_id}/similar)
+	GetAnalyzeDocumentIdSimilar(w http.ResponseWriter, r *http.Request, documentId DocumentId)
 	// Поиск документов по имени
 	// (POST /document/search)
 	PostDocumentSearch(w http.ResponseWriter, r *http.Request)
@@ -125,11 +122,22 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// PostAnalyzeSimilar operation middleware
-func (siw *ServerInterfaceWrapper) PostAnalyzeSimilar(w http.ResponseWriter, r *http.Request) {
+// GetAnalyzeDocumentIdSimilar operation middleware
+func (siw *ServerInterfaceWrapper) GetAnalyzeDocumentIdSimilar(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "document_id" -------------
+	var documentId DocumentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "document_id", mux.Vars(r)["document_id"], &documentId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "document_id", Err: err})
+		return
+	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostAnalyzeSimilar(w, r)
+		siw.Handler.GetAnalyzeDocumentIdSimilar(w, r, documentId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -305,7 +313,7 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	r.HandleFunc(options.BaseURL+"/analyze/similar", wrapper.PostAnalyzeSimilar).Methods("POST")
+	r.HandleFunc(options.BaseURL+"/analyze/{document_id}/similar", wrapper.GetAnalyzeDocumentIdSimilar).Methods("GET")
 
 	r.HandleFunc(options.BaseURL+"/document/search", wrapper.PostDocumentSearch).Methods("POST")
 
@@ -341,37 +349,37 @@ type UploadSuccessJSONResponse struct {
 	DocumentID *string `json:"documentID,omitempty"`
 }
 
-type PostAnalyzeSimilarRequestObject struct {
-	Body *multipart.Reader
+type GetAnalyzeDocumentIdSimilarRequestObject struct {
+	DocumentId DocumentId `json:"document_id"`
 }
 
-type PostAnalyzeSimilarResponseObject interface {
-	VisitPostAnalyzeSimilarResponse(w http.ResponseWriter) error
+type GetAnalyzeDocumentIdSimilarResponseObject interface {
+	VisitGetAnalyzeDocumentIdSimilarResponse(w http.ResponseWriter) error
 }
 
-type PostAnalyzeSimilar200JSONResponse struct {
+type GetAnalyzeDocumentIdSimilar200JSONResponse struct {
 	SimilaritySearchResultJSONResponse
 }
 
-func (response PostAnalyzeSimilar200JSONResponse) VisitPostAnalyzeSimilarResponse(w http.ResponseWriter) error {
+func (response GetAnalyzeDocumentIdSimilar200JSONResponse) VisitGetAnalyzeDocumentIdSimilarResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostAnalyzeSimilar400JSONResponse struct{ BadRequestJSONResponse }
+type GetAnalyzeDocumentIdSimilar400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response PostAnalyzeSimilar400JSONResponse) VisitPostAnalyzeSimilarResponse(w http.ResponseWriter) error {
+func (response GetAnalyzeDocumentIdSimilar400JSONResponse) VisitGetAnalyzeDocumentIdSimilarResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostAnalyzeSimilar500JSONResponse struct{ ServerErrorJSONResponse }
+type GetAnalyzeDocumentIdSimilar500JSONResponse struct{ ServerErrorJSONResponse }
 
-func (response PostAnalyzeSimilar500JSONResponse) VisitPostAnalyzeSimilarResponse(w http.ResponseWriter) error {
+func (response GetAnalyzeDocumentIdSimilar500JSONResponse) VisitGetAnalyzeDocumentIdSimilarResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -484,8 +492,8 @@ func (response GetDocumentDocumentIdDownload404JSONResponse) VisitGetDocumentDoc
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Поиск подожих документов
-	// (POST /analyze/similar)
-	PostAnalyzeSimilar(ctx context.Context, request PostAnalyzeSimilarRequestObject) (PostAnalyzeSimilarResponseObject, error)
+	// (GET /analyze/{document_id}/similar)
+	GetAnalyzeDocumentIdSimilar(ctx context.Context, request GetAnalyzeDocumentIdSimilarRequestObject) (GetAnalyzeDocumentIdSimilarResponseObject, error)
 	// Поиск документов по имени
 	// (POST /document/search)
 	PostDocumentSearch(ctx context.Context, request PostDocumentSearchRequestObject) (PostDocumentSearchResponseObject, error)
@@ -526,30 +534,25 @@ type strictHandler struct {
 	options     StrictHTTPServerOptions
 }
 
-// PostAnalyzeSimilar operation middleware
-func (sh *strictHandler) PostAnalyzeSimilar(w http.ResponseWriter, r *http.Request) {
-	var request PostAnalyzeSimilarRequestObject
+// GetAnalyzeDocumentIdSimilar operation middleware
+func (sh *strictHandler) GetAnalyzeDocumentIdSimilar(w http.ResponseWriter, r *http.Request, documentId DocumentId) {
+	var request GetAnalyzeDocumentIdSimilarRequestObject
 
-	if reader, err := r.MultipartReader(); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
-		return
-	} else {
-		request.Body = reader
-	}
+	request.DocumentId = documentId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostAnalyzeSimilar(ctx, request.(PostAnalyzeSimilarRequestObject))
+		return sh.ssi.GetAnalyzeDocumentIdSimilar(ctx, request.(GetAnalyzeDocumentIdSimilarRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostAnalyzeSimilar")
+		handler = middleware(handler, "GetAnalyzeDocumentIdSimilar")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostAnalyzeSimilarResponseObject); ok {
-		if err := validResponse.VisitPostAnalyzeSimilarResponse(w); err != nil {
+	} else if validResponse, ok := response.(GetAnalyzeDocumentIdSimilarResponseObject); ok {
+		if err := validResponse.VisitGetAnalyzeDocumentIdSimilarResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

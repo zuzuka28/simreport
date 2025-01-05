@@ -20,6 +20,7 @@ import (
 	anysaverepo "simrep/internal/repository/anysave"
 	documentrepo "simrep/internal/repository/document"
 	documentstatusrepo "simrep/internal/repository/documentstatus"
+	shingleindexrepo "simrep/internal/repository/shingleindex"
 	vectorizerrepo "simrep/internal/repository/vectorizer"
 	analyzesrv "simrep/internal/service/analyze"
 	anysavesrv "simrep/internal/service/anysave"
@@ -30,6 +31,7 @@ import (
 	documentsavedhandler "simrep/internal/service/documentpipeline/handler/documentsaved"
 	filesavedhandler "simrep/internal/service/documentpipeline/handler/filesaved"
 	documentstatussrv "simrep/internal/service/documentstatus"
+	shingleindexsrv "simrep/internal/service/shingleindex"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
 	"simrep/pkg/tikaclient"
@@ -141,6 +143,23 @@ func ProvideDocumentStatusJetstreamStream(
 	return s, nil
 }
 
+func InitShingleIndexRepository(
+	_ *nats.Conn,
+) (*shingleindexrepo.Repository, error) {
+	panic(wire.Build(
+		shingleindexrepo.NewRepository,
+	))
+}
+
+func InitShingleIndexService(
+	_ *shingleindexrepo.Repository,
+) (*shingleindexsrv.Service, error) {
+	panic(wire.Build(
+		wire.Bind(new(shingleindexsrv.Repository), new(*shingleindexrepo.Repository)),
+		shingleindexsrv.NewService,
+	))
+}
+
 func InitVectorizerClient(
 	_ *config.Config,
 ) (*vectorizerclient.ClientWithResponses, error) {
@@ -217,9 +236,11 @@ func InitAnalyzeService(
 	_ *config.Config,
 	_ *vectorizerrepo.Repository,
 	_ *analyzerepo.Repository,
+	_ *shingleindexsrv.Service,
 ) (*analyzesrv.Service, error) {
 	panic(wire.Build(
 		ProvideAnalyzeServiceOpts,
+		wire.Bind(new(analyzesrv.ShingleIndexService), new(*shingleindexsrv.Service)),
 		wire.Bind(new(analyzesrv.VectorizerService), new(*vectorizerrepo.Repository)),
 		wire.Bind(new(analyzesrv.Repository), new(*analyzerepo.Repository)),
 		analyzesrv.NewService,
@@ -291,12 +312,10 @@ func InitAnysaveHandler(
 }
 
 func InitAnalyzeHandler(
-	_ *documentsrv.Service,
 	_ *analyzesrv.Service,
 ) *analyzeapi.Handler {
 	panic(wire.Build(
 		wire.Bind(new(analyzeapi.Service), new(*analyzesrv.Service)),
-		wire.Bind(new(analyzeapi.DocumentParser), new(*documentsrv.Service)),
 		analyzeapi.NewHandler,
 	))
 }
@@ -312,17 +331,26 @@ func InitRestAPI(
 		InitNats,
 		InitNatsJetstream,
 		InitTika,
+
+		InitShingleIndexRepository,
+		InitShingleIndexService,
+
+		InitVectorizerClient,
+		InitVectorizerService,
+
 		// ProvideDocumentStatusJetstreamStream,
 		InitDocumentStatusRepository,
 		InitDocumentStatusService,
+
 		InitDocumentRepository,
-		InitVectorizerClient,
-		InitVectorizerService,
+		InitAnalyzedDocumentRepository,
+
 		InitAnysaveService,
 		InitDocumentService,
-		InitDocumentHandler,
-		InitAnalyzedDocumentRepository,
+
 		InitAnalyzeService,
+
+		InitDocumentHandler,
 		InitAnalyzeHandler,
 		InitAnysaveHandler,
 		wire.Bind(new(serverhttp.DocumentHandler), new(*documentapi.Handler)),
@@ -374,9 +402,12 @@ func InitNatsAPI(
 		InitElastic,
 		InitNats,
 		InitTika,
+
 		InitDocumentRepository,
+
 		InitAnysaveService,
 		InitDocumentService,
+
 		InitDocumentNatsHandler,
 		wire.Bind(new(servernats.DocumentHandler), new(*documentnats.Handler)),
 		servernats.NewServer,
@@ -411,21 +442,31 @@ func InitDocumentPipeline(
 		InitNats,
 		InitNatsJetstream,
 		InitTika,
+
+		InitShingleIndexRepository,
+		InitShingleIndexService,
+
+		InitVectorizerClient,
+		InitVectorizerService,
+
 		ProvideDocumentStatusJetstreamStream,
 		InitDocumentStatusRepository,
 		InitDocumentStatusService,
+
 		InitDocumentRepository,
-		InitVectorizerClient,
-		InitVectorizerService,
+		InitAnalyzedDocumentRepository,
+
 		InitAnysaveService,
 		InitDocumentService,
-		InitAnalyzedDocumentRepository,
 		InitAnalyzeService,
+
 		InitFileSavedHandler,
 		InitDocumentSavedHandler,
+
 		ProvideDocumentPipelineStages,
 		wire.Bind(new(jetstream.ConsumerManager), new(jetstream.Stream)),
 		wire.Bind(new(documentpipeline.StatusService), new(*documentstatussrv.Service)),
+
 		documentpipeline.NewService,
 	))
 }

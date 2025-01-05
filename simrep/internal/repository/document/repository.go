@@ -56,7 +56,7 @@ func (r *Repository) Save(ctx context.Context, cmd model.DocumentSaveCommand) er
 	defer res.Body.Close()
 
 	if err := elasticutil.IsErr(res); err != nil {
-		return fmt.Errorf("save document %s: %w", cmd.Item.ID, err)
+		return fmt.Errorf("save document %s: %w", cmd.Item.ID, mapErrorToModel(err))
 	}
 
 	return nil
@@ -74,7 +74,7 @@ func (r *Repository) Fetch(ctx context.Context, query model.DocumentQuery) (mode
 	defer esRes.Body.Close()
 
 	if err := elasticutil.IsErr(esRes); err != nil {
-		return model.Document{}, fmt.Errorf("document %s not found: %w", query.ID, err)
+		return model.Document{}, fmt.Errorf("document %s not found: %w", query.ID, mapErrorToModel(err))
 	}
 
 	raw, err := elasticutil.ParseDocResponse(esRes.Body)
@@ -111,7 +111,7 @@ func (r *Repository) Search(
 	defer esRes.Body.Close()
 
 	if err := elasticutil.IsErr(esRes); err != nil {
-		return nil, fmt.Errorf("search error: %s: %w", esRes.Status(), err)
+		return nil, fmt.Errorf("search error: %s: %w", esRes.Status(), mapErrorToModel(err))
 	}
 
 	raw, err := elasticutil.ParseSearchResponse(esRes.Body)

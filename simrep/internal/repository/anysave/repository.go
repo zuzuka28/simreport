@@ -3,8 +3,10 @@ package anysave
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"simrep/internal/model"
 
 	"github.com/minio/minio-go/v7"
@@ -81,6 +83,11 @@ func (r *Repository) Fetch(
 		minio.StatObjectOptions{}, //nolint:exhaustruct
 	)
 	if err != nil {
+		var cerr minio.ErrorResponse
+		if errors.As(err, &cerr) && cerr.StatusCode == http.StatusNotFound {
+			return model.File{}, model.ErrNotFound
+		}
+
 		return model.File{}, fmt.Errorf("stat object: %w", err)
 	}
 

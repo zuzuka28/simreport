@@ -94,9 +94,9 @@ func mapHashImageToModel(in hashImage) model.HashImage {
 }
 
 func mapSearchResponseToMatches(
-	query model.AnalyzedDocumentSimilarQuery,
+	query model.DocumentSimilarQuery,
 	in *elasticutil.SearchResponse,
-) ([]model.AnalyzedDocumentMatch, error) {
+) ([]model.DocumentSimilarMatch, error) {
 	docs := make([]model.AnalyzedDocument, 0, len(in.Hits.Hits))
 
 	for _, hit := range in.Hits.Hits {
@@ -119,10 +119,10 @@ func mapSearchResponseToMatches(
 		highlights = append(highlights, highlight)
 	}
 
-	matches := make([]model.AnalyzedDocumentMatch, 0, len(docs))
+	matches := make([]model.DocumentSimilarMatch, 0, len(docs))
 
 	for i, match := range docs {
-		matches = append(matches, model.AnalyzedDocumentMatch{
+		matches = append(matches, model.DocumentSimilarMatch{
 			ID:            match.ID,
 			Rate:          in.Hits.Hits[i].Score,
 			Highlights:    highlights[i],
@@ -144,13 +144,13 @@ func parseSimilarityHighlights(in json.RawMessage) ([]string, error) {
 }
 
 func filterSimilarImages(
-	query model.AnalyzedDocumentSimilarQuery,
+	query model.DocumentSimilarQuery,
 	in model.AnalyzedDocument,
 ) []string {
 	var imgs []string
 
 	for _, img := range in.Images {
-		if slices.Contains(query.Item.ImagesIDs(), img.ID) {
+		if slices.Contains(query.Item.ImageIDs, img.ID) {
 			imgs = append(imgs, img.ID)
 		}
 	}
@@ -159,7 +159,7 @@ func filterSimilarImages(
 }
 
 func buildSearchQuery(
-	query model.AnalyzedDocumentSimilarQuery,
+	query model.DocumentSimilarQuery,
 ) ([]byte, error) {
 	var criteria []map_
 
@@ -168,70 +168,32 @@ func buildSearchQuery(
 			criteria,
 			map_{
 				"terms": map_{
-					"images.id": query.Item.ImagesIDs(),
+					"images.id": query.Item.ImageIDs,
 				},
 			},
 		)
 	}
 
-	if len(query.Item.Text) > 0 {
+	if len(query.Item.Text.Content) > 0 {
 		criteria = append(
 			criteria,
 			map_{
 				"match": map_{
-					"text": query.Item.Text,
+					"text": string(query.Item.Text.Content),
 				},
 			},
 			map_{
 				"match": map_{
-					"text.russian": query.Item.Text,
+					"text.russian": string(query.Item.Text.Content),
 				},
 			},
 			map_{
 				"match": map_{
-					"text.english": query.Item.Text,
+					"text.english": string(query.Item.Text.Content),
 				},
 			},
 		)
 	}
-
-	// if len(query.Item.TextVector) > 0 {
-	// 	criteria = append(
-	// 		criteria,
-	// 		map_{
-	// 			"script_score": map_{
-	// 				"query": map_{
-	// 					"match_all": map_{},
-	// 				},
-	// 				"script": map_{
-	// 					"source": `1 + cosineSimilarity(params.query_vector, 'textVector') * 0.5`,
-	// 					"params": map_{
-	// 						"query_vector": query.Item.TextVector,
-	// 					},
-	// 				},
-	// 			},
-	// 		})
-	// }
-	//
-	// if len(query.Item.Images) > 0 {
-	// 	for _, vec := range query.Item.Images {
-	// 		criteria = append(
-	// 			criteria,
-	// 			map_{
-	// 				"script_score": map_{
-	// 					"query": map_{
-	// 						"match_all": map_{},
-	// 					},
-	// 					"script": map_{
-	// 						"source": `1 + cosineSimilarity(params.query_vector, 'images.vector') * 0.5`,
-	// 						"params": map_{
-	// 							"query_vector": vec,
-	// 						},
-	// 					},
-	// 				},
-	// 			})
-	// 	}
-	// }
 
 	q := map_{
 		"query": map_{
@@ -240,7 +202,7 @@ func buildSearchQuery(
 			},
 		},
 		"highlight": map_{
-		    "number_of_fragments": 0,
+			"number_of_fragments": 0,
 			"fields": map_{
 				"text.russian": map_{},
 			},
@@ -251,8 +213,6 @@ func buildSearchQuery(
 	if err != nil {
 		return nil, fmt.Errorf("marshal query: %w", err)
 	}
-
-	fmt.Println(string(m))
 
 	return m, nil
 }

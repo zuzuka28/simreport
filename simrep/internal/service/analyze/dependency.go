@@ -21,6 +21,13 @@ type (
 		) (model.HashImage, error)
 	}
 
+	ShingleIndexService interface {
+		SearchSimilar(
+			ctx context.Context,
+			query model.DocumentSimilarQuery,
+		) ([]model.DocumentSimilarMatch, error)
+	}
+
 	Repository interface {
 		Save(
 			ctx context.Context,
@@ -28,8 +35,8 @@ type (
 		) error
 		SearchSimilar(
 			ctx context.Context,
-			query model.AnalyzedDocumentSimilarQuery,
-		) ([]model.AnalyzedDocumentMatch, error)
+			query model.DocumentSimilarQuery,
+		) ([]model.DocumentSimilarMatch, error)
 		Fetch(
 			ctx context.Context,
 			query model.AnalyzedDocumentQuery,

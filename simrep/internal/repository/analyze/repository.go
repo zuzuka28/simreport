@@ -97,8 +97,8 @@ func (r *Repository) Fetch(
 
 func (r *Repository) SearchSimilar(
 	ctx context.Context,
-	query model.AnalyzedDocumentSimilarQuery,
-) ([]model.AnalyzedDocumentMatch, error) {
+	query model.DocumentSimilarQuery,
+) ([]model.DocumentSimilarMatch, error) {
 	q, err := buildSearchQuery(query)
 	if err != nil {
 		return nil, fmt.Errorf("build search query: %w", err)

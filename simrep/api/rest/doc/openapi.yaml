@@ -61,16 +61,12 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
-  /analyze/similar:
-    post:
+  /analyze/{document_id}/similar:
+    get:
       summary: Поиск подожих документов
       description: Получить список документов, наиболее похожих на загруженный
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              $ref: "#/components/schemas/UploadRequest"
+      parameters:
+        - $ref: "#/components/parameters/DocumentId"
       responses:
         "200":
           $ref: "#/components/responses/SimilaritySearchResult"

@@ -1,6 +1,6 @@
 package model
 
-type AnalyzedDocumentMatch struct {
+type DocumentSimilarMatch struct {
 	ID            string
 	Rate          float64
 	Highlights    []string

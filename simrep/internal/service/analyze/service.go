@@ -1,11 +1,11 @@
 package analyze
 
 import (
+	"context"
 	"fmt"
 	"simrep/internal/model"
 	"sync"
 
-	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -14,8 +14,9 @@ type Opts struct {
 }
 
 type Service struct {
-	vs VectorizerService
-	r  Repository
+	vs  VectorizerService
+	r   Repository
+	sis ShingleIndexService
 
 	onSaveAction func(ctx context.Context, cmd model.AnalyzedDocumentSaveCommand) error
 }
@@ -24,10 +25,12 @@ func NewService(
 	opts Opts,
 	r Repository,
 	vs VectorizerService,
+	sis ShingleIndexService,
 ) *Service {
 	return &Service{
 		vs:           vs,
 		r:            r,
+		sis:          sis,
 		onSaveAction: opts.OnSaveAction,
 	}
 }
@@ -46,11 +49,11 @@ func (s *Service) Fetch(
 
 func (s *Service) SearchSimilar(
 	ctx context.Context,
-	query model.AnalyzedDocumentSimilarQuery,
-) ([]model.AnalyzedDocumentMatch, error) {
-	res, err := s.r.SearchSimilar(ctx, query)
+	query model.DocumentSimilarQuery,
+) ([]model.DocumentSimilarMatch, error) {
+	res, err := s.sis.SearchSimilar(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("search similar: %w", err)
+		return nil, fmt.Errorf("search shingle similar: %w", err)
 	}
 
 	return res, nil

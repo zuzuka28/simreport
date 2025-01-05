@@ -4,33 +4,24 @@ import (
 	"context"
 	"fmt"
 	openapi "simrep/api/rest/gen"
-	"simrep/internal/model"
 )
 
 type Handler struct {
 	s Service
-
-	mapSearchSimilarRequest func(
-		ctx context.Context,
-		in openapi.PostAnalyzeSimilarRequestObject,
-	) (model.AnalyzedDocumentSimilarQuery, error)
 }
 
-func NewHandler(s Service, dp DocumentParser) *Handler {
+func NewHandler(s Service) *Handler {
 	return &Handler{
-		s:                       s,
-		mapSearchSimilarRequest: makeMapSearchSimilarRequestToQuery(s, dp),
+		s: s,
 	}
 }
 
-func (h *Handler) PostAnalyzeSimilar(
+//nolint:revive
+func (h *Handler) GetAnalyzeDocumentIdSimilar(
 	ctx context.Context,
-	params openapi.PostAnalyzeSimilarRequestObject,
-) (openapi.PostAnalyzeSimilarResponseObject, error) {
-	query, err := h.mapSearchSimilarRequest(ctx, params)
-	if err != nil {
-		return openapi.PostAnalyzeSimilar400JSONResponse{}, nil
-	}
+	params openapi.GetAnalyzeDocumentIdSimilarRequestObject,
+) (openapi.GetAnalyzeDocumentIdSimilarResponseObject, error) {
+	query := mapSearchSimilarRequestToQuery(params)
 
 	res, err := h.s.SearchSimilar(ctx, query)
 	if err != nil {

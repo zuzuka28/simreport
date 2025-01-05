@@ -28,6 +28,7 @@ import (
 	"simrep/internal/repository/anysave"
 	"simrep/internal/repository/document"
 	"simrep/internal/repository/documentstatus"
+	"simrep/internal/repository/shingleindex"
 	"simrep/internal/repository/vectorizer"
 	analyze2 "simrep/internal/service/analyze"
 	anysave2 "simrep/internal/service/anysave"
@@ -37,6 +38,7 @@ import (
 	"simrep/internal/service/documentpipeline/handler/documentsaved"
 	"simrep/internal/service/documentpipeline/handler/filesaved"
 	documentstatus2 "simrep/internal/service/documentstatus"
+	shingleindex2 "simrep/internal/service/shingleindex"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
 	"simrep/pkg/tikaclient"
@@ -109,6 +111,16 @@ var (
 	_wireValue2 = []jetstream.JetStreamOpt(nil)
 )
 
+func InitShingleIndexRepository(conn *nats.Conn) (*shingleindex.Repository, error) {
+	repository := shingleindex.NewRepository(conn)
+	return repository, nil
+}
+
+func InitShingleIndexService(repository *shingleindex.Repository) (*shingleindex2.Service, error) {
+	service := shingleindex2.NewService(repository)
+	return service, nil
+}
+
 func InitVectorizerClient(configConfig *config.Config) (*client.ClientWithResponses, error) {
 	string2 := configConfig.VectorizerService
 	v := _wireValue3
@@ -165,10 +177,10 @@ func InitVectorizerService(clientWithResponses *client.ClientWithResponses) (*ve
 	return repository, nil
 }
 
-func InitAnalyzeService(configConfig *config.Config, repository *vectorizer.Repository, analyzeRepository *analyze.Repository) (*analyze2.Service, error) {
+func InitAnalyzeService(configConfig *config.Config, repository *vectorizer.Repository, analyzeRepository *analyze.Repository, service *shingleindex2.Service) (*analyze2.Service, error) {
 	opts := ProvideAnalyzeServiceOpts()
-	service := analyze2.NewService(opts, analyzeRepository, repository)
-	return service, nil
+	analyzeService := analyze2.NewService(opts, analyzeRepository, repository, service)
+	return analyzeService, nil
 }
 
 func InitAnysaveService(minioClient *minio.Client, configConfig *config.Config) (*anysave2.Service, error) {
@@ -206,8 +218,8 @@ func InitAnysaveHandler(service *documentstatus2.Service, anysaveService *anysav
 	return handler
 }
 
-func InitAnalyzeHandler(service *document2.Service, analyzeService *analyze2.Service) *analyze3.Handler {
-	handler := analyze3.NewHandler(analyzeService, service)
+func InitAnalyzeHandler(service *analyze2.Service) *analyze3.Handler {
+	handler := analyze3.NewHandler(service)
 	return handler
 }
 
@@ -254,15 +266,23 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository)
-	if err != nil {
-		return nil, err
-	}
-	analyzeHandler := InitAnalyzeHandler(documentService, analyzeService)
 	conn, err := InitNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
+	shingleindexRepository, err := InitShingleIndexRepository(conn)
+	if err != nil {
+		return nil, err
+	}
+	shingleindexService, err := InitShingleIndexService(shingleindexRepository)
+	if err != nil {
+		return nil, err
+	}
+	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository, shingleindexService)
+	if err != nil {
+		return nil, err
+	}
+	analyzeHandler := InitAnalyzeHandler(analyzeService)
 	jetStream, err := InitNatsJetstream(conn)
 	if err != nil {
 		return nil, err
@@ -396,7 +416,15 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository)
+	shingleindexRepository, err := InitShingleIndexRepository(conn)
+	if err != nil {
+		return nil, err
+	}
+	shingleindexService, err := InitShingleIndexService(shingleindexRepository)
+	if err != nil {
+		return nil, err
+	}
+	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository, shingleindexService)
 	if err != nil {
 		return nil, err
 	}

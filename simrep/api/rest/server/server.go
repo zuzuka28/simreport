@@ -60,7 +60,14 @@ func New(
 		FileHandler:     opts.FileHandler,
 	}
 
-	stricthandler := openapi.NewStrictHandler(compose, nil)
+	stricthandler := openapi.NewStrictHandlerWithOptions(
+		compose,
+		nil,
+		openapi.StrictHTTPServerOptions{
+			RequestErrorHandlerFunc:  nil,
+			ResponseErrorHandlerFunc: responseErrorHandler,
+		},
+	)
 	router.PathPrefix("").Handler(openapi.Handler(stricthandler))
 
 	return &Server{

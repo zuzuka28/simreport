@@ -25,9 +25,9 @@ type (
 	}
 
 	AnalyzeHandler interface {
-		PostAnalyzeSimilar(
+		GetAnalyzeDocumentIdSimilar(
 			ctx context.Context,
-			request openapi.PostAnalyzeSimilarRequestObject,
-		) (openapi.PostAnalyzeSimilarResponseObject, error)
+			request openapi.GetAnalyzeDocumentIdSimilarRequestObject,
+		) (openapi.GetAnalyzeDocumentIdSimilarResponseObject, error)
 	}
 )

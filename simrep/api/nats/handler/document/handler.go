@@ -10,8 +10,6 @@ import (
 
 const requestTimeout = 60 * time.Second
 
-const statusInternalServerError = "500"
-
 type Handler struct {
 	s Service
 }
@@ -35,7 +33,7 @@ func (h *Handler) Fetch(msg micro.Request) {
 		WithContent: true,
 	})
 	if err != nil {
-		_ = msg.Error(statusInternalServerError, err.Error(), nil)
+		_ = msg.Error(mapErrorToStatus(err), err.Error(), nil)
 		return
 	}
 

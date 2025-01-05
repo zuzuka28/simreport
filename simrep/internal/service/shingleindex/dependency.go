@@ -1,4 +1,4 @@
-package analyze
+package shingleindex
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 )
 
 type (
-	Service interface {
+	Repository interface {
 		SearchSimilar(
 			ctx context.Context,
 			query model.DocumentSimilarQuery,
