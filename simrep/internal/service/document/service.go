@@ -50,7 +50,7 @@ func (s *Service) Fetch(
 	}
 
 	if query.WithContent {
-		res, err = s.enrichContent(ctx, res)
+		res, err = s.enrichContent(ctx, res, query.Include)
 		if err != nil {
 			return model.Document{}, fmt.Errorf("enrich document: %w", err)
 		}
@@ -95,7 +95,6 @@ func (s *Service) Save(
 				Item: mapDocumentWithContentToDocument(cmd.Item),
 			})
 		})
-
 	}
 
 	if cmd.Item.Text.Sha256 != "" {
@@ -140,15 +139,22 @@ func (s *Service) Save(
 	return nil
 }
 
+//nolint:revive
 func (s *Service) enrichContent(
 	ctx context.Context,
 	doc model.Document,
+	include []model.DocumentQueryInclude,
 ) (model.Document, error) {
+	includemap := make(map[model.DocumentQueryInclude]bool)
+	for _, v := range include {
+		includemap[v] = true
+	}
+
 	eg, egCtx := errgroup.WithContext(ctx)
 
 	var main model.File
 
-	if doc.ID != "" {
+	if doc.ID != "" && includemap[model.DocumentQueryIncludeSource] {
 		eg.Go(func() error {
 			r, err := s.fr.Fetch(egCtx, model.FileQuery{
 				Bucket: "",
@@ -166,7 +172,7 @@ func (s *Service) enrichContent(
 
 	var text model.File
 
-	if doc.TextID != "" {
+	if doc.TextID != "" && includemap[model.DocumentQueryIncludeText] {
 		eg.Go(func() error {
 			r, err := s.fr.Fetch(egCtx, model.FileQuery{
 				Bucket: bucketText,
@@ -187,22 +193,24 @@ func (s *Service) enrichContent(
 		mediaMu sync.Mutex
 	)
 
-	for _, id := range doc.ImageIDs {
-		eg.Go(func() error {
-			r, err := s.fr.Fetch(egCtx, model.FileQuery{
-				Bucket: bucketImage,
-				ID:     id,
+	if includemap[model.DocumentQueryIncludeImages] {
+		for _, id := range doc.ImageIDs {
+			eg.Go(func() error {
+				r, err := s.fr.Fetch(egCtx, model.FileQuery{
+					Bucket: bucketImage,
+					ID:     id,
+				})
+				if err != nil {
+					return fmt.Errorf("fetch image file: %w", err)
+				}
+
+				mediaMu.Lock()
+				media = append(media, r)
+				mediaMu.Unlock()
+
+				return nil
 			})
-			if err != nil {
-				return fmt.Errorf("fetch image file: %w", err)
-			}
-
-			mediaMu.Lock()
-			media = append(media, r)
-			mediaMu.Unlock()
-
-			return nil
-		})
+		}
 	}
 
 	if err := eg.Wait(); err != nil {

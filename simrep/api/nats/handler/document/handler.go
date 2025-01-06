@@ -31,6 +31,11 @@ func (h *Handler) Fetch(msg micro.Request) {
 	doc, err := h.s.Fetch(ctx, model.DocumentQuery{
 		ID:          id,
 		WithContent: true,
+		Include: []model.DocumentQueryInclude{
+			model.DocumentQueryIncludeSource,
+			model.DocumentQueryIncludeText,
+			model.DocumentQueryIncludeImages,
+		},
 	})
 	if err != nil {
 		_ = msg.Error(mapErrorToStatus(err), err.Error(), nil)

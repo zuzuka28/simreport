@@ -26,13 +26,13 @@ import (
 	"simrep/internal/model"
 	"simrep/internal/repository/analyze"
 	"simrep/internal/repository/anysave"
-	"simrep/internal/repository/document"
+	document2 "simrep/internal/repository/document"
 	"simrep/internal/repository/documentstatus"
 	"simrep/internal/repository/shingleindex"
 	"simrep/internal/repository/vectorizer"
 	analyze2 "simrep/internal/service/analyze"
 	anysave2 "simrep/internal/service/anysave"
-	document2 "simrep/internal/service/document"
+	"simrep/internal/service/document"
 	"simrep/internal/service/documentparser"
 	"simrep/internal/service/documentpipeline"
 	"simrep/internal/service/documentpipeline/handler/documentsaved"
@@ -116,9 +116,9 @@ func InitShingleIndexRepository(conn *nats.Conn) (*shingleindex.Repository, erro
 	return repository, nil
 }
 
-func InitShingleIndexService(repository *shingleindex.Repository) (*shingleindex2.Service, error) {
-	service := shingleindex2.NewService(repository)
-	return service, nil
+func InitShingleIndexService(repository *shingleindex.Repository, service *document.Service) (*shingleindex2.Service, error) {
+	shingleindexService := shingleindex2.NewService(repository, service)
+	return shingleindexService, nil
 }
 
 func InitVectorizerClient(configConfig *config.Config) (*client.ClientWithResponses, error) {
@@ -140,9 +140,9 @@ func InitDocumentFileRepository(minioClient *minio.Client, configConfig *config.
 	return repository, nil
 }
 
-func InitDocumentRepository(elasticsearchClient *elasticsearch.Client, configConfig *config.Config) (*document.Repository, error) {
+func InitDocumentRepository(elasticsearchClient *elasticsearch.Client, configConfig *config.Config) (*document2.Repository, error) {
 	opts := configConfig.DocumentRepo
-	repository, err := document.NewRepository(opts, elasticsearchClient)
+	repository, err := document2.NewRepository(opts, elasticsearchClient)
 	if err != nil {
 		return nil, err
 	}
@@ -177,9 +177,9 @@ func InitVectorizerService(clientWithResponses *client.ClientWithResponses) (*ve
 	return repository, nil
 }
 
-func InitAnalyzeService(configConfig *config.Config, repository *vectorizer.Repository, analyzeRepository *analyze.Repository, service *shingleindex2.Service) (*analyze2.Service, error) {
+func InitAnalyzeService(configConfig *config.Config, repository *vectorizer.Repository, analyzeRepository *analyze.Repository, service *shingleindex2.Service, documentService *document.Service) (*analyze2.Service, error) {
 	opts := ProvideAnalyzeServiceOpts()
-	analyzeService := analyze2.NewService(opts, analyzeRepository, repository, service)
+	analyzeService := analyze2.NewService(opts, analyzeRepository, documentService, repository, service)
 	return analyzeService, nil
 }
 
@@ -198,17 +198,17 @@ func InitDocumentParserService(tikaclientClient *tikaclient.Client) (*documentpa
 	return service, nil
 }
 
-func InitDocumentService(configConfig *config.Config, tikaclientClient *tikaclient.Client, service *anysave2.Service, repository *document.Repository) (*document2.Service, error) {
+func InitDocumentService(configConfig *config.Config, tikaclientClient *tikaclient.Client, service *anysave2.Service, repository *document2.Repository) (*document.Service, error) {
 	opts := ProvideDocumentServiceOpts()
 	documentparserService, err := InitDocumentParserService(tikaclientClient)
 	if err != nil {
 		return nil, err
 	}
-	documentService := document2.NewService(opts, repository, service, documentparserService)
+	documentService := document.NewService(opts, repository, service, documentparserService)
 	return documentService, nil
 }
 
-func InitDocumentHandler(service *document2.Service) *document3.Handler {
+func InitDocumentHandler(service *document.Service) *document3.Handler {
 	handler := document3.NewHandler(service)
 	return handler
 }
@@ -274,11 +274,11 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	shingleindexService, err := InitShingleIndexService(shingleindexRepository)
+	shingleindexService, err := InitShingleIndexService(shingleindexRepository, documentService)
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository, shingleindexService)
+	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository, shingleindexService, documentService)
 	if err != nil {
 		return nil, err
 	}
@@ -310,17 +310,17 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	return serverServer, nil
 }
 
-func InitFileSavedHandler(service *document2.Service, anysaveService *anysave2.Service) (*filesaved.Handler, error) {
+func InitFileSavedHandler(service *document.Service, anysaveService *anysave2.Service) (*filesaved.Handler, error) {
 	handler := filesaved.NewHandler(anysaveService, service)
 	return handler, nil
 }
 
-func InitDocumentSavedHandler(service *document2.Service, analyzeService *analyze2.Service) (*documentsaved.Handler, error) {
+func InitDocumentSavedHandler(service *document.Service, analyzeService *analyze2.Service) (*documentsaved.Handler, error) {
 	handler := documentsaved.NewHandler(service, analyzeService)
 	return handler, nil
 }
 
-func InitDocumentNatsHandler(service *document2.Service) *document4.Handler {
+func InitDocumentNatsHandler(service *document.Service) *document4.Handler {
 	handler := document4.NewHandler(service)
 	return handler
 }
@@ -420,11 +420,11 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	shingleindexService, err := InitShingleIndexService(shingleindexRepository)
+	shingleindexService, err := InitShingleIndexService(shingleindexRepository, documentService)
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository, shingleindexService)
+	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository, shingleindexService, documentService)
 	if err != nil {
 		return nil, err
 	}
@@ -498,8 +498,8 @@ func ProvideAnysaveServiceOpts() anysave2.Opts {
 	return anysave2.Opts{}
 }
 
-func ProvideDocumentServiceOpts() document2.Opts {
-	return document2.Opts{}
+func ProvideDocumentServiceOpts() document.Opts {
+	return document.Opts{}
 }
 
 func ProvideDocumentPipelineStages(

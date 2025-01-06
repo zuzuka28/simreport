@@ -153,8 +153,10 @@ func InitShingleIndexRepository(
 
 func InitShingleIndexService(
 	_ *shingleindexrepo.Repository,
+	_ *documentsrv.Service,
 ) (*shingleindexsrv.Service, error) {
 	panic(wire.Build(
+		wire.Bind(new(shingleindexsrv.DocumentService), new(*documentsrv.Service)),
 		wire.Bind(new(shingleindexsrv.Repository), new(*shingleindexrepo.Repository)),
 		shingleindexsrv.NewService,
 	))
@@ -237,9 +239,11 @@ func InitAnalyzeService(
 	_ *vectorizerrepo.Repository,
 	_ *analyzerepo.Repository,
 	_ *shingleindexsrv.Service,
+	_ *documentsrv.Service,
 ) (*analyzesrv.Service, error) {
 	panic(wire.Build(
 		ProvideAnalyzeServiceOpts,
+		wire.Bind(new(analyzesrv.DocumentService), new(*documentsrv.Service)),
 		wire.Bind(new(analyzesrv.ShingleIndexService), new(*shingleindexsrv.Service)),
 		wire.Bind(new(analyzesrv.VectorizerService), new(*vectorizerrepo.Repository)),
 		wire.Bind(new(analyzesrv.Repository), new(*analyzerepo.Repository)),

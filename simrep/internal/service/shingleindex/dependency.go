@@ -6,6 +6,13 @@ import (
 )
 
 type (
+	DocumentService interface {
+		Fetch(
+			ctx context.Context,
+			query model.DocumentQuery,
+		) (model.Document, error)
+	}
+
 	Repository interface {
 		SearchSimilar(
 			ctx context.Context,

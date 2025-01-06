@@ -16,6 +16,7 @@ type Opts struct {
 type Service struct {
 	vs  VectorizerService
 	r   Repository
+	ds  DocumentService
 	sis ShingleIndexService
 
 	onSaveAction func(ctx context.Context, cmd model.AnalyzedDocumentSaveCommand) error
@@ -24,12 +25,14 @@ type Service struct {
 func NewService(
 	opts Opts,
 	r Repository,
+	ds DocumentService,
 	vs VectorizerService,
 	sis ShingleIndexService,
 ) *Service {
 	return &Service{
 		vs:           vs,
 		r:            r,
+		ds:           ds,
 		sis:          sis,
 		onSaveAction: opts.OnSaveAction,
 	}
@@ -51,6 +54,21 @@ func (s *Service) SearchSimilar(
 	ctx context.Context,
 	query model.DocumentSimilarQuery,
 ) ([]model.DocumentSimilarMatch, error) {
+	doc, err := s.ds.Fetch(ctx, model.DocumentQuery{
+		ID:          query.ID,
+		WithContent: true,
+		Include: []model.DocumentQueryInclude{
+			model.DocumentQueryIncludeSource,
+			model.DocumentQueryIncludeText,
+			model.DocumentQueryIncludeImages,
+		},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("enrich query with document:%w", err)
+	}
+
+	query.Item = doc
+
 	res, err := s.sis.SearchSimilar(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("search shingle similar: %w", err)

@@ -21,6 +21,13 @@ type (
 		) (model.HashImage, error)
 	}
 
+	DocumentService interface {
+		Fetch(
+			ctx context.Context,
+			query model.DocumentQuery,
+		) (model.Document, error)
+	}
+
 	ShingleIndexService interface {
 		SearchSimilar(
 			ctx context.Context,
