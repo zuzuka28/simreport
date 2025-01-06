@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"simrep/internal/model"
+	"simrep/pkg/sequencematcher"
 	"sort"
 	"strings"
 	"sync"
@@ -38,23 +39,15 @@ func (s *Service) SearchSimilar(
 		return nil, fmt.Errorf("search similar: %w", err)
 	}
 
-	res, err = s.rerank(ctx, query, res)
+	res, err = s.postprocessing(ctx, query, res)
 	if err != nil {
-		return nil, fmt.Errorf("rerank similar: %w", err)
+		return nil, fmt.Errorf("postprocessing: %w", err)
 	}
 
-	var nonzero []model.DocumentSimilarMatch
-
-	for _, v := range res {
-		if v.Rate > 0 {
-			nonzero = append(nonzero, v)
-		}
-	}
-
-	return nonzero, nil
+	return res, nil
 }
 
-func (s *Service) rerank(
+func (s *Service) postprocessing(
 	ctx context.Context,
 	query model.DocumentSimilarQuery,
 	items []model.DocumentSimilarMatch,
@@ -64,7 +57,30 @@ func (s *Service) rerank(
 		return nil, fmt.Errorf("fetch sources: %w", err)
 	}
 
-	sourcesnormalized := normalizeMatches(sources)
+	highlighted := s.highlight(query, sources)
+
+	reranked := s.rerank(query, highlighted)
+
+	result := make([]model.DocumentSimilarMatch, 0, len(items))
+
+	for _, v := range reranked {
+		if v.Rate > 0 {
+			result = append(result, v.DocumentSimilarMatch)
+		}
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Rate > result[j].Rate
+	})
+
+	return result, nil
+}
+
+func (*Service) rerank(
+	query model.DocumentSimilarQuery,
+	items map[string]*documentMatch,
+) map[string]*documentMatch {
+	sourcesnormalized := normalizeMatches(items)
 	sourcesshingled := shingleMatches(sourcesnormalized)
 
 	text := string(query.Item.Text.Content)
@@ -76,16 +92,38 @@ func (s *Service) rerank(
 		sourcesshingled[k] = v
 	}
 
-	reranked := make([]model.DocumentSimilarMatch, 0, len(items))
-	for _, v := range sourcesshingled {
-		reranked = append(reranked, v.DocumentSimilarMatch)
+	return items
+}
+
+func (*Service) highlight(
+	query model.DocumentSimilarQuery,
+	items map[string]*documentMatch,
+) map[string]*documentMatch {
+	matcher := sequencematcher.NewMatcher[string]()
+
+	text := string(query.Item.Text.Content)
+	textwords := strings.Fields(text)
+
+	matcher.SetSeq2(textwords)
+
+	for _, v := range items {
+		matcher.SetSeq1(strings.Fields(v.text))
+
+		var highlights []string
+
+		for _, match := range matcher.GetMatchingBlocks() {
+			highlight := strings.Join(textwords[match.A:match.A+match.Size], " ")
+			if highlight == "" {
+				continue
+			}
+
+			highlights = append(highlights, highlight)
+		}
+
+		v.Highlights = highlights
 	}
 
-	sort.Slice(reranked, func(i, j int) bool {
-		return reranked[i].Rate > reranked[j].Rate
-	})
-
-	return reranked, nil
+	return items
 }
 
 func (s *Service) fetchSourceDocuments(

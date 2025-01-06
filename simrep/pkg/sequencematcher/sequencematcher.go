@@ -1,5 +1,5 @@
 //nolint:revive,gomnd,mnd
-package main
+package sequencematcher
 
 import (
 	"sort"
