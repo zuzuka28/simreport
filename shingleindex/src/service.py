@@ -1,6 +1,7 @@
 import src.model as model
 import datasketch
 import re
+import base64
 
 from typing import Callable
 
@@ -26,7 +27,7 @@ class Service:
         )
 
     def search_similar(self, doc: model.Document) -> list[model.SimilarDocument]:
-        text = doc.text.decode()
+        text = base64.b64decode(doc.text.decode()).decode()
 
         mh = self._minhash(text)
 
@@ -45,7 +46,7 @@ class Service:
         ]
 
     def index_content(self, doc: model.Document):
-        text = doc.text.decode()
+        text = base64.b64decode(doc.text.decode()).decode()
 
         mh = self._minhash(text)
 
@@ -61,7 +62,10 @@ class Service:
         mh = datasketch.MinHash(self.minhash_permutations)
 
         for shingle in shingles:
-            mh.update(shingle.encode("utf8"))
+            if type(shingle) is str:
+                shingle = shingle.encode()
+
+            mh.update(shingle)
 
         return mh
 
@@ -88,5 +92,5 @@ class Service:
         return set(shings)
 
     @staticmethod
-    def _hash_func(s: str, salt: int = 1) -> int:
-        return hash(s + str(salt))
+    def _hash_func(s: str, salt: int = 1) -> str:
+        return s
