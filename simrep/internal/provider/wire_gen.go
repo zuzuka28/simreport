@@ -28,7 +28,7 @@ import (
 	"simrep/internal/repository/anysave"
 	document2 "simrep/internal/repository/document"
 	"simrep/internal/repository/documentstatus"
-	"simrep/internal/repository/shingleindex"
+	"simrep/internal/repository/shingleindexclient"
 	"simrep/internal/repository/vectorizer"
 	analyze2 "simrep/internal/service/analyze"
 	anysave2 "simrep/internal/service/anysave"
@@ -38,7 +38,7 @@ import (
 	"simrep/internal/service/documentpipeline/handler/documentsaved"
 	"simrep/internal/service/documentpipeline/handler/filesaved"
 	documentstatus2 "simrep/internal/service/documentstatus"
-	shingleindex2 "simrep/internal/service/shingleindex"
+	"simrep/internal/service/shingleindex"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
 	"simrep/pkg/tikaclient"
@@ -111,13 +111,13 @@ var (
 	_wireValue2 = []jetstream.JetStreamOpt(nil)
 )
 
-func InitShingleIndexRepository(conn *nats.Conn) (*shingleindex.Repository, error) {
-	repository := shingleindex.NewRepository(conn)
+func InitShingleIndexRepository(conn *nats.Conn) (*shingleindexclient.Repository, error) {
+	repository := shingleindexclient.NewRepository(conn)
 	return repository, nil
 }
 
-func InitShingleIndexService(repository *shingleindex.Repository, service *document.Service) (*shingleindex2.Service, error) {
-	shingleindexService := shingleindex2.NewService(repository, service)
+func InitShingleIndexService(repository *shingleindexclient.Repository, service *document.Service) (*shingleindex.Service, error) {
+	shingleindexService := shingleindex.NewService(repository, service)
 	return shingleindexService, nil
 }
 
@@ -177,7 +177,7 @@ func InitVectorizerService(clientWithResponses *client.ClientWithResponses) (*ve
 	return repository, nil
 }
 
-func InitAnalyzeService(configConfig *config.Config, repository *vectorizer.Repository, analyzeRepository *analyze.Repository, service *shingleindex2.Service, documentService *document.Service) (*analyze2.Service, error) {
+func InitAnalyzeService(configConfig *config.Config, repository *vectorizer.Repository, analyzeRepository *analyze.Repository, service *shingleindex.Service, documentService *document.Service) (*analyze2.Service, error) {
 	opts := ProvideAnalyzeServiceOpts()
 	analyzeService := analyze2.NewService(opts, analyzeRepository, documentService, repository, service)
 	return analyzeService, nil
@@ -270,11 +270,11 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	shingleindexRepository, err := InitShingleIndexRepository(conn)
+	shingleindexclientRepository, err := InitShingleIndexRepository(conn)
 	if err != nil {
 		return nil, err
 	}
-	shingleindexService, err := InitShingleIndexService(shingleindexRepository, documentService)
+	shingleindexService, err := InitShingleIndexService(shingleindexclientRepository, documentService)
 	if err != nil {
 		return nil, err
 	}
@@ -416,11 +416,11 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	shingleindexRepository, err := InitShingleIndexRepository(conn)
+	shingleindexclientRepository, err := InitShingleIndexRepository(conn)
 	if err != nil {
 		return nil, err
 	}
-	shingleindexService, err := InitShingleIndexService(shingleindexRepository, documentService)
+	shingleindexService, err := InitShingleIndexService(shingleindexclientRepository, documentService)
 	if err != nil {
 		return nil, err
 	}

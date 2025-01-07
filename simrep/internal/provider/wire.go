@@ -20,7 +20,7 @@ import (
 	anysaverepo "simrep/internal/repository/anysave"
 	documentrepo "simrep/internal/repository/document"
 	documentstatusrepo "simrep/internal/repository/documentstatus"
-	shingleindexrepo "simrep/internal/repository/shingleindex"
+	shingleindexrepo "simrep/internal/repository/shingleindexclient"
 	vectorizerrepo "simrep/internal/repository/vectorizer"
 	analyzesrv "simrep/internal/service/analyze"
 	anysavesrv "simrep/internal/service/anysave"

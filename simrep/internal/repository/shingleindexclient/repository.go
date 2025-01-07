@@ -1,4 +1,4 @@
-package shingleindex
+package shingleindexclient
 
 import (
 	"context"

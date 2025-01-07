@@ -1,4 +1,4 @@
-package shingleindex
+package shingleindexclient
 
 type documentSimilarMatch struct {
 	ID            string   `json:"id"`
