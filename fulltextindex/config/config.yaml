@@ -1,0 +1,15 @@
+port: 8000
+nats: nats://localhost:4222
+elastic:
+  hosts:
+    - http://localhost:9200/
+  indexopts:
+    - index: "fulltext_index"
+      updateMapping: true
+      createMapping: true
+      mappingPath: "config/mappings/fulltext_index.json"
+      alias: ""
+      shards: 1
+      replics: 1
+fulltextRepo:
+  index: "fulltext_index"

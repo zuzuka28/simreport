@@ -1,0 +1,11 @@
+wire:
+	wire ./...
+
+run_api:
+	go run cmd/fulltextindex/*.go --config config/config.yaml run-api
+
+run_async_processing:
+	go run cmd/fulltextindex/*.go --config config/config.yaml run-async-processing
+
+run_app:
+	go run cmd/fulltextindex/*.go --config config/config.yaml
