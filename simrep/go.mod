@@ -12,6 +12,7 @@ require (
 	github.com/nats-io/nats.go v1.38.0
 	github.com/oapi-codegen/nethttp-middleware v1.0.2
 	github.com/oapi-codegen/runtime v1.1.1
+	github.com/rs/cors v1.11.1
 	github.com/urfave/cli/v2 v2.27.4
 	golang.org/x/sync v0.10.0
 )
@@ -40,7 +41,6 @@ require (
 	github.com/nats-io/nkeys v0.4.9 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
-	github.com/rs/cors v1.11.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect

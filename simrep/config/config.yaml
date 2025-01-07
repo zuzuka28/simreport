@@ -4,8 +4,9 @@ s3:
   accessKeyID: "minio"
   secletAccessKey: "minio123"
   buckets:
-    - document
-    - image
+    - images
+    - texts
+    - anysave
 nats: nats://localhost:4222
 tika: http://localhost:9998
 elastic:
@@ -19,15 +20,7 @@ elastic:
       alias: ""
       shards: 1
       replics: 1
-    - index: "analyzed_document"
-      updateMapping: true
-      createMapping: true
-      mappingPath: "config/mappings/document_analysis.json"
-      alias: ""
-      shards: 1
-      replics: 1
 documentRepo:
   index: "document"
 analyzedDocumentRepo:
   index: "analyzed_document"
-vectorizerService: "http://localhost:8081"
