@@ -19,24 +19,21 @@ import (
 	document4 "simrep/api/nats/handler/document"
 	server2 "simrep/api/nats/server"
 	"simrep/api/rest/server"
-	analyze3 "simrep/api/rest/server/handler/analyze"
+	analyze2 "simrep/api/rest/server/handler/analyze"
 	anysave3 "simrep/api/rest/server/handler/anysave"
 	document3 "simrep/api/rest/server/handler/document"
 	"simrep/internal/config"
 	"simrep/internal/model"
-	"simrep/internal/repository/analyze"
 	"simrep/internal/repository/anysave"
 	document2 "simrep/internal/repository/document"
 	"simrep/internal/repository/documentstatus"
 	"simrep/internal/repository/fulltextindexclient"
 	"simrep/internal/repository/shingleindexclient"
-	"simrep/internal/repository/vectorizer"
-	analyze2 "simrep/internal/service/analyze"
+	"simrep/internal/service/analyze"
 	anysave2 "simrep/internal/service/anysave"
 	"simrep/internal/service/document"
 	"simrep/internal/service/documentparser"
 	"simrep/internal/service/documentpipeline"
-	"simrep/internal/service/documentpipeline/handler/documentsaved"
 	"simrep/internal/service/documentpipeline/handler/filesaved"
 	documentstatus2 "simrep/internal/service/documentstatus"
 	"simrep/internal/service/fulltextindex"
@@ -44,7 +41,6 @@ import (
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
 	"simrep/pkg/tikaclient"
-	"simrep/pkg/vectorizerclient"
 )
 
 // Injectors from wire.go:
@@ -133,37 +129,14 @@ func InitFulltextIndexService(repository *fulltextindexclient.Repository) (*full
 	return service, nil
 }
 
-func InitVectorizerClient(configConfig *config.Config) (*client.ClientWithResponses, error) {
-	string2 := configConfig.VectorizerService
-	v := _wireValue3
-	clientWithResponses, err := client.NewClientWithResponses(string2, v...)
-	if err != nil {
-		return nil, err
-	}
-	return clientWithResponses, nil
-}
-
-var (
-	_wireValue3 = []client.ClientOption(nil)
-)
-
-func InitDocumentFileRepository(minioClient *minio.Client, configConfig *config.Config) (*anysave.Repository, error) {
-	repository := anysave.NewRepository(minioClient)
+func InitDocumentFileRepository(client *minio.Client, configConfig *config.Config) (*anysave.Repository, error) {
+	repository := anysave.NewRepository(client)
 	return repository, nil
 }
 
-func InitDocumentRepository(elasticsearchClient *elasticsearch.Client, configConfig *config.Config) (*document2.Repository, error) {
+func InitDocumentRepository(client *elasticsearch.Client, configConfig *config.Config) (*document2.Repository, error) {
 	opts := configConfig.DocumentRepo
-	repository, err := document2.NewRepository(opts, elasticsearchClient)
-	if err != nil {
-		return nil, err
-	}
-	return repository, nil
-}
-
-func InitAnalyzedDocumentRepository(elasticsearchClient *elasticsearch.Client, configConfig *config.Config) (*analyze.Repository, error) {
-	opts := configConfig.AnalyzedDocumentRepo
-	repository, err := analyze.NewRepository(opts, elasticsearchClient)
+	repository, err := document2.NewRepository(opts, client)
 	if err != nil {
 		return nil, err
 	}
@@ -184,20 +157,15 @@ func InitDocumentStatusService(repository *documentstatus.Repository) (*document
 	return service, nil
 }
 
-func InitVectorizerService(clientWithResponses *client.ClientWithResponses) (*vectorizer.Repository, error) {
-	repository := vectorizer.NewRepository(clientWithResponses)
-	return repository, nil
-}
-
-func InitAnalyzeService(configConfig *config.Config, repository *vectorizer.Repository, analyzeRepository *analyze.Repository, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document.Service) (*analyze2.Service, error) {
+func InitAnalyzeService(configConfig *config.Config, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document.Service) (*analyze.Service, error) {
 	opts := ProvideAnalyzeServiceOpts()
-	analyzeService := analyze2.NewService(opts, analyzeRepository, documentService, repository, service, fulltextindexService)
+	analyzeService := analyze.NewService(opts, documentService, service, fulltextindexService)
 	return analyzeService, nil
 }
 
-func InitAnysaveService(minioClient *minio.Client, configConfig *config.Config) (*anysave2.Service, error) {
+func InitAnysaveService(client *minio.Client, configConfig *config.Config) (*anysave2.Service, error) {
 	opts := ProvideAnysaveServiceOpts()
-	repository, err := InitDocumentFileRepository(minioClient, configConfig)
+	repository, err := InitDocumentFileRepository(client, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -205,14 +173,14 @@ func InitAnysaveService(minioClient *minio.Client, configConfig *config.Config) 
 	return service, nil
 }
 
-func InitDocumentParserService(tikaclientClient *tikaclient.Client) (*documentparser.Service, error) {
-	service := documentparser.NewService(tikaclientClient)
+func InitDocumentParserService(client *tikaclient.Client) (*documentparser.Service, error) {
+	service := documentparser.NewService(client)
 	return service, nil
 }
 
-func InitDocumentService(configConfig *config.Config, tikaclientClient *tikaclient.Client, service *anysave2.Service, repository *document2.Repository) (*document.Service, error) {
+func InitDocumentService(configConfig *config.Config, client *tikaclient.Client, service *anysave2.Service, repository *document2.Repository) (*document.Service, error) {
 	opts := ProvideDocumentServiceOpts()
-	documentparserService, err := InitDocumentParserService(tikaclientClient)
+	documentparserService, err := InitDocumentParserService(client)
 	if err != nil {
 		return nil, err
 	}
@@ -230,8 +198,8 @@ func InitAnysaveHandler(service *documentstatus2.Service, anysaveService *anysav
 	return handler
 }
 
-func InitAnalyzeHandler(service *analyze2.Service) *analyze3.Handler {
-	handler := analyze3.NewHandler(service)
+func InitAnalyzeHandler(service *analyze.Service) *analyze2.Handler {
+	handler := analyze2.NewHandler(service)
 	return handler
 }
 
@@ -241,7 +209,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	tikaclientClient, err := InitTika(contextContext, configConfig)
+	client, err := InitTika(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -261,23 +229,11 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(configConfig, tikaclientClient, service, repository)
+	documentService, err := InitDocumentService(configConfig, client, service, repository)
 	if err != nil {
 		return nil, err
 	}
 	handler := InitDocumentHandler(documentService)
-	clientWithResponses, err := InitVectorizerClient(configConfig)
-	if err != nil {
-		return nil, err
-	}
-	vectorizerRepository, err := InitVectorizerService(clientWithResponses)
-	if err != nil {
-		return nil, err
-	}
-	analyzeRepository, err := InitAnalyzedDocumentRepository(elasticsearchClient, configConfig)
-	if err != nil {
-		return nil, err
-	}
 	conn, err := InitNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
@@ -298,7 +254,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository, shingleindexService, fulltextindexService, documentService)
+	analyzeService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, documentService)
 	if err != nil {
 		return nil, err
 	}
@@ -335,11 +291,6 @@ func InitFileSavedHandler(service *document.Service, anysaveService *anysave2.Se
 	return handler, nil
 }
 
-func InitDocumentSavedHandler(service *document.Service, analyzeService *analyze2.Service) (*documentsaved.Handler, error) {
-	handler := documentsaved.NewHandler(service, analyzeService)
-	return handler, nil
-}
-
 func InitDocumentNatsHandler(service *document.Service) *document4.Handler {
 	handler := document4.NewHandler(service)
 	return handler
@@ -350,7 +301,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	tikaclientClient, err := InitTika(contextContext, configConfig)
+	client, err := InitTika(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +321,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(configConfig, tikaclientClient, service, repository)
+	documentService, err := InitDocumentService(configConfig, client, service, repository)
 	if err != nil {
 		return nil, err
 	}
@@ -400,7 +351,7 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	tikaclientClient, err := InitTika(contextContext, configConfig)
+	client, err := InitTika(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -420,51 +371,15 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(configConfig, tikaclientClient, anysaveService, documentRepository)
+	documentService, err := InitDocumentService(configConfig, client, anysaveService, documentRepository)
 	if err != nil {
 		return nil, err
 	}
-	clientWithResponses, err := InitVectorizerClient(configConfig)
+	handler, err := InitFileSavedHandler(documentService, anysaveService)
 	if err != nil {
 		return nil, err
 	}
-	vectorizerRepository, err := InitVectorizerService(clientWithResponses)
-	if err != nil {
-		return nil, err
-	}
-	analyzeRepository, err := InitAnalyzedDocumentRepository(elasticsearchClient, configConfig)
-	if err != nil {
-		return nil, err
-	}
-	shingleindexclientRepository, err := InitShingleIndexRepository(conn)
-	if err != nil {
-		return nil, err
-	}
-	shingleindexService, err := InitShingleIndexService(shingleindexclientRepository, documentService)
-	if err != nil {
-		return nil, err
-	}
-	fulltextindexclientRepository, err := InitFulltextIndexRepository(conn)
-	if err != nil {
-		return nil, err
-	}
-	fulltextindexService, err := InitFulltextIndexService(fulltextindexclientRepository)
-	if err != nil {
-		return nil, err
-	}
-	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository, shingleindexService, fulltextindexService, documentService)
-	if err != nil {
-		return nil, err
-	}
-	handler, err := InitDocumentSavedHandler(documentService, analyzeService)
-	if err != nil {
-		return nil, err
-	}
-	filesavedHandler, err := InitFileSavedHandler(documentService, anysaveService)
-	if err != nil {
-		return nil, err
-	}
-	v := ProvideDocumentPipelineStages(handler, filesavedHandler)
+	v := ProvideDocumentPipelineStages(handler)
 	documentpipelineService, err := documentpipeline.NewService(contextContext, stream, service, v)
 	if err != nil {
 		return nil, err
@@ -518,8 +433,8 @@ func ProvideDocumentStatusJetstreamStream(
 	return s, nil
 }
 
-func ProvideAnalyzeServiceOpts() analyze2.Opts {
-	return analyze2.Opts{}
+func ProvideAnalyzeServiceOpts() analyze.Opts {
+	return analyze.Opts{}
 }
 
 func ProvideAnysaveServiceOpts() anysave2.Opts {
@@ -531,7 +446,6 @@ func ProvideDocumentServiceOpts() document.Opts {
 }
 
 func ProvideDocumentPipelineStages(
-	dsh *documentsaved.Handler,
 	fsh *filesaved.Handler,
 ) []documentpipeline.Stage {
 	return []documentpipeline.Stage{

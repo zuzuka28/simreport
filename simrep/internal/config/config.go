@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"simrep/internal/repository/analyze"
 	"simrep/internal/repository/document"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
@@ -25,14 +24,13 @@ type Elastic struct {
 }
 
 type Config struct {
-	Port                 int                `yaml:"port"`
-	S3                   minioutil.Config   `yaml:"s3"`
-	Nats                 string             `yaml:"nats"`
-	Tika                 string             `yaml:"tika"`
-	Elastic              elasticutil.Config `yaml:"elastic"`
-	VectorizerService    string             `yaml:"vectorizerService"`
-	DocumentRepo         document.Opts      `yaml:"documentRepo"`
-	AnalyzedDocumentRepo analyze.Opts       `yaml:"analyzedDocumentRepo"`
+	Port              int                `yaml:"port"`
+	S3                minioutil.Config   `yaml:"s3"`
+	Nats              string             `yaml:"nats"`
+	Tika              string             `yaml:"tika"`
+	Elastic           elasticutil.Config `yaml:"elastic"`
+	VectorizerService string             `yaml:"vectorizerService"`
+	DocumentRepo      document.Opts      `yaml:"documentRepo"`
 }
 
 func New(path string) (*Config, error) {

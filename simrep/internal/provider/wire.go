@@ -1,4 +1,4 @@
-// //go:build wireinject
+//go:build wireinject
 
 package provider
 
@@ -16,20 +16,17 @@ import (
 	documentapi "simrep/api/rest/server/handler/document"
 	"simrep/internal/config"
 	"simrep/internal/model"
-	analyzerepo "simrep/internal/repository/analyze"
 	anysaverepo "simrep/internal/repository/anysave"
 	documentrepo "simrep/internal/repository/document"
 	documentstatusrepo "simrep/internal/repository/documentstatus"
 	fulltextindexrepo "simrep/internal/repository/fulltextindexclient"
 	shingleindexrepo "simrep/internal/repository/shingleindexclient"
-	vectorizerrepo "simrep/internal/repository/vectorizer"
 	analyzesrv "simrep/internal/service/analyze"
 	anysavesrv "simrep/internal/service/anysave"
 	documentsrv "simrep/internal/service/document"
 	"simrep/internal/service/documentparser"
 	documentparsersrv "simrep/internal/service/documentparser"
 	"simrep/internal/service/documentpipeline"
-	documentsavedhandler "simrep/internal/service/documentpipeline/handler/documentsaved"
 	filesavedhandler "simrep/internal/service/documentpipeline/handler/filesaved"
 	documentstatussrv "simrep/internal/service/documentstatus"
 	fulltextindexsrv "simrep/internal/service/fulltextindex"
@@ -37,7 +34,6 @@ import (
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
 	"simrep/pkg/tikaclient"
-	vectorizerclient "simrep/pkg/vectorizerclient"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/google/wire"
@@ -181,16 +177,6 @@ func InitFulltextIndexService(
 	))
 }
 
-func InitVectorizerClient(
-	_ *config.Config,
-) (*vectorizerclient.ClientWithResponses, error) {
-	panic(wire.Build(
-		wire.Value([]vectorizerclient.ClientOption(nil)),
-		wire.FieldsOf(new(*config.Config), "VectorizerService"),
-		vectorizerclient.NewClientWithResponses,
-	))
-}
-
 func InitDocumentFileRepository(
 	_ *minio.Client,
 	_ *config.Config,
@@ -207,16 +193,6 @@ func InitDocumentRepository(
 	panic(wire.Build(
 		wire.FieldsOf(new(*config.Config), "DocumentRepo"),
 		documentrepo.NewRepository,
-	))
-}
-
-func InitAnalyzedDocumentRepository(
-	_ *elasticsearch.Client,
-	_ *config.Config,
-) (*analyzerepo.Repository, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "AnalyzedDocumentRepo"),
-		analyzerepo.NewRepository,
 	))
 }
 
@@ -240,23 +216,12 @@ func InitDocumentStatusService(
 	))
 }
 
-func InitVectorizerService(
-	_ *vectorizerclient.ClientWithResponses,
-) (*vectorizerrepo.Repository, error) {
-	panic(wire.Build(
-		wire.Bind(new(vectorizerclient.ClientWithResponsesInterface), new(*vectorizerclient.ClientWithResponses)),
-		vectorizerrepo.NewRepository,
-	))
-}
-
 func ProvideAnalyzeServiceOpts() analyzesrv.Opts {
 	return analyzesrv.Opts{} //nolint:exhaustruct
 }
 
 func InitAnalyzeService(
 	_ *config.Config,
-	_ *vectorizerrepo.Repository,
-	_ *analyzerepo.Repository,
 	_ *shingleindexsrv.Service,
 	_ *fulltextindexsrv.Service,
 	_ *documentsrv.Service,
@@ -266,8 +231,6 @@ func InitAnalyzeService(
 		wire.Bind(new(analyzesrv.DocumentService), new(*documentsrv.Service)),
 		wire.Bind(new(analyzesrv.ShingleIndexService), new(*shingleindexsrv.Service)),
 		wire.Bind(new(analyzesrv.FulltextIndexService), new(*fulltextindexsrv.Service)),
-		wire.Bind(new(analyzesrv.VectorizerService), new(*vectorizerrepo.Repository)),
-		wire.Bind(new(analyzesrv.Repository), new(*analyzerepo.Repository)),
 		analyzesrv.NewService,
 	))
 }
@@ -363,15 +326,11 @@ func InitRestAPI(
 		InitFulltextIndexRepository,
 		InitFulltextIndexService,
 
-		InitVectorizerClient,
-		InitVectorizerService,
-
 		// ProvideDocumentStatusJetstreamStream,
 		InitDocumentStatusRepository,
 		InitDocumentStatusService,
 
 		InitDocumentRepository,
-		InitAnalyzedDocumentRepository,
 
 		InitAnysaveService,
 		InitDocumentService,
@@ -398,17 +357,6 @@ func InitFileSavedHandler(
 		wire.Bind(new(filesavedhandler.FileService), new(*anysavesrv.Service)),
 		wire.Bind(new(filesavedhandler.DocumentService), new(*documentsrv.Service)),
 		filesavedhandler.NewHandler,
-	))
-}
-
-func InitDocumentSavedHandler(
-	_ *documentsrv.Service,
-	_ *analyzesrv.Service,
-) (*documentsavedhandler.Handler, error) {
-	panic(wire.Build(
-		wire.Bind(new(documentsavedhandler.DocumentService), new(*documentsrv.Service)),
-		wire.Bind(new(documentsavedhandler.AnalyzeService), new(*analyzesrv.Service)),
-		documentsavedhandler.NewHandler,
 	))
 }
 
@@ -443,7 +391,6 @@ func InitNatsAPI(
 }
 
 func ProvideDocumentPipelineStages(
-	dsh *documentsavedhandler.Handler,
 	fsh *filesavedhandler.Handler,
 ) []documentpipeline.Stage {
 	return []documentpipeline.Stage{
@@ -471,28 +418,16 @@ func InitDocumentPipeline(
 		InitNatsJetstream,
 		InitTika,
 
-		InitShingleIndexRepository,
-		InitShingleIndexService,
-
-		InitFulltextIndexRepository,
-		InitFulltextIndexService,
-
-		InitVectorizerClient,
-		InitVectorizerService,
-
 		ProvideDocumentStatusJetstreamStream,
 		InitDocumentStatusRepository,
 		InitDocumentStatusService,
 
 		InitDocumentRepository,
-		InitAnalyzedDocumentRepository,
 
 		InitAnysaveService,
 		InitDocumentService,
-		InitAnalyzeService,
 
 		InitFileSavedHandler,
-		InitDocumentSavedHandler,
 
 		ProvideDocumentPipelineStages,
 		wire.Bind(new(jetstream.ConsumerManager), new(jetstream.Stream)),
