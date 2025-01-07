@@ -34,6 +34,7 @@ import (
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
 	"simrep/pkg/tikaclient"
+	"sync"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/google/wire"
@@ -60,25 +61,42 @@ func InitConfig(path string) (*config.Config, error) {
 	panic(wire.Build(config.New))
 }
 
-func InitElastic(
-	_ context.Context,
-	_ *config.Config,
+//nolint:gochecknoglobals
+var (
+	elasticCli     *elasticsearch.Client
+	elasticCliOnce sync.Once
+)
+
+func ProvideElastic(
+	ctx context.Context,
+	cfg *config.Config,
 ) (*elasticsearch.Client, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "Elastic"),
-		elasticutil.NewClientWithStartup,
-	))
+	var err error
+
+	elasticCliOnce.Do(func() {
+		elasticCli, err = elasticutil.NewClientWithStartup(ctx, cfg.Elastic)
+	})
+
+	return elasticCli, err
 }
 
-func InitNats(
-	_ context.Context,
-	_ *config.Config,
+//nolint:gochecknoglobals
+var (
+	natsCli     *nats.Conn
+	natsCliOnce sync.Once
+)
+
+func ProvideNats(
+	ctx context.Context,
+	cfg *config.Config,
 ) (*nats.Conn, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "Nats"),
-		wire.Value([]nats.Option(nil)),
-		nats.Connect,
-	))
+	var err error
+
+	natsCliOnce.Do(func() {
+		natsCli, err = nats.Connect(cfg.Nats)
+	})
+
+	return natsCli, err
 }
 
 func InitTika(
@@ -92,14 +110,23 @@ func InitTika(
 	))
 }
 
-func InitS3(
-	_ context.Context,
-	_ *config.Config,
+//nolint:gochecknoglobals
+var (
+	s3Cli     *minio.Client
+	s3CliOnce sync.Once
+)
+
+func ProvideS3(
+	ctx context.Context,
+	cfg *config.Config,
 ) (*minio.Client, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "S3"),
-		minioutil.NewClientWithStartup,
-	))
+	var err error
+
+	s3CliOnce.Do(func() {
+		s3Cli, err = minioutil.NewClientWithStartup(ctx, cfg.S3)
+	})
+
+	return s3Cli, err
 }
 
 func InitNatsJetstream(
@@ -314,9 +341,9 @@ func InitRestAPI(
 ) (*serverhttp.Server, error) {
 	panic(wire.Build(
 		ProvideSpec,
-		InitS3,
-		InitElastic,
-		InitNats,
+		ProvideS3,
+		ProvideElastic,
+		ProvideNats,
 		InitNatsJetstream,
 		InitTika,
 
@@ -374,9 +401,9 @@ func InitNatsAPI(
 	_ *config.Config,
 ) (*servernats.Server, error) {
 	panic(wire.Build(
-		InitS3,
-		InitElastic,
-		InitNats,
+		ProvideS3,
+		ProvideElastic,
+		ProvideNats,
 		InitTika,
 
 		InitDocumentRepository,
@@ -412,9 +439,9 @@ func InitDocumentPipeline(
 	_ *config.Config,
 ) (*documentpipeline.Service, error) {
 	panic(wire.Build(
-		InitS3,
-		InitElastic,
-		InitNats,
+		ProvideS3,
+		ProvideElastic,
+		ProvideNats,
 		InitNatsJetstream,
 		InitTika,
 

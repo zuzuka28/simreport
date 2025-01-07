@@ -41,6 +41,7 @@ import (
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
 	"simrep/pkg/tikaclient"
+	"sync"
 )
 
 // Injectors from wire.go:
@@ -53,29 +54,6 @@ func InitConfig(path string) (*config.Config, error) {
 	return configConfig, nil
 }
 
-func InitElastic(contextContext context.Context, configConfig *config.Config) (*elasticsearch.Client, error) {
-	elasticutilConfig := configConfig.Elastic
-	client, err := elasticutil.NewClientWithStartup(contextContext, elasticutilConfig)
-	if err != nil {
-		return nil, err
-	}
-	return client, nil
-}
-
-func InitNats(contextContext context.Context, configConfig *config.Config) (*nats.Conn, error) {
-	string2 := configConfig.Nats
-	v := _wireValue
-	conn, err := nats.Connect(string2, v...)
-	if err != nil {
-		return nil, err
-	}
-	return conn, nil
-}
-
-var (
-	_wireValue = []nats.Option(nil)
-)
-
 func InitTika(contextContext context.Context, configConfig *config.Config) (*tikaclient.Client, error) {
 	client := _wireClientValue
 	string2 := configConfig.Tika
@@ -87,17 +65,8 @@ var (
 	_wireClientValue = http.DefaultClient
 )
 
-func InitS3(contextContext context.Context, configConfig *config.Config) (*minio.Client, error) {
-	minioutilConfig := configConfig.S3
-	client, err := minioutil.NewClientWithStartup(contextContext, minioutilConfig)
-	if err != nil {
-		return nil, err
-	}
-	return client, nil
-}
-
 func InitNatsJetstream(conn *nats.Conn) (jetstream.JetStream, error) {
-	v := _wireValue2
+	v := _wireValue
 	jetStream, err := jetstream.New(conn, v...)
 	if err != nil {
 		return nil, err
@@ -106,7 +75,7 @@ func InitNatsJetstream(conn *nats.Conn) (jetstream.JetStream, error) {
 }
 
 var (
-	_wireValue2 = []jetstream.JetStreamOpt(nil)
+	_wireValue = []jetstream.JetStreamOpt(nil)
 )
 
 func InitShingleIndexRepository(conn *nats.Conn) (*shingleindexclient.Repository, error) {
@@ -213,7 +182,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	minioClient, err := InitS3(contextContext, configConfig)
+	minioClient, err := ProvideS3(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +190,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	elasticsearchClient, err := InitElastic(contextContext, configConfig)
+	elasticsearchClient, err := ProvideElastic(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -234,7 +203,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 		return nil, err
 	}
 	handler := InitDocumentHandler(documentService)
-	conn, err := InitNats(contextContext, configConfig)
+	conn, err := ProvideNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -297,7 +266,7 @@ func InitDocumentNatsHandler(service *document.Service) *document4.Handler {
 }
 
 func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*server2.Server, error) {
-	conn, err := InitNats(contextContext, configConfig)
+	conn, err := ProvideNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -305,7 +274,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	minioClient, err := InitS3(contextContext, configConfig)
+	minioClient, err := ProvideS3(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +282,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	elasticsearchClient, err := InitElastic(contextContext, configConfig)
+	elasticsearchClient, err := ProvideElastic(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -331,7 +300,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 }
 
 func InitDocumentPipeline(contextContext context.Context, configConfig *config.Config) (*documentpipeline.Service, error) {
-	conn, err := InitNats(contextContext, configConfig)
+	conn, err := ProvideNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +324,7 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	minioClient, err := InitS3(contextContext, configConfig)
+	minioClient, err := ProvideS3(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -363,7 +332,7 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	elasticsearchClient, err := InitElastic(contextContext, configConfig)
+	elasticsearchClient, err := ProvideElastic(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -401,6 +370,63 @@ func ProvideSpec() ([]byte, error) {
 	}
 
 	return spec, nil
+}
+
+//nolint:gochecknoglobals
+var (
+	elasticCli     *elasticsearch.Client
+	elasticCliOnce sync.Once
+)
+
+func ProvideElastic(
+	ctx context.Context,
+	cfg *config.Config,
+) (*elasticsearch.Client, error) {
+	var err error
+
+	elasticCliOnce.Do(func() {
+		elasticCli, err = elasticutil.NewClientWithStartup(ctx, cfg.Elastic)
+	})
+
+	return elasticCli, err
+}
+
+//nolint:gochecknoglobals
+var (
+	natsCli     *nats.Conn
+	natsCliOnce sync.Once
+)
+
+func ProvideNats(
+	ctx context.Context,
+	cfg *config.Config,
+) (*nats.Conn, error) {
+	var err error
+
+	natsCliOnce.Do(func() {
+		natsCli, err = nats.Connect(cfg.Nats)
+	})
+
+	return natsCli, err
+}
+
+//nolint:gochecknoglobals
+var (
+	s3Cli     *minio.Client
+	s3CliOnce sync.Once
+)
+
+func ProvideS3(
+	ctx context.Context,
+	cfg *config.Config,
+) (*minio.Client, error) {
+	var err error
+
+	s3CliOnce.Do(func() {
+		s3Cli, err = minioutil.NewClientWithStartup(ctx, cfg.S3)
+	})
+
+	return s3Cli, err
 }
 
 func ProvideDocumentStatusJetstreamKV(
