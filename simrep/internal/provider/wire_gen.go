@@ -28,6 +28,7 @@ import (
 	"simrep/internal/repository/anysave"
 	document2 "simrep/internal/repository/document"
 	"simrep/internal/repository/documentstatus"
+	"simrep/internal/repository/fulltextindexclient"
 	"simrep/internal/repository/shingleindexclient"
 	"simrep/internal/repository/vectorizer"
 	analyze2 "simrep/internal/service/analyze"
@@ -38,6 +39,7 @@ import (
 	"simrep/internal/service/documentpipeline/handler/documentsaved"
 	"simrep/internal/service/documentpipeline/handler/filesaved"
 	documentstatus2 "simrep/internal/service/documentstatus"
+	"simrep/internal/service/fulltextindex"
 	"simrep/internal/service/shingleindex"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
@@ -121,6 +123,16 @@ func InitShingleIndexService(repository *shingleindexclient.Repository, service 
 	return shingleindexService, nil
 }
 
+func InitFulltextIndexRepository(conn *nats.Conn) (*fulltextindexclient.Repository, error) {
+	repository := fulltextindexclient.NewRepository(conn)
+	return repository, nil
+}
+
+func InitFulltextIndexService(repository *fulltextindexclient.Repository) (*fulltextindex.Service, error) {
+	service := fulltextindex.NewService(repository)
+	return service, nil
+}
+
 func InitVectorizerClient(configConfig *config.Config) (*client.ClientWithResponses, error) {
 	string2 := configConfig.VectorizerService
 	v := _wireValue3
@@ -177,9 +189,9 @@ func InitVectorizerService(clientWithResponses *client.ClientWithResponses) (*ve
 	return repository, nil
 }
 
-func InitAnalyzeService(configConfig *config.Config, repository *vectorizer.Repository, analyzeRepository *analyze.Repository, service *shingleindex.Service, documentService *document.Service) (*analyze2.Service, error) {
+func InitAnalyzeService(configConfig *config.Config, repository *vectorizer.Repository, analyzeRepository *analyze.Repository, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document.Service) (*analyze2.Service, error) {
 	opts := ProvideAnalyzeServiceOpts()
-	analyzeService := analyze2.NewService(opts, analyzeRepository, documentService, repository, service)
+	analyzeService := analyze2.NewService(opts, analyzeRepository, documentService, repository, service, fulltextindexService)
 	return analyzeService, nil
 }
 
@@ -278,7 +290,15 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository, shingleindexService, documentService)
+	fulltextindexclientRepository, err := InitFulltextIndexRepository(conn)
+	if err != nil {
+		return nil, err
+	}
+	fulltextindexService, err := InitFulltextIndexService(fulltextindexclientRepository)
+	if err != nil {
+		return nil, err
+	}
+	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository, shingleindexService, fulltextindexService, documentService)
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +444,15 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository, shingleindexService, documentService)
+	fulltextindexclientRepository, err := InitFulltextIndexRepository(conn)
+	if err != nil {
+		return nil, err
+	}
+	fulltextindexService, err := InitFulltextIndexService(fulltextindexclientRepository)
+	if err != nil {
+		return nil, err
+	}
+	analyzeService, err := InitAnalyzeService(configConfig, vectorizerRepository, analyzeRepository, shingleindexService, fulltextindexService, documentService)
 	if err != nil {
 		return nil, err
 	}

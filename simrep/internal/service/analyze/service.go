@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"simrep/internal/model"
+	"sort"
 	"sync"
 
 	"golang.org/x/sync/errgroup"
@@ -14,10 +15,11 @@ type Opts struct {
 }
 
 type Service struct {
-	vs  VectorizerService
-	r   Repository
-	ds  DocumentService
-	sis ShingleIndexService
+	vs   VectorizerService
+	r    Repository
+	ds   DocumentService
+	sis  ShingleIndexService
+	ftis FulltextIndexService
 
 	onSaveAction func(ctx context.Context, cmd model.AnalyzedDocumentSaveCommand) error
 }
@@ -28,12 +30,14 @@ func NewService(
 	ds DocumentService,
 	vs VectorizerService,
 	sis ShingleIndexService,
+	ftis FulltextIndexService,
 ) *Service {
 	return &Service{
 		vs:           vs,
 		r:            r,
 		ds:           ds,
 		sis:          sis,
+		ftis:         ftis,
 		onSaveAction: opts.OnSaveAction,
 	}
 }
@@ -69,10 +73,48 @@ func (s *Service) SearchSimilar(
 
 	query.Item = doc
 
-	res, err := s.sis.SearchSimilar(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("search shingle similar: %w", err)
+	eg, egCtx := errgroup.WithContext(ctx)
+
+	var (
+		res   []model.DocumentSimilarMatch
+		resMu sync.Mutex
+	)
+
+	eg.Go(func() error {
+		r, err := s.sis.SearchSimilar(egCtx, query)
+		if err != nil {
+			return fmt.Errorf("shingle similar: %w", err)
+		}
+
+		resMu.Lock()
+		defer resMu.Unlock()
+
+		res = append(res, r...)
+
+		return nil
+	})
+
+	eg.Go(func() error {
+		r, err := s.ftis.SearchSimilar(egCtx, query)
+		if err != nil {
+			return fmt.Errorf("fulltext similar: %w", err)
+		}
+
+		resMu.Lock()
+		defer resMu.Unlock()
+
+		res = append(res, r...)
+
+		return nil
+	})
+
+	if err := eg.Wait(); err != nil {
+		return nil, fmt.Errorf("search similar: %w", err)
 	}
+
+	sort.Slice(res, func(i, j int) bool {
+		return res[i].Rate > res[j].Rate
+	})
 
 	return res, nil
 }

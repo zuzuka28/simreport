@@ -1,4 +1,4 @@
-//go:build wireinject
+// //go:build wireinject
 
 package provider
 
@@ -20,6 +20,7 @@ import (
 	anysaverepo "simrep/internal/repository/anysave"
 	documentrepo "simrep/internal/repository/document"
 	documentstatusrepo "simrep/internal/repository/documentstatus"
+	fulltextindexrepo "simrep/internal/repository/fulltextindexclient"
 	shingleindexrepo "simrep/internal/repository/shingleindexclient"
 	vectorizerrepo "simrep/internal/repository/vectorizer"
 	analyzesrv "simrep/internal/service/analyze"
@@ -31,6 +32,7 @@ import (
 	documentsavedhandler "simrep/internal/service/documentpipeline/handler/documentsaved"
 	filesavedhandler "simrep/internal/service/documentpipeline/handler/filesaved"
 	documentstatussrv "simrep/internal/service/documentstatus"
+	fulltextindexsrv "simrep/internal/service/fulltextindex"
 	shingleindexsrv "simrep/internal/service/shingleindex"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
@@ -105,7 +107,7 @@ func InitS3(
 }
 
 func InitNatsJetstream(
-	conn *nats.Conn,
+	_ *nats.Conn,
 ) (jetstream.JetStream, error) {
 	panic(wire.Build(
 		wire.Value([]jetstream.JetStreamOpt(nil)),
@@ -159,6 +161,23 @@ func InitShingleIndexService(
 		wire.Bind(new(shingleindexsrv.DocumentService), new(*documentsrv.Service)),
 		wire.Bind(new(shingleindexsrv.Repository), new(*shingleindexrepo.Repository)),
 		shingleindexsrv.NewService,
+	))
+}
+
+func InitFulltextIndexRepository(
+	_ *nats.Conn,
+) (*fulltextindexrepo.Repository, error) {
+	panic(wire.Build(
+		fulltextindexrepo.NewRepository,
+	))
+}
+
+func InitFulltextIndexService(
+	_ *fulltextindexrepo.Repository,
+) (*fulltextindexsrv.Service, error) {
+	panic(wire.Build(
+		wire.Bind(new(fulltextindexsrv.Repository), new(*fulltextindexrepo.Repository)),
+		fulltextindexsrv.NewService,
 	))
 }
 
@@ -239,12 +258,14 @@ func InitAnalyzeService(
 	_ *vectorizerrepo.Repository,
 	_ *analyzerepo.Repository,
 	_ *shingleindexsrv.Service,
+	_ *fulltextindexsrv.Service,
 	_ *documentsrv.Service,
 ) (*analyzesrv.Service, error) {
 	panic(wire.Build(
 		ProvideAnalyzeServiceOpts,
 		wire.Bind(new(analyzesrv.DocumentService), new(*documentsrv.Service)),
 		wire.Bind(new(analyzesrv.ShingleIndexService), new(*shingleindexsrv.Service)),
+		wire.Bind(new(analyzesrv.FulltextIndexService), new(*fulltextindexsrv.Service)),
 		wire.Bind(new(analyzesrv.VectorizerService), new(*vectorizerrepo.Repository)),
 		wire.Bind(new(analyzesrv.Repository), new(*analyzerepo.Repository)),
 		analyzesrv.NewService,
@@ -338,6 +359,9 @@ func InitRestAPI(
 
 		InitShingleIndexRepository,
 		InitShingleIndexService,
+
+		InitFulltextIndexRepository,
+		InitFulltextIndexService,
 
 		InitVectorizerClient,
 		InitVectorizerService,
@@ -449,6 +473,9 @@ func InitDocumentPipeline(
 
 		InitShingleIndexRepository,
 		InitShingleIndexService,
+
+		InitFulltextIndexRepository,
+		InitFulltextIndexService,
 
 		InitVectorizerClient,
 		InitVectorizerService,

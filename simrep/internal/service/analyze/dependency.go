@@ -35,6 +35,13 @@ type (
 		) ([]model.DocumentSimilarMatch, error)
 	}
 
+	FulltextIndexService interface {
+		SearchSimilar(
+			ctx context.Context,
+			query model.DocumentSimilarQuery,
+		) ([]model.DocumentSimilarMatch, error)
+	}
+
 	Repository interface {
 		Save(
 			ctx context.Context,
