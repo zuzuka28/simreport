@@ -26,4 +26,11 @@ type (
 			query model.DocumentSimilarQuery,
 		) ([]model.DocumentSimilarMatch, error)
 	}
+
+	SemanticIndexService interface {
+		SearchSimilar(
+			ctx context.Context,
+			query model.DocumentSimilarQuery,
+		) ([]model.DocumentSimilarMatch, error)
+	}
 )

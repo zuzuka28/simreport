@@ -13,21 +13,24 @@ import (
 type Opts struct{}
 
 type Service struct {
-	ds   DocumentService
-	sis  ShingleIndexService
-	ftis FulltextIndexService
+	ds         DocumentService
+	shingleis  ShingleIndexService
+	fulltextis FulltextIndexService
+	semanticis SemanticIndexService
 }
 
 func NewService(
 	_ Opts,
 	ds DocumentService,
-	sis ShingleIndexService,
-	ftis FulltextIndexService,
+	shingleis ShingleIndexService,
+	fulltextis FulltextIndexService,
+	semanticis SemanticIndexService,
 ) *Service {
 	return &Service{
-		ds:   ds,
-		sis:  sis,
-		ftis: ftis,
+		ds:         ds,
+		shingleis:  shingleis,
+		fulltextis: fulltextis,
+		semanticis: semanticis,
 	}
 }
 
@@ -58,7 +61,7 @@ func (s *Service) SearchSimilar(
 	)
 
 	eg.Go(func() error {
-		r, err := s.sis.SearchSimilar(egCtx, query)
+		r, err := s.shingleis.SearchSimilar(egCtx, query)
 		if err != nil {
 			return fmt.Errorf("shingle similar: %w", err)
 		}
@@ -72,9 +75,23 @@ func (s *Service) SearchSimilar(
 	})
 
 	eg.Go(func() error {
-		r, err := s.ftis.SearchSimilar(egCtx, query)
+		r, err := s.fulltextis.SearchSimilar(egCtx, query)
 		if err != nil {
 			return fmt.Errorf("fulltext similar: %w", err)
+		}
+
+		resMu.Lock()
+		defer resMu.Unlock()
+
+		res = append(res, r...)
+
+		return nil
+	})
+
+	eg.Go(func() error {
+		r, err := s.semanticis.SearchSimilar(egCtx, query)
+		if err != nil {
+			return fmt.Errorf("semantic similar: %w", err)
 		}
 
 		resMu.Lock()

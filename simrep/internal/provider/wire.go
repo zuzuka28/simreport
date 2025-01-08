@@ -20,6 +20,7 @@ import (
 	documentrepo "simrep/internal/repository/document"
 	documentstatusrepo "simrep/internal/repository/documentstatus"
 	fulltextindexrepo "simrep/internal/repository/fulltextindexclient"
+	semanticindexrepo "simrep/internal/repository/semanticindexclient"
 	shingleindexrepo "simrep/internal/repository/shingleindexclient"
 	analyzesrv "simrep/internal/service/analyze"
 	anysavesrv "simrep/internal/service/anysave"
@@ -30,6 +31,7 @@ import (
 	filesavedhandler "simrep/internal/service/documentpipeline/handler/filesaved"
 	documentstatussrv "simrep/internal/service/documentstatus"
 	fulltextindexsrv "simrep/internal/service/fulltextindex"
+	semanticindexsrv "simrep/internal/service/semanticindex"
 	shingleindexsrv "simrep/internal/service/shingleindex"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
@@ -159,7 +161,7 @@ func ProvideDocumentStatusJetstreamStream(
 	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{ //nolint:exhaustruct
 		Name:      "documentstatus",
 		Subjects:  []string{"documentstatus.>"},
-		Retention: jetstream.WorkQueuePolicy,
+		Retention: jetstream.InterestPolicy,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new steream: %w", err)
@@ -201,6 +203,23 @@ func InitFulltextIndexService(
 	panic(wire.Build(
 		wire.Bind(new(fulltextindexsrv.Repository), new(*fulltextindexrepo.Repository)),
 		fulltextindexsrv.NewService,
+	))
+}
+
+func InitSemanticIndexRepository(
+	_ *nats.Conn,
+) (*semanticindexrepo.Repository, error) {
+	panic(wire.Build(
+		semanticindexrepo.NewRepository,
+	))
+}
+
+func InitSemanticIndexService(
+	_ *semanticindexrepo.Repository,
+) (*semanticindexsrv.Service, error) {
+	panic(wire.Build(
+		wire.Bind(new(semanticindexsrv.Repository), new(*semanticindexrepo.Repository)),
+		semanticindexsrv.NewService,
 	))
 }
 
@@ -252,12 +271,14 @@ func InitAnalyzeService(
 	_ *shingleindexsrv.Service,
 	_ *fulltextindexsrv.Service,
 	_ *documentsrv.Service,
+	_ *semanticindexsrv.Service,
 ) (*analyzesrv.Service, error) {
 	panic(wire.Build(
 		ProvideAnalyzeServiceOpts,
 		wire.Bind(new(analyzesrv.DocumentService), new(*documentsrv.Service)),
 		wire.Bind(new(analyzesrv.ShingleIndexService), new(*shingleindexsrv.Service)),
 		wire.Bind(new(analyzesrv.FulltextIndexService), new(*fulltextindexsrv.Service)),
+		wire.Bind(new(analyzesrv.SemanticIndexService), new(*semanticindexsrv.Service)),
 		analyzesrv.NewService,
 	))
 }
@@ -352,6 +373,9 @@ func InitRestAPI(
 
 		InitFulltextIndexRepository,
 		InitFulltextIndexService,
+
+		InitSemanticIndexRepository,
+		InitSemanticIndexService,
 
 		// ProvideDocumentStatusJetstreamStream,
 		InitDocumentStatusRepository,

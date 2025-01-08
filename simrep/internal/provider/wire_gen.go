@@ -28,6 +28,7 @@ import (
 	document2 "simrep/internal/repository/document"
 	"simrep/internal/repository/documentstatus"
 	"simrep/internal/repository/fulltextindexclient"
+	fulltextindexclient2 "simrep/internal/repository/semanticindexclient"
 	"simrep/internal/repository/shingleindexclient"
 	"simrep/internal/service/analyze"
 	anysave2 "simrep/internal/service/anysave"
@@ -37,6 +38,7 @@ import (
 	"simrep/internal/service/documentpipeline/handler/filesaved"
 	documentstatus2 "simrep/internal/service/documentstatus"
 	"simrep/internal/service/fulltextindex"
+	fulltextindex2 "simrep/internal/service/semanticindex"
 	"simrep/internal/service/shingleindex"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
@@ -98,6 +100,16 @@ func InitFulltextIndexService(repository *fulltextindexclient.Repository) (*full
 	return service, nil
 }
 
+func InitSemanticIndexRepository(conn *nats.Conn) (*fulltextindexclient2.Repository, error) {
+	repository := fulltextindexclient2.NewRepository(conn)
+	return repository, nil
+}
+
+func InitSemanticIndexService(repository *fulltextindexclient2.Repository) (*fulltextindex2.Service, error) {
+	service := fulltextindex2.NewService(repository)
+	return service, nil
+}
+
 func InitDocumentFileRepository(client *minio.Client, configConfig *config.Config) (*anysave.Repository, error) {
 	repository := anysave.NewRepository(client)
 	return repository, nil
@@ -126,9 +138,9 @@ func InitDocumentStatusService(repository *documentstatus.Repository) (*document
 	return service, nil
 }
 
-func InitAnalyzeService(configConfig *config.Config, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document.Service) (*analyze.Service, error) {
+func InitAnalyzeService(configConfig *config.Config, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document.Service, service2 *fulltextindex2.Service) (*analyze.Service, error) {
 	opts := ProvideAnalyzeServiceOpts()
-	analyzeService := analyze.NewService(opts, documentService, service, fulltextindexService)
+	analyzeService := analyze.NewService(opts, documentService, service, fulltextindexService, service2)
 	return analyzeService, nil
 }
 
@@ -223,7 +235,15 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, documentService)
+	repository2, err := InitSemanticIndexRepository(conn)
+	if err != nil {
+		return nil, err
+	}
+	service2, err := InitSemanticIndexService(repository2)
+	if err != nil {
+		return nil, err
+	}
+	analyzeService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, documentService, service2)
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +470,7 @@ func ProvideDocumentStatusJetstreamStream(
 	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
 		Name:      "documentstatus",
 		Subjects:  []string{"documentstatus.>"},
-		Retention: jetstream.WorkQueuePolicy,
+		Retention: jetstream.InterestPolicy,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new steream: %w", err)
