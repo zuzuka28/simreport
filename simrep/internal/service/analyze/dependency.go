@@ -17,20 +17,31 @@ type (
 		SearchSimilar(
 			ctx context.Context,
 			query model.DocumentSimilarQuery,
-		) ([]model.DocumentSimilarMatch, error)
+		) ([]*model.DocumentSimilarMatch, error)
 	}
 
 	FulltextIndexService interface {
 		SearchSimilar(
 			ctx context.Context,
 			query model.DocumentSimilarQuery,
-		) ([]model.DocumentSimilarMatch, error)
+		) ([]*model.DocumentSimilarMatch, error)
 	}
 
 	SemanticIndexService interface {
 		SearchSimilar(
 			ctx context.Context,
 			query model.DocumentSimilarQuery,
-		) ([]model.DocumentSimilarMatch, error)
+		) ([]*model.DocumentSimilarMatch, error)
+	}
+
+	HistoryRepository interface {
+		Save(
+			ctx context.Context,
+			cmd model.SimilarityHistorySaveCommand,
+		) error
+		Fetch(
+			ctx context.Context,
+			query model.SimilarityHistoryQuery,
+		) (*model.SimilarityHistoryList, error)
 	}
 )

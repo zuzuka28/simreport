@@ -25,7 +25,7 @@ func NewRepository(conn *nats.Conn) *Repository {
 func (s *Repository) SearchSimilar(
 	ctx context.Context,
 	query model.DocumentSimilarQuery,
-) ([]model.DocumentSimilarMatch, error) {
+) ([]*model.DocumentSimilarMatch, error) {
 	reqbody := []byte(query.ID)
 
 	resp, err := s.conn.RequestWithContext(ctx, s.endpoint(s.endpointSearch), reqbody)

@@ -8,13 +8,13 @@ import (
 func mapSearchSimilarRequestToQuery(
 	in openapi.GetAnalyzeDocumentIdSimilarRequestObject,
 ) model.DocumentSimilarQuery {
-	return model.DocumentSimilarQuery{
+	return model.DocumentSimilarQuery{ //nolint:exhaustruct
 		ID: in.DocumentId,
 	}
 }
 
 func mapMatchesToSearchSimilarResponse(
-	in []model.DocumentSimilarMatch,
+	in []*model.DocumentSimilarMatch,
 ) openapi.GetAnalyzeDocumentIdSimilarResponseObject {
 	docs := make([]openapi.AnalyzedDocumentMatch, 0, len(in))
 
@@ -36,4 +36,62 @@ func mapMatchesToSearchSimilarResponse(
 			Documents: &docs,
 		},
 	}
+}
+
+func mapAnalyzeHistoryRequestToQuery(
+	params openapi.PostAnalyzeHistoryRequestObject,
+) model.SimilarityHistoryQuery {
+	body := params.Body
+
+	return model.SimilarityHistoryQuery{
+		DocumentID: valOrEmpty(body.DocumentID),
+		Limit:      valOrEmpty(body.Limit),
+		Offset:     valOrEmpty(body.Offset),
+		DateFrom:   valOrEmpty(body.DateFrom),
+		DateTo:     valOrEmpty(body.DateTo),
+	}
+}
+
+func mapAnalyzeHistoryToResponse(
+	in *model.SimilarityHistoryList,
+) openapi.PostAnalyzeHistoryResponseObject {
+	docs := make([]openapi.SimilaritySearchHistory, 0, len(in.Items))
+
+	for _, v := range in.Items {
+		matches := make([]openapi.AnalyzedDocumentMatch, 0, len(v.Matches))
+
+		for _, m := range v.Matches {
+			rate := float32(m.Rate)
+
+			matches = append(matches, openapi.AnalyzedDocumentMatch{
+				Highlights:    &m.Highlights,
+				Id:            &m.ID,
+				Rate:          &rate,
+				SimilarImages: &m.SimilarImages,
+			})
+		}
+
+		docs = append(docs, openapi.SimilaritySearchHistory{
+			Date:       &v.Date,
+			DocumentID: &v.DocumentID,
+			Id:         &v.ID,
+			Matches:    &matches,
+		})
+	}
+
+	return openapi.PostAnalyzeHistory200JSONResponse{
+		SimilaritySearchHistoryResultJSONResponse: openapi.SimilaritySearchHistoryResultJSONResponse{
+			Count:     &in.Count,
+			Documents: &docs,
+		},
+	}
+}
+
+func valOrEmpty[T any](v *T) T {
+	if v == nil {
+		var t T
+		return t
+	}
+
+	return *v
 }

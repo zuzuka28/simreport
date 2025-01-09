@@ -20,7 +20,14 @@ elastic:
       alias: ""
       shards: 1
       replics: 1
+    - index: "analyze_history"
+      updateMapping: true
+      createMapping: true
+      mappingPath: "config/mappings/analyze_history.json"
+      alias: ""
+      shards: 1
+      replics: 1
 documentRepo:
   index: "document"
-analyzedDocumentRepo:
-  index: "analyzed_document"
+analyzeHistoryRepo:
+  index: "analyze_history"

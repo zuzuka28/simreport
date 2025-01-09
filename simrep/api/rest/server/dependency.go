@@ -29,5 +29,9 @@ type (
 			ctx context.Context,
 			request openapi.GetAnalyzeDocumentIdSimilarRequestObject,
 		) (openapi.GetAnalyzeDocumentIdSimilarResponseObject, error)
+		PostAnalyzeHistory(
+			ctx context.Context,
+			request openapi.PostAnalyzeHistoryRequestObject,
+		) (openapi.PostAnalyzeHistoryResponseObject, error)
 	}
 )

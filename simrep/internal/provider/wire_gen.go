@@ -24,6 +24,7 @@ import (
 	document3 "simrep/api/rest/server/handler/document"
 	"simrep/internal/config"
 	"simrep/internal/model"
+	"simrep/internal/repository/analyzehistory"
 	"simrep/internal/repository/anysave"
 	document2 "simrep/internal/repository/document"
 	"simrep/internal/repository/documentstatus"
@@ -124,6 +125,15 @@ func InitDocumentRepository(client *elasticsearch.Client, configConfig *config.C
 	return repository, nil
 }
 
+func InitAnalyzeHistoryRepository(client *elasticsearch.Client, configConfig *config.Config) (*analyzehistory.Repository, error) {
+	opts := configConfig.AnalyzeHistoryRepo
+	repository, err := analyzehistory.NewRepository(opts, client)
+	if err != nil {
+		return nil, err
+	}
+	return repository, nil
+}
+
 func InitDocumentStatusRepository(ctx context.Context, js jetstream.JetStream) (*documentstatus.Repository, error) {
 	keyValue, err := ProvideDocumentStatusJetstreamKV(ctx, js)
 	if err != nil {
@@ -138,9 +148,9 @@ func InitDocumentStatusService(repository *documentstatus.Repository) (*document
 	return service, nil
 }
 
-func InitAnalyzeService(configConfig *config.Config, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document.Service, service2 *fulltextindex2.Service) (*analyze.Service, error) {
+func InitAnalyzeService(configConfig *config.Config, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document.Service, service2 *fulltextindex2.Service, repository *analyzehistory.Repository) (*analyze.Service, error) {
 	opts := ProvideAnalyzeServiceOpts()
-	analyzeService := analyze.NewService(opts, documentService, service, fulltextindexService, service2)
+	analyzeService := analyze.NewService(opts, documentService, service, fulltextindexService, service2, repository)
 	return analyzeService, nil
 }
 
@@ -243,7 +253,11 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, documentService, service2)
+	analyzehistoryRepository, err := InitAnalyzeHistoryRepository(elasticsearchClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	analyzeService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, documentService, service2, analyzehistoryRepository)
 	if err != nil {
 		return nil, err
 	}

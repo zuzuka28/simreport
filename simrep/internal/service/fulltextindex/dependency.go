@@ -10,6 +10,6 @@ type (
 		SearchSimilar(
 			ctx context.Context,
 			query model.DocumentSimilarQuery,
-		) ([]model.DocumentSimilarMatch, error)
+		) ([]*model.DocumentSimilarMatch, error)
 	}
 )

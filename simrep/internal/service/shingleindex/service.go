@@ -33,7 +33,7 @@ func NewService(
 func (s *Service) SearchSimilar(
 	ctx context.Context,
 	query model.DocumentSimilarQuery,
-) ([]model.DocumentSimilarMatch, error) {
+) ([]*model.DocumentSimilarMatch, error) {
 	res, err := s.r.SearchSimilar(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("search similar: %w", err)
@@ -50,8 +50,8 @@ func (s *Service) SearchSimilar(
 func (s *Service) postprocessing(
 	ctx context.Context,
 	query model.DocumentSimilarQuery,
-	items []model.DocumentSimilarMatch,
-) ([]model.DocumentSimilarMatch, error) {
+	items []*model.DocumentSimilarMatch,
+) ([]*model.DocumentSimilarMatch, error) {
 	sources, err := s.fetchSourceDocuments(ctx, items)
 	if err != nil {
 		return nil, fmt.Errorf("fetch sources: %w", err)
@@ -61,7 +61,7 @@ func (s *Service) postprocessing(
 
 	reranked := s.rerank(query, highlighted)
 
-	result := make([]model.DocumentSimilarMatch, 0, len(items))
+	result := make([]*model.DocumentSimilarMatch, 0, len(items))
 
 	for _, v := range reranked {
 		if v.Rate > 0 {
@@ -128,7 +128,7 @@ func (*Service) highlight(
 
 func (s *Service) fetchSourceDocuments(
 	ctx context.Context,
-	matches []model.DocumentSimilarMatch,
+	matches []*model.DocumentSimilarMatch,
 ) (map[string]*documentMatch, error) {
 	eg, egCtx := errgroup.WithContext(ctx)
 

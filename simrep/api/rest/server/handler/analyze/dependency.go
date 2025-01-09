@@ -10,6 +10,10 @@ type (
 		SearchSimilar(
 			ctx context.Context,
 			query model.DocumentSimilarQuery,
-		) ([]model.DocumentSimilarMatch, error)
+		) ([]*model.DocumentSimilarMatch, error)
+		SearchHistory(
+			ctx context.Context,
+			query model.SimilarityHistoryQuery,
+		) (*model.SimilarityHistoryList, error)
 	}
 )

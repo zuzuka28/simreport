@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"simrep/internal/repository/analyzehistory"
 	"simrep/internal/repository/document"
 	"simrep/pkg/elasticutil"
 	"simrep/pkg/minioutil"
@@ -24,12 +25,13 @@ type Elastic struct {
 }
 
 type Config struct {
-	Port         int                `yaml:"port"`
-	S3           minioutil.Config   `yaml:"s3"`
-	Nats         string             `yaml:"nats"`
-	Tika         string             `yaml:"tika"`
-	Elastic      elasticutil.Config `yaml:"elastic"`
-	DocumentRepo document.Opts      `yaml:"documentRepo"`
+	Port               int                 `yaml:"port"`
+	S3                 minioutil.Config    `yaml:"s3"`
+	Nats               string              `yaml:"nats"`
+	Tika               string              `yaml:"tika"`
+	Elastic            elasticutil.Config  `yaml:"elastic"`
+	DocumentRepo       document.Opts       `yaml:"documentRepo"`
+	AnalyzeHistoryRepo analyzehistory.Opts `yaml:"analyzeHistoryRepo"`
 }
 
 func New(path string) (*Config, error) {

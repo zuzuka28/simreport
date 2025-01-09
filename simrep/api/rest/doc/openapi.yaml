@@ -75,6 +75,24 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
+  /analyze/history:
+    post:
+      summary:  История поиска подожих документов
+      description: Получить список документов, наиболее похожих на загруженный
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimilaritySearchHistoryRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/SimilaritySearchHistoryResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
 components:
   schemas:
     UploadRequest:
@@ -144,6 +162,37 @@ components:
             type: string
           description: Список идентификаторов похожих изображений.
 
+    SimilaritySearchHistoryRequest:
+      type: object
+      properties:
+        documentID:
+          type: string
+        limit:
+          type: integer
+        offset:
+          type: integer
+        dateFrom:
+          type: string
+          format: date-time
+        dateTo:
+          type: string
+          format: date-time
+
+    SimilaritySearchHistory:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+        documentID:
+          type: string
+        id:
+          type: string
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyzedDocumentMatch"
+
   responses:
     UploadSuccess:
       description: Документ успешно загружен
@@ -179,6 +228,20 @@ components:
                 type: array
                 items:
                   $ref: "#/components/schemas/AnalyzedDocumentMatch"
+
+    SimilaritySearchHistoryResult:
+      description: История поиска схожих элементов
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              documents:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SimilaritySearchHistory"
+              count:
+                type: integer
 
     DocumentNotFound:
       description: Документ не найден

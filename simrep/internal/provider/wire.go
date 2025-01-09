@@ -16,6 +16,7 @@ import (
 	documentapi "simrep/api/rest/server/handler/document"
 	"simrep/internal/config"
 	"simrep/internal/model"
+	analyzehistoryrepo "simrep/internal/repository/analyzehistory"
 	anysaverepo "simrep/internal/repository/anysave"
 	documentrepo "simrep/internal/repository/document"
 	documentstatusrepo "simrep/internal/repository/documentstatus"
@@ -242,6 +243,16 @@ func InitDocumentRepository(
 	))
 }
 
+func InitAnalyzeHistoryRepository(
+	_ *elasticsearch.Client,
+	_ *config.Config,
+) (*analyzehistoryrepo.Repository, error) {
+	panic(wire.Build(
+		wire.FieldsOf(new(*config.Config), "AnalyzeHistoryRepo"),
+		analyzehistoryrepo.NewRepository,
+	))
+}
+
 func InitDocumentStatusRepository(
 	ctx context.Context,
 	js jetstream.JetStream,
@@ -272,6 +283,7 @@ func InitAnalyzeService(
 	_ *fulltextindexsrv.Service,
 	_ *documentsrv.Service,
 	_ *semanticindexsrv.Service,
+	_ *analyzehistoryrepo.Repository,
 ) (*analyzesrv.Service, error) {
 	panic(wire.Build(
 		ProvideAnalyzeServiceOpts,
@@ -279,6 +291,7 @@ func InitAnalyzeService(
 		wire.Bind(new(analyzesrv.ShingleIndexService), new(*shingleindexsrv.Service)),
 		wire.Bind(new(analyzesrv.FulltextIndexService), new(*fulltextindexsrv.Service)),
 		wire.Bind(new(analyzesrv.SemanticIndexService), new(*semanticindexsrv.Service)),
+		wire.Bind(new(analyzesrv.HistoryRepository), new(*analyzehistoryrepo.Repository)),
 		analyzesrv.NewService,
 	))
 }
@@ -382,6 +395,7 @@ func InitRestAPI(
 		InitDocumentStatusService,
 
 		InitDocumentRepository,
+		InitAnalyzeHistoryRepository,
 
 		InitAnysaveService,
 		InitDocumentService,
