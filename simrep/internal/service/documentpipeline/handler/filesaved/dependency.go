@@ -21,6 +21,6 @@ type (
 		Save(
 			ctx context.Context,
 			cmd model.DocumentSaveCommand,
-		) error
+		) (*model.Document, error)
 	}
 )

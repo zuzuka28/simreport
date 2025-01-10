@@ -32,3 +32,20 @@ func (h *Handler) PostDocumentSearch(
 
 	return mapDocumentsToSearchResponse(res), nil
 }
+
+func (h *Handler) PostDocumentUpload(
+	ctx context.Context,
+	params openapi.PostDocumentUploadRequestObject,
+) (openapi.PostDocumentUploadResponseObject, error) {
+	cmd, err := mapUploadRequestToCommand(params)
+	if err != nil {
+		return openapi.PostDocumentUpload400JSONResponse{}, nil
+	}
+
+	doc, err := h.s.Save(ctx, cmd)
+	if err != nil {
+		return nil, fmt.Errorf("upload document: %w", err)
+	}
+
+	return mapUploadCommandToResponse(doc), nil
+}

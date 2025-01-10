@@ -5,6 +5,22 @@ info:
   version: 1.5.0
 
 paths:
+  /document/upload:
+    post:
+      summary: Загрузка документа
+      description: Загружает документ для дальнейшего анализа на сходство.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/UploadSuccess"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
   /document/search:
     post:
       summary: Поиск документов по имени
@@ -57,6 +73,24 @@ paths:
 
 components:
   schemas:
+    UploadRequest:
+      type: object
+      properties:
+        fileID:
+          type: string
+          description: Уникальный идентификатор файла
+        groupID:
+          type: string
+          description: Уникальный идентификатор группы
+        parentID:
+          type: string
+          description: Уникальный идентификатор родительского документа
+        version:
+          type: integer
+          description: Версия документа
+      required:
+        - fileID
+
     SearchRequest:
       type: object
       properties:
@@ -148,6 +182,17 @@ components:
             $ref: "#/components/schemas/AnalyzedDocumentMatch"
 
   responses:
+    UploadSuccess:
+      description: Документ успешно загружен
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              documentID:
+                type: string
+                description: Уникальный идентификатор загруженного документа
+
     SearchResult:
       description: Результаты поиска документов
       content:

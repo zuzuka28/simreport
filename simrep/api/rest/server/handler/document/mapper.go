@@ -1,9 +1,12 @@
 package document
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	openapi "simrep/api/rest/gen"
 	"simrep/internal/model"
+	"time"
 )
 
 var errNoBody = errors.New("no body")
@@ -47,4 +50,53 @@ func mapDocumentsToSearchResponse(
 			Documents: &docs,
 		},
 	}
+}
+
+func mapUploadRequestToCommand(
+	in openapi.PostDocumentUploadRequestObject,
+) (model.DocumentSaveCommand, error) {
+	return model.DocumentSaveCommand{
+		Item: model.Document{
+			ID:          valOrDefault(in.Body.ParentID),
+			Name:        "",
+			LastUpdated: time.Time{},
+			Version:     valOrDefault(in.Body.Version),
+			GroupID:     []string{valOrDefault(in.Body.GroupID)},
+			SourceID:    in.Body.FileID,
+			TextID:      "",
+			ImageIDs:    nil,
+			WithContent: false,
+			Source:      model.File{},
+			Text:        model.File{},
+			Images:      nil,
+		},
+	}, nil
+}
+
+func mapUploadCommandToResponse(
+	doc *model.Document,
+) openapi.PostDocumentUpload200JSONResponse {
+	return openapi.PostDocumentUpload200JSONResponse{
+		UploadSuccessJSONResponse: openapi.UploadSuccessJSONResponse(
+			openapi.UploadSuccess{
+				DocumentID: &doc.ID,
+			},
+		),
+	}
+}
+
+func sha256String(in []byte) string {
+	hash := sha256.New()
+	_, _ = hash.Write(in)
+
+	return hex.EncodeToString(hash.Sum(nil))
+}
+
+func valOrDefault[T any](in *T) T {
+	if in == nil {
+		var t T
+		return t
+	}
+
+	return *in
 }

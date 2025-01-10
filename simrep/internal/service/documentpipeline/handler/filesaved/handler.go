@@ -34,7 +34,7 @@ func (h *Handler) Serve(ctx context.Context, documentID string) error {
 		return fmt.Errorf("parse document: %w", err)
 	}
 
-	if err := h.ds.Save(ctx, model.DocumentSaveCommand{
+	if _, err := h.ds.Save(ctx, model.DocumentSaveCommand{
 		Item: parsed,
 	}); err != nil {
 		return fmt.Errorf("save parsed document: %w", err)

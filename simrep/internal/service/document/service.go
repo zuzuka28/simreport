@@ -90,7 +90,7 @@ func (s *Service) Parse(
 func (s *Service) Save(
 	ctx context.Context,
 	cmd model.DocumentSaveCommand,
-) error {
+) (*model.Document, error) {
 	cmd = s.prepareSaveCommand(cmd)
 
 	g, gCtx := errgroup.WithContext(ctx)
@@ -133,16 +133,16 @@ func (s *Service) Save(
 	}
 
 	if err := g.Wait(); err != nil {
-		return fmt.Errorf("save file resources: %w", err)
+		return nil, fmt.Errorf("save file resources: %w", err)
 	}
 
 	if s.onSaveAction != nil {
 		if err := s.onSaveAction(ctx, cmd); err != nil {
-			return fmt.Errorf("on save action: %w", err)
+			return nil, fmt.Errorf("on save action: %w", err)
 		}
 	}
 
-	return nil
+	return &cmd.Item, nil
 }
 
 func (*Service) prepareSaveCommand(

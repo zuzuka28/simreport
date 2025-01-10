@@ -11,6 +11,10 @@ type (
 			ctx context.Context,
 			request openapi.PostDocumentSearchRequestObject,
 		) (openapi.PostDocumentSearchResponseObject, error)
+		PostDocumentUpload(
+			ctx context.Context,
+			request openapi.PostDocumentUploadRequestObject,
+		) (openapi.PostDocumentUploadResponseObject, error)
 	}
 
 	AnalyzeHandler interface {
