@@ -16,6 +16,9 @@ func mapDocumentToInternal(src model.Document) document {
 	return document{
 		ID:          src.ID,
 		Name:        src.Name,
+		Version:     src.Version,
+		GroupID:     src.GroupID,
+		SourceID:    src.SourceID,
 		ImageIDs:    src.ImageIDs,
 		TextID:      src.TextID,
 		LastUpdated: src.LastUpdated,
@@ -52,8 +55,11 @@ func mapDocument(in document) model.Document {
 		ID:          in.ID,
 		Name:        in.Name,
 		LastUpdated: in.LastUpdated,
-		ImageIDs:    in.ImageIDs,
+		Version:     in.Version,
+		GroupID:     in.GroupID,
+		SourceID:    in.SourceID,
 		TextID:      in.TextID,
+		ImageIDs:    in.ImageIDs,
 		WithContent: false,
 		Source:      model.File{}, //nolint:exhaustruct
 		Text:        model.File{}, //nolint:exhaustruct

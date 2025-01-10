@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
-	openapi "simrep/api/rest/gen"
-	"simrep/internal/model"
+	openapi "anysave/api/rest/gen"
+	"anysave/internal/model"
 	"time"
 )
 

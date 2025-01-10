@@ -2,7 +2,7 @@ package anysave
 
 import (
 	"context"
-	"simrep/internal/model"
+	"anysave/internal/model"
 )
 
 type (

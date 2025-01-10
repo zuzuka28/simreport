@@ -12,21 +12,18 @@ import (
 	servernats "simrep/api/nats/server"
 	serverhttp "simrep/api/rest/server"
 	analyzeapi "simrep/api/rest/server/handler/analyze"
-	anysaveapi "simrep/api/rest/server/handler/anysave"
 	documentapi "simrep/api/rest/server/handler/document"
 	"simrep/internal/config"
 	"simrep/internal/model"
 	analyzehistoryrepo "simrep/internal/repository/analyzehistory"
-	anysaverepo "simrep/internal/repository/anysave"
 	documentrepo "simrep/internal/repository/document"
 	documentstatusrepo "simrep/internal/repository/documentstatus"
+	"simrep/internal/repository/filestorage"
 	fulltextindexrepo "simrep/internal/repository/fulltextindexclient"
 	semanticindexrepo "simrep/internal/repository/semanticindexclient"
 	shingleindexrepo "simrep/internal/repository/shingleindexclient"
 	analyzesrv "simrep/internal/service/analyze"
-	anysavesrv "simrep/internal/service/anysave"
 	documentsrv "simrep/internal/service/document"
-	"simrep/internal/service/documentparser"
 	documentparsersrv "simrep/internal/service/documentparser"
 	"simrep/internal/service/documentpipeline"
 	filesavedhandler "simrep/internal/service/documentpipeline/handler/filesaved"
@@ -171,6 +168,15 @@ func ProvideDocumentStatusJetstreamStream(
 	return s, nil
 }
 
+func InitFilestorageRepository(
+	_ *minio.Client,
+	_ *config.Config,
+) (*filestorage.Repository, error) {
+	panic(wire.Build(
+		filestorage.NewRepository,
+	))
+}
+
 func InitShingleIndexRepository(
 	_ *nats.Conn,
 ) (*shingleindexrepo.Repository, error) {
@@ -221,15 +227,6 @@ func InitSemanticIndexService(
 	panic(wire.Build(
 		wire.Bind(new(semanticindexsrv.Repository), new(*semanticindexrepo.Repository)),
 		semanticindexsrv.NewService,
-	))
-}
-
-func InitDocumentFileRepository(
-	_ *minio.Client,
-	_ *config.Config,
-) (*anysaverepo.Repository, error) {
-	panic(wire.Build(
-		anysaverepo.NewRepository,
 	))
 }
 
@@ -296,22 +293,6 @@ func InitAnalyzeService(
 	))
 }
 
-func ProvideAnysaveServiceOpts() anysavesrv.Opts {
-	return anysavesrv.Opts{} //nolint:exhaustruct
-}
-
-func InitAnysaveService(
-	_ *minio.Client,
-	_ *config.Config,
-) (*anysavesrv.Service, error) {
-	panic(wire.Build(
-		InitDocumentFileRepository,
-		ProvideAnysaveServiceOpts,
-		wire.Bind(new(anysavesrv.Repository), new(*anysaverepo.Repository)),
-		anysavesrv.NewService,
-	))
-}
-
 func ProvideDocumentServiceOpts() documentsrv.Opts {
 	return documentsrv.Opts{} //nolint:exhaustruct
 }
@@ -327,15 +308,15 @@ func InitDocumentParserService(
 func InitDocumentService(
 	_ *config.Config,
 	_ *tikaclient.Client,
-	_ *anysavesrv.Service,
+	_ *filestorage.Repository,
 	_ *documentrepo.Repository,
 ) (*documentsrv.Service, error) {
 	panic(wire.Build(
 		ProvideDocumentServiceOpts,
 		InitDocumentParserService,
-		wire.Bind(new(documentsrv.FileRepository), new(*anysavesrv.Service)),
+		wire.Bind(new(documentsrv.FileRepository), new(*filestorage.Repository)),
 		wire.Bind(new(documentsrv.Repository), new(*documentrepo.Repository)),
-		wire.Bind(new(documentsrv.Parser), new(*documentparser.Service)),
+		wire.Bind(new(documentsrv.Parser), new(*documentparsersrv.Service)),
 		documentsrv.NewService,
 	))
 }
@@ -346,17 +327,6 @@ func InitDocumentHandler(
 	panic(wire.Build(
 		wire.Bind(new(documentapi.Service), new(*documentsrv.Service)),
 		documentapi.NewHandler,
-	))
-}
-
-func InitAnysaveHandler(
-	_ *documentstatussrv.Service,
-	_ *anysavesrv.Service,
-) *anysaveapi.Handler {
-	panic(wire.Build(
-		wire.Bind(new(anysaveapi.Service), new(*anysavesrv.Service)),
-		wire.Bind(new(anysaveapi.StatusService), new(*documentstatussrv.Service)),
-		anysaveapi.NewHandler,
 	))
 }
 
@@ -378,7 +348,6 @@ func InitRestAPI(
 		ProvideS3,
 		ProvideElastic,
 		ProvideNats,
-		InitNatsJetstream,
 		InitTika,
 
 		InitShingleIndexRepository,
@@ -390,24 +359,19 @@ func InitRestAPI(
 		InitSemanticIndexRepository,
 		InitSemanticIndexService,
 
-		// ProvideDocumentStatusJetstreamStream,
-		InitDocumentStatusRepository,
-		InitDocumentStatusService,
+        InitFilestorageRepository,
 
 		InitDocumentRepository,
 		InitAnalyzeHistoryRepository,
 
-		InitAnysaveService,
 		InitDocumentService,
 
 		InitAnalyzeService,
 
 		InitDocumentHandler,
 		InitAnalyzeHandler,
-		InitAnysaveHandler,
 		wire.Bind(new(serverhttp.DocumentHandler), new(*documentapi.Handler)),
 		wire.Bind(new(serverhttp.AnalyzeHandler), new(*analyzeapi.Handler)),
-		wire.Bind(new(serverhttp.FileHandler), new(*anysaveapi.Handler)),
 		wire.FieldsOf(new(*config.Config), "Port"),
 		wire.Struct(new(serverhttp.Opts), "*"),
 		serverhttp.New,
@@ -416,10 +380,10 @@ func InitRestAPI(
 
 func InitFileSavedHandler(
 	_ *documentsrv.Service,
-	_ *anysavesrv.Service,
+	_ *filestorage.Repository,
 ) (*filesavedhandler.Handler, error) {
 	panic(wire.Build(
-		wire.Bind(new(filesavedhandler.FileService), new(*anysavesrv.Service)),
+		wire.Bind(new(filesavedhandler.FileService), new(*filestorage.Repository)),
 		wire.Bind(new(filesavedhandler.DocumentService), new(*documentsrv.Service)),
 		filesavedhandler.NewHandler,
 	))
@@ -444,9 +408,10 @@ func InitNatsAPI(
 		ProvideNats,
 		InitTika,
 
+        InitFilestorageRepository,
+
 		InitDocumentRepository,
 
-		InitAnysaveService,
 		InitDocumentService,
 
 		InitDocumentNatsHandler,
@@ -487,9 +452,10 @@ func InitDocumentPipeline(
 		InitDocumentStatusRepository,
 		InitDocumentStatusService,
 
+        InitFilestorageRepository,
+
 		InitDocumentRepository,
 
-		InitAnysaveService,
 		InitDocumentService,
 
 		InitFileSavedHandler,

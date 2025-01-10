@@ -1,11 +1,11 @@
 package server
 
 import (
+	openapi "anysave/api/rest/gen"
 	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
-	openapi "simrep/api/rest/gen"
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -30,9 +30,8 @@ type Server struct {
 type Opts struct {
 	Port int
 
-	Spec            []byte
-	DocumentHandler DocumentHandler
-	AnalyzeHandler  AnalyzeHandler
+	Spec        []byte
+	FileHandler FileHandler
 }
 
 func New(
@@ -51,11 +50,9 @@ func New(
 	openapi3filter.RegisterBodyDecoder(pdfMime, openapi3filter.FileBodyDecoder)
 
 	compose := struct {
-		DocumentHandler
-		AnalyzeHandler
+		FileHandler
 	}{
-		DocumentHandler: opts.DocumentHandler,
-		AnalyzeHandler:  opts.AnalyzeHandler,
+		FileHandler: opts.FileHandler,
 	}
 
 	stricthandler := openapi.NewStrictHandlerWithOptions(

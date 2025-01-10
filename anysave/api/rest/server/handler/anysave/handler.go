@@ -3,8 +3,8 @@ package anysave
 import (
 	"context"
 	"fmt"
-	openapi "simrep/api/rest/gen"
-	"simrep/internal/model"
+	openapi "anysave/api/rest/gen"
+	"anysave/internal/model"
 )
 
 type Handler struct {

@@ -7,8 +7,11 @@ func mapDocumentWithContentToDocument(in model.Document) model.Document {
 		ID:          in.ID,
 		Name:        in.Name,
 		LastUpdated: in.Source.LastUpdated,
-		ImageIDs:    in.ImageIDs,
+		Version:     in.Version,
+		GroupID:     in.GroupID,
+		SourceID:    in.SourceID,
 		TextID:      in.TextID,
+		ImageIDs:    in.ImageIDs,
 		WithContent: false,
 		Source:      model.File{}, //nolint:exhaustruct
 		Text:        model.File{}, //nolint:exhaustruct

@@ -1,4 +1,4 @@
-package anysave
+package filestorage
 
 import (
 	"bytes"
@@ -14,6 +14,10 @@ import (
 )
 
 const userMetadataNameKey = "Name"
+
+const (
+	bucketAnysave = "anysave"
+)
 
 type Repository struct {
 	cli *minio.Client
@@ -47,6 +51,23 @@ func (r *Repository) SaveMany(ctx context.Context, cmd model.FileSaveManyCommand
 }
 
 func (r *Repository) Save(ctx context.Context, cmd model.FileSaveCommand) error {
+	if cmd.Bucket == "" {
+		cmd.Bucket = bucketAnysave
+	}
+
+	_, err := r.cli.StatObject(
+		ctx,
+		cmd.Bucket,
+		cmd.Item.Sha256,
+		minio.StatObjectOptions{}, //nolint:exhaustruct
+	)
+	if err != nil {
+		var cerr minio.ErrorResponse
+		if errors.As(err, &cerr) && cerr.StatusCode != http.StatusNotFound {
+			return fmt.Errorf("check object already exists: %w", err)
+		}
+	}
+
 	opts := minio.PutObjectOptions{ //nolint:exhaustruct
 		UserMetadata: map[string]string{},
 	}
@@ -55,7 +76,7 @@ func (r *Repository) Save(ctx context.Context, cmd model.FileSaveCommand) error 
 		opts.UserMetadata[userMetadataNameKey] = cmd.Item.Name
 	}
 
-	_, err := r.cli.PutObject(
+	_, err = r.cli.PutObject(
 		ctx,
 		cmd.Bucket,
 		cmd.Item.Sha256,
@@ -76,6 +97,10 @@ func (r *Repository) Fetch(
 	ctx context.Context,
 	query model.FileQuery,
 ) (model.File, error) {
+	if query.Bucket == "" {
+		query.Bucket = bucketAnysave
+	}
+
 	objectInfo, err := r.cli.StatObject(
 		ctx,
 		query.Bucket,

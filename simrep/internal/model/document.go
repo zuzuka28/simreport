@@ -7,8 +7,12 @@ type Document struct {
 	Name        string
 	LastUpdated time.Time
 
-	ImageIDs []string
+	Version int
+	GroupID []string
+
+	SourceID string
 	TextID   string
+	ImageIDs []string
 
 	WithContent bool
 	Source      File

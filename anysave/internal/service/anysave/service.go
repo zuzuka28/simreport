@@ -1,10 +1,10 @@
-// anysave - saves everything that is sent to the simrep service.
+// anysave - saves everything that is sent to the anysave service.
 package anysave
 
 import (
 	"context"
 	"fmt"
-	"simrep/internal/model"
+	"anysave/internal/model"
 )
 
 const (

@@ -7,15 +7,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"mime/multipart"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/oapi-codegen/runtime"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
-	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // AnalyzedDocumentMatch defines model for AnalyzedDocumentMatch.
@@ -68,22 +65,11 @@ type SimilaritySearchHistoryRequest struct {
 	Offset     *int       `json:"offset,omitempty"`
 }
 
-// UploadRequest defines model for UploadRequest.
-type UploadRequest struct {
-	// Document Документ для загрузки
-	Document *openapi_types.File `json:"document,omitempty"`
-}
-
 // DocumentId defines model for DocumentId.
 type DocumentId = string
 
 // BadRequest defines model for BadRequest.
 type BadRequest struct {
-	Error *string `json:"error,omitempty"`
-}
-
-// DocumentNotFound defines model for DocumentNotFound.
-type DocumentNotFound struct {
 	Error *string `json:"error,omitempty"`
 }
 
@@ -108,20 +94,11 @@ type SimilaritySearchResult struct {
 	Documents *[]AnalyzedDocumentMatch `json:"documents,omitempty"`
 }
 
-// UploadSuccess defines model for UploadSuccess.
-type UploadSuccess struct {
-	// DocumentID Уникальный идентификатор загруженного документа
-	DocumentID *string `json:"documentID,omitempty"`
-}
-
 // PostAnalyzeHistoryJSONRequestBody defines body for PostAnalyzeHistory for application/json ContentType.
 type PostAnalyzeHistoryJSONRequestBody = SimilaritySearchHistoryRequest
 
 // PostDocumentSearchJSONRequestBody defines body for PostDocumentSearch for application/json ContentType.
 type PostDocumentSearchJSONRequestBody = SearchRequest
-
-// PostDocumentUploadMultipartRequestBody defines body for PostDocumentUpload for multipart/form-data ContentType.
-type PostDocumentUploadMultipartRequestBody = UploadRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -134,12 +111,6 @@ type ServerInterface interface {
 	// Поиск документов по имени
 	// (POST /document/search)
 	PostDocumentSearch(w http.ResponseWriter, r *http.Request)
-	// Загрузка документа
-	// (POST /document/upload)
-	PostDocumentUpload(w http.ResponseWriter, r *http.Request)
-	// Скачать документ
-	// (GET /document/{document_id}/download)
-	GetDocumentDocumentIdDownload(w http.ResponseWriter, r *http.Request, documentId DocumentId)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -195,45 +166,6 @@ func (siw *ServerInterfaceWrapper) PostDocumentSearch(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PostDocumentSearch(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// PostDocumentUpload operation middleware
-func (siw *ServerInterfaceWrapper) PostDocumentUpload(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostDocumentUpload(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetDocumentDocumentIdDownload operation middleware
-func (siw *ServerInterfaceWrapper) GetDocumentDocumentIdDownload(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-
-	// ------------- Path parameter "document_id" -------------
-	var documentId DocumentId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "document_id", mux.Vars(r)["document_id"], &documentId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "document_id", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetDocumentDocumentIdDownload(w, r, documentId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -362,18 +294,10 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/document/search", wrapper.PostDocumentSearch).Methods("POST")
 
-	r.HandleFunc(options.BaseURL+"/document/upload", wrapper.PostDocumentUpload).Methods("POST")
-
-	r.HandleFunc(options.BaseURL+"/document/{document_id}/download", wrapper.GetDocumentDocumentIdDownload).Methods("GET")
-
 	return r
 }
 
 type BadRequestJSONResponse struct {
-	Error *string `json:"error,omitempty"`
-}
-
-type DocumentNotFoundJSONResponse struct {
 	Error *string `json:"error,omitempty"`
 }
 
@@ -392,11 +316,6 @@ type SimilaritySearchHistoryResultJSONResponse struct {
 
 type SimilaritySearchResultJSONResponse struct {
 	Documents *[]AnalyzedDocumentMatch `json:"documents,omitempty"`
-}
-
-type UploadSuccessJSONResponse struct {
-	// DocumentID Уникальный идентификатор загруженного документа
-	DocumentID *string `json:"documentID,omitempty"`
 }
 
 type PostAnalyzeHistoryRequestObject struct {
@@ -508,74 +427,6 @@ func (response PostDocumentSearch500JSONResponse) VisitPostDocumentSearchRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostDocumentUploadRequestObject struct {
-	Body *multipart.Reader
-}
-
-type PostDocumentUploadResponseObject interface {
-	VisitPostDocumentUploadResponse(w http.ResponseWriter) error
-}
-
-type PostDocumentUpload200JSONResponse struct{ UploadSuccessJSONResponse }
-
-func (response PostDocumentUpload200JSONResponse) VisitPostDocumentUploadResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostDocumentUpload400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response PostDocumentUpload400JSONResponse) VisitPostDocumentUploadResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetDocumentDocumentIdDownloadRequestObject struct {
-	DocumentId DocumentId `json:"document_id"`
-}
-
-type GetDocumentDocumentIdDownloadResponseObject interface {
-	VisitGetDocumentDocumentIdDownloadResponse(w http.ResponseWriter) error
-}
-
-type GetDocumentDocumentIdDownload200ResponseHeaders struct {
-	ContentDisposition string
-}
-
-type GetDocumentDocumentIdDownload200ApplicationoctetStreamResponse struct {
-	Body          io.Reader
-	Headers       GetDocumentDocumentIdDownload200ResponseHeaders
-	ContentLength int64
-}
-
-func (response GetDocumentDocumentIdDownload200ApplicationoctetStreamResponse) VisitGetDocumentDocumentIdDownloadResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/octet-stream")
-	if response.ContentLength != 0 {
-		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
-	}
-	w.Header().Set("Content-Disposition", fmt.Sprint(response.Headers.ContentDisposition))
-	w.WriteHeader(200)
-
-	if closer, ok := response.Body.(io.ReadCloser); ok {
-		defer closer.Close()
-	}
-	_, err := io.Copy(w, response.Body)
-	return err
-}
-
-type GetDocumentDocumentIdDownload404JSONResponse struct{ DocumentNotFoundJSONResponse }
-
-func (response GetDocumentDocumentIdDownload404JSONResponse) VisitGetDocumentDocumentIdDownloadResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(404)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	//  История поиска подожих документов
@@ -587,12 +438,6 @@ type StrictServerInterface interface {
 	// Поиск документов по имени
 	// (POST /document/search)
 	PostDocumentSearch(ctx context.Context, request PostDocumentSearchRequestObject) (PostDocumentSearchResponseObject, error)
-	// Загрузка документа
-	// (POST /document/upload)
-	PostDocumentUpload(ctx context.Context, request PostDocumentUploadRequestObject) (PostDocumentUploadResponseObject, error)
-	// Скачать документ
-	// (GET /document/{document_id}/download)
-	GetDocumentDocumentIdDownload(ctx context.Context, request GetDocumentDocumentIdDownloadRequestObject) (GetDocumentDocumentIdDownloadResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -705,63 +550,6 @@ func (sh *strictHandler) PostDocumentSearch(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PostDocumentSearchResponseObject); ok {
 		if err := validResponse.VisitPostDocumentSearchResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// PostDocumentUpload operation middleware
-func (sh *strictHandler) PostDocumentUpload(w http.ResponseWriter, r *http.Request) {
-	var request PostDocumentUploadRequestObject
-
-	if reader, err := r.MultipartReader(); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
-		return
-	} else {
-		request.Body = reader
-	}
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostDocumentUpload(ctx, request.(PostDocumentUploadRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostDocumentUpload")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostDocumentUploadResponseObject); ok {
-		if err := validResponse.VisitPostDocumentUploadResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetDocumentDocumentIdDownload operation middleware
-func (sh *strictHandler) GetDocumentDocumentIdDownload(w http.ResponseWriter, r *http.Request, documentId DocumentId) {
-	var request GetDocumentDocumentIdDownloadRequestObject
-
-	request.DocumentId = documentId
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetDocumentDocumentIdDownload(ctx, request.(GetDocumentDocumentIdDownloadRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetDocumentDocumentIdDownload")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetDocumentDocumentIdDownloadResponseObject); ok {
-		if err := validResponse.VisitGetDocumentDocumentIdDownloadResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

@@ -6,6 +6,7 @@ import (
 	"simrep/internal/model"
 	"sync"
 
+	"github.com/google/uuid"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -13,6 +14,9 @@ const (
 	bucketText  = "texts"
 	bucketImage = "images"
 )
+
+//nolint:gochecknoglobals
+var genID = uuid.NewString
 
 type Opts struct {
 	OnSaveAction func(ctx context.Context, cmd model.DocumentSaveCommand) error
@@ -87,6 +91,8 @@ func (s *Service) Save(
 	ctx context.Context,
 	cmd model.DocumentSaveCommand,
 ) error {
+	cmd = s.prepareSaveCommand(cmd)
+
 	g, gCtx := errgroup.WithContext(ctx)
 
 	if cmd.Item.ID != "" {
@@ -139,6 +145,33 @@ func (s *Service) Save(
 	return nil
 }
 
+func (*Service) prepareSaveCommand(
+	cmd model.DocumentSaveCommand,
+) model.DocumentSaveCommand {
+	if cmd.Item.ID == "" {
+		cmd.Item.ID = genID()
+	}
+
+	if cmd.Item.Source.Sha256 != "" {
+		cmd.Item.SourceID = cmd.Item.Source.Sha256
+	}
+
+	if cmd.Item.Text.Sha256 != "" {
+		cmd.Item.TextID = cmd.Item.Text.Sha256
+	}
+
+	if len(cmd.Item.Images) > 0 {
+		imgIDs := make([]string, 0, len(cmd.Item.Images))
+		for _, v := range cmd.Item.Images {
+			imgIDs = append(imgIDs, v.Sha256)
+		}
+
+		cmd.Item.ImageIDs = imgIDs
+	}
+
+	return cmd
+}
+
 //nolint:revive
 func (s *Service) enrichContent(
 	ctx context.Context,
@@ -154,11 +187,11 @@ func (s *Service) enrichContent(
 
 	var main model.File
 
-	if doc.ID != "" && includemap[model.DocumentQueryIncludeSource] {
+	if doc.SourceID != "" && includemap[model.DocumentQueryIncludeSource] {
 		eg.Go(func() error {
 			r, err := s.fr.Fetch(egCtx, model.FileQuery{
 				Bucket: "",
-				ID:     doc.ID,
+				ID:     doc.SourceID,
 			})
 			if err != nil {
 				return fmt.Errorf("fetch document file: %w", err)
@@ -221,8 +254,11 @@ func (s *Service) enrichContent(
 		ID:          doc.ID,
 		Name:        doc.Name,
 		LastUpdated: doc.LastUpdated,
-		ImageIDs:    doc.ImageIDs,
+		Version:     doc.Version,
+		GroupID:     doc.GroupID,
+		SourceID:    doc.SourceID,
 		TextID:      doc.TextID,
+		ImageIDs:    doc.ImageIDs,
 		WithContent: true,
 		Source:      main,
 		Text:        text,

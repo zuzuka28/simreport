@@ -27,11 +27,14 @@ func (s *Service) Parse(ctx context.Context, item model.File) (model.Document, e
 	}
 
 	doc := model.Document{
-		ID:          item.Sha256,
+		ID:          "",
 		Name:        item.Name,
 		LastUpdated: time.Now(),
-		ImageIDs:    nil,
+		Version:     0,
+		GroupID:     nil,
+		SourceID:    "",
 		TextID:      "",
+		ImageIDs:    nil,
 		WithContent: true,
 		Source:      item,
 		Text:        model.File{}, //nolint:exhaustruct

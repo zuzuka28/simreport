@@ -20,19 +20,17 @@ import (
 	server2 "simrep/api/nats/server"
 	"simrep/api/rest/server"
 	analyze2 "simrep/api/rest/server/handler/analyze"
-	anysave3 "simrep/api/rest/server/handler/anysave"
 	document3 "simrep/api/rest/server/handler/document"
 	"simrep/internal/config"
 	"simrep/internal/model"
 	"simrep/internal/repository/analyzehistory"
-	"simrep/internal/repository/anysave"
 	document2 "simrep/internal/repository/document"
 	"simrep/internal/repository/documentstatus"
+	"simrep/internal/repository/filestorage"
 	"simrep/internal/repository/fulltextindexclient"
 	fulltextindexclient2 "simrep/internal/repository/semanticindexclient"
 	"simrep/internal/repository/shingleindexclient"
 	"simrep/internal/service/analyze"
-	anysave2 "simrep/internal/service/anysave"
 	"simrep/internal/service/document"
 	"simrep/internal/service/documentparser"
 	"simrep/internal/service/documentpipeline"
@@ -81,6 +79,11 @@ var (
 	_wireValue = []jetstream.JetStreamOpt(nil)
 )
 
+func InitFilestorageRepository(client *minio.Client, configConfig *config.Config) (*filestorage.Repository, error) {
+	repository := filestorage.NewRepository(client)
+	return repository, nil
+}
+
 func InitShingleIndexRepository(conn *nats.Conn) (*shingleindexclient.Repository, error) {
 	repository := shingleindexclient.NewRepository(conn)
 	return repository, nil
@@ -109,11 +112,6 @@ func InitSemanticIndexRepository(conn *nats.Conn) (*fulltextindexclient2.Reposit
 func InitSemanticIndexService(repository *fulltextindexclient2.Repository) (*fulltextindex2.Service, error) {
 	service := fulltextindex2.NewService(repository)
 	return service, nil
-}
-
-func InitDocumentFileRepository(client *minio.Client, configConfig *config.Config) (*anysave.Repository, error) {
-	repository := anysave.NewRepository(client)
-	return repository, nil
 }
 
 func InitDocumentRepository(client *elasticsearch.Client, configConfig *config.Config) (*document2.Repository, error) {
@@ -154,38 +152,23 @@ func InitAnalyzeService(configConfig *config.Config, service *shingleindex.Servi
 	return analyzeService, nil
 }
 
-func InitAnysaveService(client *minio.Client, configConfig *config.Config) (*anysave2.Service, error) {
-	opts := ProvideAnysaveServiceOpts()
-	repository, err := InitDocumentFileRepository(client, configConfig)
-	if err != nil {
-		return nil, err
-	}
-	service := anysave2.NewService(opts, repository)
-	return service, nil
-}
-
 func InitDocumentParserService(client *tikaclient.Client) (*documentparser.Service, error) {
 	service := documentparser.NewService(client)
 	return service, nil
 }
 
-func InitDocumentService(configConfig *config.Config, client *tikaclient.Client, service *anysave2.Service, repository *document2.Repository) (*document.Service, error) {
+func InitDocumentService(configConfig *config.Config, client *tikaclient.Client, repository *filestorage.Repository, documentRepository *document2.Repository) (*document.Service, error) {
 	opts := ProvideDocumentServiceOpts()
-	documentparserService, err := InitDocumentParserService(client)
+	service, err := InitDocumentParserService(client)
 	if err != nil {
 		return nil, err
 	}
-	documentService := document.NewService(opts, repository, service, documentparserService)
+	documentService := document.NewService(opts, documentRepository, repository, service)
 	return documentService, nil
 }
 
 func InitDocumentHandler(service *document.Service) *document3.Handler {
 	handler := document3.NewHandler(service)
-	return handler
-}
-
-func InitAnysaveHandler(service *documentstatus2.Service, anysaveService *anysave2.Service) *anysave3.Handler {
-	handler := anysave3.NewHandler(anysaveService, service)
 	return handler
 }
 
@@ -208,7 +191,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	service, err := InitAnysaveService(minioClient, configConfig)
+	repository, err := InitFilestorageRepository(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -216,15 +199,15 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitDocumentRepository(elasticsearchClient, configConfig)
+	documentRepository, err := InitDocumentRepository(elasticsearchClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(configConfig, client, service, repository)
+	service, err := InitDocumentService(configConfig, client, repository, documentRepository)
 	if err != nil {
 		return nil, err
 	}
-	handler := InitDocumentHandler(documentService)
+	handler := InitDocumentHandler(service)
 	conn, err := ProvideNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
@@ -233,7 +216,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	shingleindexService, err := InitShingleIndexService(shingleindexclientRepository, documentService)
+	shingleindexService, err := InitShingleIndexService(shingleindexclientRepository, service)
 	if err != nil {
 		return nil, err
 	}
@@ -257,30 +240,16 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, documentService, service2, analyzehistoryRepository)
+	analyzeService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, service, service2, analyzehistoryRepository)
 	if err != nil {
 		return nil, err
 	}
 	analyzeHandler := InitAnalyzeHandler(analyzeService)
-	jetStream, err := InitNatsJetstream(conn)
-	if err != nil {
-		return nil, err
-	}
-	documentstatusRepository, err := InitDocumentStatusRepository(contextContext, jetStream)
-	if err != nil {
-		return nil, err
-	}
-	documentstatusService, err := InitDocumentStatusService(documentstatusRepository)
-	if err != nil {
-		return nil, err
-	}
-	anysaveHandler := InitAnysaveHandler(documentstatusService, service)
 	opts := server.Opts{
 		Port:            int2,
 		Spec:            v,
 		DocumentHandler: handler,
 		AnalyzeHandler:  analyzeHandler,
-		FileHandler:     anysaveHandler,
 	}
 	serverServer, err := server.New(opts)
 	if err != nil {
@@ -289,8 +258,8 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	return serverServer, nil
 }
 
-func InitFileSavedHandler(service *document.Service, anysaveService *anysave2.Service) (*filesaved.Handler, error) {
-	handler := filesaved.NewHandler(anysaveService, service)
+func InitFileSavedHandler(service *document.Service, repository *filestorage.Repository) (*filesaved.Handler, error) {
+	handler := filesaved.NewHandler(repository, service)
 	return handler, nil
 }
 
@@ -312,7 +281,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	service, err := InitAnysaveService(minioClient, configConfig)
+	repository, err := InitFilestorageRepository(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -320,15 +289,15 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitDocumentRepository(elasticsearchClient, configConfig)
+	documentRepository, err := InitDocumentRepository(elasticsearchClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(configConfig, client, service, repository)
+	service, err := InitDocumentService(configConfig, client, repository, documentRepository)
 	if err != nil {
 		return nil, err
 	}
-	handler := InitDocumentNatsHandler(documentService)
+	handler := InitDocumentNatsHandler(service)
 	serverServer := server2.NewServer(conn, handler)
 	return serverServer, nil
 }
@@ -362,7 +331,7 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	anysaveService, err := InitAnysaveService(minioClient, configConfig)
+	filestorageRepository, err := InitFilestorageRepository(minioClient, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -374,11 +343,11 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	documentService, err := InitDocumentService(configConfig, client, anysaveService, documentRepository)
+	documentService, err := InitDocumentService(configConfig, client, filestorageRepository, documentRepository)
 	if err != nil {
 		return nil, err
 	}
-	handler, err := InitFileSavedHandler(documentService, anysaveService)
+	handler, err := InitFileSavedHandler(documentService, filestorageRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -495,10 +464,6 @@ func ProvideDocumentStatusJetstreamStream(
 
 func ProvideAnalyzeServiceOpts() analyze.Opts {
 	return analyze.Opts{}
-}
-
-func ProvideAnysaveServiceOpts() anysave2.Opts {
-	return anysave2.Opts{}
 }
 
 func ProvideDocumentServiceOpts() document.Opts {

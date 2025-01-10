@@ -5,44 +5,6 @@ info:
   version: 1.5.0
 
 paths:
-  /document/upload:
-    post:
-      summary: Загрузка документа
-      description: Загружает документ для дальнейшего анализа на сходство.
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              $ref: "#/components/schemas/UploadRequest"
-      responses:
-        "200":
-          $ref: "#/components/responses/UploadSuccess"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-
-  /document/{document_id}/download:
-    get:
-      summary: Скачать документ
-      description: Позволяет скачать загруженный документ по его идентификатору.
-      parameters:
-        - $ref: "#/components/parameters/DocumentId"
-      responses:
-        "200":
-          description: Успешная загрузка документа
-          headers:
-            Content-Disposition:
-              schema:
-                type: string
-                example: attachment; filename="example.docx"
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
-        "404":
-          $ref: "#/components/responses/DocumentNotFound"
-
   /document/search:
     post:
       summary: Поиск документов по имени
@@ -95,14 +57,6 @@ paths:
 
 components:
   schemas:
-    UploadRequest:
-      type: object
-      properties:
-        document:
-          type: string
-          format: binary
-          description: Документ для загрузки
-
     SearchRequest:
       type: object
       properties:
@@ -194,17 +148,6 @@ components:
             $ref: "#/components/schemas/AnalyzedDocumentMatch"
 
   responses:
-    UploadSuccess:
-      description: Документ успешно загружен
-      content:
-        application/json:
-          schema:
-            type: object
-            properties:
-              documentID:
-                type: string
-                description: Уникальный идентификатор загруженного документа
-
     SearchResult:
       description: Результаты поиска документов
       content:
