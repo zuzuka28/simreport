@@ -1,0 +1,8 @@
+go 1.23.2
+
+use (
+	./lib
+	./prj/anysave
+	./prj/document
+	./prj/fulltextindex
+)
