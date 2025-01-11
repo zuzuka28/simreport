@@ -13,7 +13,7 @@ import (
 	fulltextindexrepo "fulltextindex/internal/repository/fulltextindex"
 	documentsrv "fulltextindex/internal/service/document"
 	fulltextindexsrv "fulltextindex/internal/service/fulltextindex"
-	"lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/elasticutil"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/google/wire"

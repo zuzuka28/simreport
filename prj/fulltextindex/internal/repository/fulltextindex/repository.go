@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"fulltextindex/internal/model"
-	"lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/elasticutil"
 
 	"github.com/elastic/go-elasticsearch/v8"
 )

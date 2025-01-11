@@ -19,7 +19,7 @@ import (
 	fulltextindex2 "fulltextindex/internal/service/fulltextindex"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/nats-io/nats.go"
-	"lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/elasticutil"
 )
 
 // Injectors from wire.go:

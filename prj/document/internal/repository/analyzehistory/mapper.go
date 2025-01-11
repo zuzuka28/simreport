@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"document/internal/model"
-	"lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"time"
 )
 

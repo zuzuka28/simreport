@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"document/internal/model"
-	"lib/sequencematcher"
+	"github.com/zuzuka28/simreport/lib/sequencematcher"
 	"sort"
 	"strings"
 	"sync"

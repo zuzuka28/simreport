@@ -31,9 +31,9 @@ import (
 	fulltextindexsrv "document/internal/service/fulltextindex"
 	semanticindexsrv "document/internal/service/semanticindex"
 	shingleindexsrv "document/internal/service/shingleindex"
-	"lib/elasticutil"
-	"lib/minioutil"
-	"lib/tikaclient"
+	"github.com/zuzuka28/simreport/lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/minioutil"
+	"github.com/zuzuka28/simreport/lib/tikaclient"
 	"sync"
 
 	"github.com/elastic/go-elasticsearch/v8"

@@ -1,6 +1,6 @@
 module anysave
 
-go 1.22.5
+go 1.23.2
 
 require (
 	github.com/getkin/kin-openapi v0.124.0
@@ -13,6 +13,7 @@ require (
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/rs/cors v1.11.1
 	github.com/urfave/cli/v2 v2.27.4
+	github.com/zuzuka28/simreport/lib v0.0.0-20250111110310-c2b67e053f97
 	golang.org/x/sync v0.10.0
 )
 

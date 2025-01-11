@@ -20,7 +20,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"io"
-	"lib/minioutil"
+	"github.com/zuzuka28/simreport/lib/minioutil"
 	"os"
 	"sync"
 )

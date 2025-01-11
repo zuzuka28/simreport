@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"time"
 )
 

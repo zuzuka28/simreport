@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 	"document/internal/model"
-	"lib/tikaclient"
+	"github.com/zuzuka28/simreport/lib/tikaclient"
 	"time"
 
 	"golang.org/x/sync/errgroup"

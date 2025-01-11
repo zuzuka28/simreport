@@ -10,7 +10,7 @@ import (
 	documentstatusrepo "anysave/internal/repository/documentstatus"
 	anysavesrv "anysave/internal/service/anysave"
 	documentstatussrv "anysave/internal/service/documentstatus"
-	"lib/minioutil"
+	"github.com/zuzuka28/simreport/lib/minioutil"
 	"context"
 	"fmt"
 	"io"

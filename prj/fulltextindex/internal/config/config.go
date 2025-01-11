@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 	"fulltextindex/internal/repository/fulltextindex"
-	"lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/elasticutil"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )

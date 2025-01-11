@@ -2,7 +2,7 @@ package config
 
 import (
 	"fmt"
-	"lib/minioutil"
+	"github.com/zuzuka28/simreport/lib/minioutil"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )
