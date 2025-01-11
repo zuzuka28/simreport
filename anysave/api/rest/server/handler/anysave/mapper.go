@@ -1,6 +1,8 @@
 package anysave
 
 import (
+	openapi "anysave/api/rest/gen"
+	"anysave/internal/model"
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
@@ -8,8 +10,6 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
-	openapi "anysave/api/rest/gen"
-	"anysave/internal/model"
 	"time"
 )
 
@@ -19,7 +19,7 @@ var (
 )
 
 func mapUploadRequestToCommand(
-	in openapi.PostDocumentUploadRequestObject,
+	in openapi.PostUploadRequestObject,
 ) (model.FileSaveCommand, error) {
 	file, err := fileFromMultipart(in.Body, "document")
 	if err != nil {
@@ -93,8 +93,8 @@ func mapPartToFile(in *multipart.Part) (*model.File, error) {
 
 func mapUploadCommandToResponse(
 	cmd model.FileSaveCommand,
-) openapi.PostDocumentUpload200JSONResponse {
-	return openapi.PostDocumentUpload200JSONResponse{
+) openapi.PostUpload200JSONResponse {
+	return openapi.PostUpload200JSONResponse{
 		UploadSuccessJSONResponse: openapi.UploadSuccessJSONResponse(
 			openapi.UploadSuccess{
 				DocumentID: &cmd.Item.Sha256,
@@ -104,7 +104,7 @@ func mapUploadCommandToResponse(
 }
 
 func mapDocumentFileRequestToQuery(
-	in openapi.GetDocumentDocumentIdDownloadRequestObject,
+	in openapi.GetDocumentIdDownloadRequestObject,
 ) model.FileQuery {
 	return model.FileQuery{
 		ID: in.DocumentId,
@@ -113,10 +113,10 @@ func mapDocumentFileRequestToQuery(
 
 func mapFileToDownloadResponse(
 	in model.File,
-) openapi.GetDocumentDocumentIdDownload200ApplicationoctetStreamResponse {
-	return openapi.GetDocumentDocumentIdDownload200ApplicationoctetStreamResponse{
+) openapi.GetDocumentIdDownload200ApplicationoctetStreamResponse {
+	return openapi.GetDocumentIdDownload200ApplicationoctetStreamResponse{
 		Body: bytes.NewReader(in.Content),
-		Headers: openapi.GetDocumentDocumentIdDownload200ResponseHeaders{
+		Headers: openapi.GetDocumentIdDownload200ResponseHeaders{
 			ContentDisposition: fmt.Sprintf(`attachment; filename="%s"`, in.Name),
 		},
 		ContentLength: int64(len(in.Content)),

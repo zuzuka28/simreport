@@ -1,10 +1,10 @@
 package anysave
 
 import (
-	"context"
-	"fmt"
 	openapi "anysave/api/rest/gen"
 	"anysave/internal/model"
+	"context"
+	"fmt"
 )
 
 type Handler struct {
@@ -19,13 +19,13 @@ func NewHandler(s Service, ss StatusService) *Handler {
 	}
 }
 
-func (h *Handler) PostDocumentUpload(
+func (h *Handler) PostUpload(
 	ctx context.Context,
-	params openapi.PostDocumentUploadRequestObject,
-) (openapi.PostDocumentUploadResponseObject, error) {
+	params openapi.PostUploadRequestObject,
+) (openapi.PostUploadResponseObject, error) {
 	cmd, err := mapUploadRequestToCommand(params)
 	if err != nil {
-		return openapi.PostDocumentUpload400JSONResponse{}, nil
+		return openapi.PostUpload400JSONResponse{}, nil
 	}
 
 	if err := h.s.Save(ctx, cmd); err != nil {
@@ -42,10 +42,10 @@ func (h *Handler) PostDocumentUpload(
 	return mapUploadCommandToResponse(cmd), nil
 }
 
-func (h *Handler) GetDocumentDocumentIdDownload(
+func (h *Handler) GetDocumentIdDownload(
 	ctx context.Context,
-	params openapi.GetDocumentDocumentIdDownloadRequestObject,
-) (openapi.GetDocumentDocumentIdDownloadResponseObject, error) {
+	params openapi.GetDocumentIdDownloadRequestObject,
+) (openapi.GetDocumentIdDownloadResponseObject, error) {
 	query := mapDocumentFileRequestToQuery(params)
 
 	documentFile, err := h.s.Fetch(ctx, query)

@@ -5,7 +5,7 @@ info:
   version: 1.5.0
 
 paths:
-  /document/upload:
+  /upload:
     post:
       summary: Загрузка документа
       description: Загружает документ для дальнейшего анализа на сходство.
@@ -21,7 +21,7 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
-  /document/{document_id}/download:
+  /{document_id}/download:
     get:
       summary: Скачать документ
       description: Позволяет скачать загруженный документ по его идентификатору.

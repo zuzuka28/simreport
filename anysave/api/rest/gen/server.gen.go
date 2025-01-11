@@ -42,17 +42,17 @@ type UploadSuccess struct {
 	DocumentID *string `json:"documentID,omitempty"`
 }
 
-// PostDocumentUploadMultipartRequestBody defines body for PostDocumentUpload for multipart/form-data ContentType.
-type PostDocumentUploadMultipartRequestBody = UploadRequest
+// PostUploadMultipartRequestBody defines body for PostUpload for multipart/form-data ContentType.
+type PostUploadMultipartRequestBody = UploadRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Загрузка документа
-	// (POST /document/upload)
-	PostDocumentUpload(w http.ResponseWriter, r *http.Request)
+	// (POST /upload)
+	PostUpload(w http.ResponseWriter, r *http.Request)
 	// Скачать документ
-	// (GET /document/{document_id}/download)
-	GetDocumentDocumentIdDownload(w http.ResponseWriter, r *http.Request, documentId DocumentId)
+	// (GET /{document_id}/download)
+	GetDocumentIdDownload(w http.ResponseWriter, r *http.Request, documentId DocumentId)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -64,11 +64,11 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(http.Handler) http.Handler
 
-// PostDocumentUpload operation middleware
-func (siw *ServerInterfaceWrapper) PostDocumentUpload(w http.ResponseWriter, r *http.Request) {
+// PostUpload operation middleware
+func (siw *ServerInterfaceWrapper) PostUpload(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostDocumentUpload(w, r)
+		siw.Handler.PostUpload(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -78,8 +78,8 @@ func (siw *ServerInterfaceWrapper) PostDocumentUpload(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
-// GetDocumentDocumentIdDownload operation middleware
-func (siw *ServerInterfaceWrapper) GetDocumentDocumentIdDownload(w http.ResponseWriter, r *http.Request) {
+// GetDocumentIdDownload operation middleware
+func (siw *ServerInterfaceWrapper) GetDocumentIdDownload(w http.ResponseWriter, r *http.Request) {
 
 	var err error
 
@@ -93,7 +93,7 @@ func (siw *ServerInterfaceWrapper) GetDocumentDocumentIdDownload(w http.Response
 	}
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetDocumentDocumentIdDownload(w, r, documentId)
+		siw.Handler.GetDocumentIdDownload(w, r, documentId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -216,9 +216,9 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	r.HandleFunc(options.BaseURL+"/document/upload", wrapper.PostDocumentUpload).Methods("POST")
+	r.HandleFunc(options.BaseURL+"/upload", wrapper.PostUpload).Methods("POST")
 
-	r.HandleFunc(options.BaseURL+"/document/{document_id}/download", wrapper.GetDocumentDocumentIdDownload).Methods("GET")
+	r.HandleFunc(options.BaseURL+"/{document_id}/download", wrapper.GetDocumentIdDownload).Methods("GET")
 
 	return r
 }
@@ -236,51 +236,51 @@ type UploadSuccessJSONResponse struct {
 	DocumentID *string `json:"documentID,omitempty"`
 }
 
-type PostDocumentUploadRequestObject struct {
+type PostUploadRequestObject struct {
 	Body *multipart.Reader
 }
 
-type PostDocumentUploadResponseObject interface {
-	VisitPostDocumentUploadResponse(w http.ResponseWriter) error
+type PostUploadResponseObject interface {
+	VisitPostUploadResponse(w http.ResponseWriter) error
 }
 
-type PostDocumentUpload200JSONResponse struct{ UploadSuccessJSONResponse }
+type PostUpload200JSONResponse struct{ UploadSuccessJSONResponse }
 
-func (response PostDocumentUpload200JSONResponse) VisitPostDocumentUploadResponse(w http.ResponseWriter) error {
+func (response PostUpload200JSONResponse) VisitPostUploadResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostDocumentUpload400JSONResponse struct{ BadRequestJSONResponse }
+type PostUpload400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response PostDocumentUpload400JSONResponse) VisitPostDocumentUploadResponse(w http.ResponseWriter) error {
+func (response PostUpload400JSONResponse) VisitPostUploadResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type GetDocumentDocumentIdDownloadRequestObject struct {
+type GetDocumentIdDownloadRequestObject struct {
 	DocumentId DocumentId `json:"document_id"`
 }
 
-type GetDocumentDocumentIdDownloadResponseObject interface {
-	VisitGetDocumentDocumentIdDownloadResponse(w http.ResponseWriter) error
+type GetDocumentIdDownloadResponseObject interface {
+	VisitGetDocumentIdDownloadResponse(w http.ResponseWriter) error
 }
 
-type GetDocumentDocumentIdDownload200ResponseHeaders struct {
+type GetDocumentIdDownload200ResponseHeaders struct {
 	ContentDisposition string
 }
 
-type GetDocumentDocumentIdDownload200ApplicationoctetStreamResponse struct {
+type GetDocumentIdDownload200ApplicationoctetStreamResponse struct {
 	Body          io.Reader
-	Headers       GetDocumentDocumentIdDownload200ResponseHeaders
+	Headers       GetDocumentIdDownload200ResponseHeaders
 	ContentLength int64
 }
 
-func (response GetDocumentDocumentIdDownload200ApplicationoctetStreamResponse) VisitGetDocumentDocumentIdDownloadResponse(w http.ResponseWriter) error {
+func (response GetDocumentIdDownload200ApplicationoctetStreamResponse) VisitGetDocumentIdDownloadResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/octet-stream")
 	if response.ContentLength != 0 {
 		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
@@ -295,9 +295,9 @@ func (response GetDocumentDocumentIdDownload200ApplicationoctetStreamResponse) V
 	return err
 }
 
-type GetDocumentDocumentIdDownload404JSONResponse struct{ DocumentNotFoundJSONResponse }
+type GetDocumentIdDownload404JSONResponse struct{ DocumentNotFoundJSONResponse }
 
-func (response GetDocumentDocumentIdDownload404JSONResponse) VisitGetDocumentDocumentIdDownloadResponse(w http.ResponseWriter) error {
+func (response GetDocumentIdDownload404JSONResponse) VisitGetDocumentIdDownloadResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(404)
 
@@ -307,11 +307,11 @@ func (response GetDocumentDocumentIdDownload404JSONResponse) VisitGetDocumentDoc
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 	// Загрузка документа
-	// (POST /document/upload)
-	PostDocumentUpload(ctx context.Context, request PostDocumentUploadRequestObject) (PostDocumentUploadResponseObject, error)
+	// (POST /upload)
+	PostUpload(ctx context.Context, request PostUploadRequestObject) (PostUploadResponseObject, error)
 	// Скачать документ
-	// (GET /document/{document_id}/download)
-	GetDocumentDocumentIdDownload(ctx context.Context, request GetDocumentDocumentIdDownloadRequestObject) (GetDocumentDocumentIdDownloadResponseObject, error)
+	// (GET /{document_id}/download)
+	GetDocumentIdDownload(ctx context.Context, request GetDocumentIdDownloadRequestObject) (GetDocumentIdDownloadResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -343,9 +343,9 @@ type strictHandler struct {
 	options     StrictHTTPServerOptions
 }
 
-// PostDocumentUpload operation middleware
-func (sh *strictHandler) PostDocumentUpload(w http.ResponseWriter, r *http.Request) {
-	var request PostDocumentUploadRequestObject
+// PostUpload operation middleware
+func (sh *strictHandler) PostUpload(w http.ResponseWriter, r *http.Request) {
+	var request PostUploadRequestObject
 
 	if reader, err := r.MultipartReader(); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
@@ -355,18 +355,18 @@ func (sh *strictHandler) PostDocumentUpload(w http.ResponseWriter, r *http.Reque
 	}
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostDocumentUpload(ctx, request.(PostDocumentUploadRequestObject))
+		return sh.ssi.PostUpload(ctx, request.(PostUploadRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostDocumentUpload")
+		handler = middleware(handler, "PostUpload")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostDocumentUploadResponseObject); ok {
-		if err := validResponse.VisitPostDocumentUploadResponse(w); err != nil {
+	} else if validResponse, ok := response.(PostUploadResponseObject); ok {
+		if err := validResponse.VisitPostUploadResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -374,25 +374,25 @@ func (sh *strictHandler) PostDocumentUpload(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// GetDocumentDocumentIdDownload operation middleware
-func (sh *strictHandler) GetDocumentDocumentIdDownload(w http.ResponseWriter, r *http.Request, documentId DocumentId) {
-	var request GetDocumentDocumentIdDownloadRequestObject
+// GetDocumentIdDownload operation middleware
+func (sh *strictHandler) GetDocumentIdDownload(w http.ResponseWriter, r *http.Request, documentId DocumentId) {
+	var request GetDocumentIdDownloadRequestObject
 
 	request.DocumentId = documentId
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetDocumentDocumentIdDownload(ctx, request.(GetDocumentDocumentIdDownloadRequestObject))
+		return sh.ssi.GetDocumentIdDownload(ctx, request.(GetDocumentIdDownloadRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetDocumentDocumentIdDownload")
+		handler = middleware(handler, "GetDocumentIdDownload")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetDocumentDocumentIdDownloadResponseObject); ok {
-		if err := validResponse.VisitGetDocumentDocumentIdDownloadResponse(w); err != nil {
+	} else if validResponse, ok := response.(GetDocumentIdDownloadResponseObject); ok {
+		if err := validResponse.VisitGetDocumentIdDownloadResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

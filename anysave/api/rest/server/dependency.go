@@ -7,13 +7,13 @@ import (
 
 type (
 	FileHandler interface {
-		PostDocumentUpload(
+		PostUpload(
 			ctx context.Context,
-			request openapi.PostDocumentUploadRequestObject,
-		) (openapi.PostDocumentUploadResponseObject, error)
-		GetDocumentDocumentIdDownload(
+			request openapi.PostUploadRequestObject,
+		) (openapi.PostUploadResponseObject, error)
+		GetDocumentIdDownload(
 			ctx context.Context,
-			request openapi.GetDocumentDocumentIdDownloadRequestObject,
-		) (openapi.GetDocumentDocumentIdDownloadResponseObject, error)
+			request openapi.GetDocumentIdDownloadRequestObject,
+		) (openapi.GetDocumentIdDownloadResponseObject, error)
 	}
 )
