@@ -1,4 +1,4 @@
-module lib
+module github.com/zuzuka28/simreport/lib
 
 go 1.23.2
 
