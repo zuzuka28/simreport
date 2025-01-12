@@ -4,6 +4,7 @@
 
 
 helm repo add nats https://nats-io.github.io/k8s/helm/charts/
+helm repo update
 
 cat <<EOF | helm upgrade --install -n nats --create-namespace nats nats/nats -f -
     config:
