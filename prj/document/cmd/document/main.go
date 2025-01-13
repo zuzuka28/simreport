@@ -25,6 +25,12 @@ func main() {
 				Usage:  "run document rest api",
 				Action: runRestServer,
 			},
+
+			{
+				Name:   "run-intapi",
+				Usage:  "run document nats api",
+				Action: runNatsServer,
+			},
 			{
 				Name:   "run-async-processing",
 				Usage:  "run document parse api",
