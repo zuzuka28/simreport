@@ -10,5 +10,5 @@ WORKDIR /app
 
 COPY . .
 
-RUN pip install --upgrade pip \
-    && pip install --no-cache-dir -r requirements.txt
+RUN pip install -U pip setuptools wheel \
+    && BLIS_ARCH="generic" pip install --no-cache-dir -r requirements.txt
