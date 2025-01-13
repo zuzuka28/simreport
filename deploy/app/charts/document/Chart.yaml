@@ -4,3 +4,13 @@ description: A Helm chart for Kubernetes
 type: application
 version: 0.1.0
 appVersion: "0.0.1"
+dependencies:
+  - name: document-api-nats
+    version: "0.0.1"
+    repository: "file://document-api-nats"
+  - name: document-api-rest
+    version: "0.0.1"
+    repository: "file://document-api-rest"
+  - name: document-processing
+    version: "0.0.1"
+    repository: "file://document-processing"
