@@ -1,0 +1,1 @@
+- [ ] fix semanticindex `blis` package build (should be not generic arch)
