@@ -1,0 +1,63 @@
+global:
+  env: dev # change to use another config
+
+replicaCount: 1
+
+image:
+  repository: zuzuka28/anysave
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+podLabels: {}
+
+service:
+  type: ClusterIP
+  port: 80
+
+httpRoute:
+  enabled: true
+  annotations: {}
+  parentRefs:
+    - name: gateway
+      sectionName: http
+      # namespace: default
+  hostnames:
+    - anysave.local
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+config:
+  dev: |
+    # check config example in prj/anysave
