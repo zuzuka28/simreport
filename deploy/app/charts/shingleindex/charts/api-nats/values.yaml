@@ -4,9 +4,9 @@ global:
 replicaCount: 1
 
 image:
-  repository: zuzuka28/anysave
+  repository: zuzuka28/shingleindex
   pullPolicy: IfNotPresent
-  tag: "2025-01-13_15-30_30f3538c18ff389d99726d0c632567c85eb315df"
+  tag: "2025-01-13_15-33_30f3538c18ff389d99726d0c632567c85eb315df"
 
 imagePullSecrets: []
 
@@ -15,25 +15,6 @@ fullnameOverride: ""
 
 podAnnotations: {}
 podLabels: {}
-
-service:
-  type: ClusterIP
-  port: 80
-
-httpRoute:
-  enabled: true
-  annotations: {}
-  parentRefs:
-    - name: gateway
-      sectionName: http
-      # namespace: default
-  hostnames:
-    - anysave.local
-  rules:
-    - matches:
-        - path:
-            type: PathPrefix
-            value: /
 
 resources:
   limits:
@@ -59,5 +40,6 @@ tolerations: []
 affinity: {}
 
 config:
-  dev: |
-    # check config example in prj/anysave
+  dev:
+    ES_HOST: ""
+    NATS_URL: ""
