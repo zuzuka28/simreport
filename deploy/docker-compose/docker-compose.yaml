@@ -114,9 +114,17 @@ services:
     ports:
       - "9998:9998"
 
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_vol:/data
+
 volumes:
   elastic_vol:
   minio_vol:
   nats1_vol:
   nats2_vol:
   nats3_vol:
+  redis_vol:
