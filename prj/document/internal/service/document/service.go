@@ -2,8 +2,8 @@ package document
 
 import (
 	"context"
-	"fmt"
 	"document/internal/model"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -149,7 +149,9 @@ func (*Service) prepareSaveCommand(
 	cmd model.DocumentSaveCommand,
 ) model.DocumentSaveCommand {
 	if cmd.Item.ID == "" {
-		cmd.Item.ID = genID()
+		// TODO: use uuid to support file reuploading and history
+		// cmd.Item.ID = genID()
+		cmd.Item.ID = cmd.Item.Source.Sha256
 	}
 
 	if cmd.Item.Source.Sha256 != "" {
