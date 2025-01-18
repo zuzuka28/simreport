@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"shingleindex/internal/provider"
 	"log/slog"
 	"os"
 	"os/signal"
+	"shingleindex/internal/provider"
 	"syscall"
 
 	"github.com/urfave/cli/v2"
@@ -34,7 +34,7 @@ func runApp(c *cli.Context) error {
 		eg, egCtx := errgroup.WithContext(c.Context)
 
 		eg.Go(func() error {
-			return processing.Start(c.Context)
+			return processing.Start(egCtx)
 		})
 
 		eg.Go(func() error {

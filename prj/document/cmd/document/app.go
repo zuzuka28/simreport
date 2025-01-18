@@ -1,11 +1,11 @@
 package main
 
 import (
+	"document/internal/provider"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
-	"document/internal/provider"
 	"syscall"
 
 	"github.com/urfave/cli/v2"
@@ -43,7 +43,7 @@ func runApp(c *cli.Context) error {
 		})
 
 		eg.Go(func() error {
-			return processing.Start(c.Context)
+			return processing.Start(egCtx)
 		})
 
 		eg.Go(func() error {

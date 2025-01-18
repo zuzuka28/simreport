@@ -34,7 +34,7 @@ func runApp(c *cli.Context) error {
 		eg, egCtx := errgroup.WithContext(c.Context)
 
 		eg.Go(func() error {
-			return processing.Start(c.Context)
+			return processing.Start(egCtx)
 		})
 
 		eg.Go(func() error {

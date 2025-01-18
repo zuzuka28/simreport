@@ -25,7 +25,7 @@ func NewServer(
 
 func (s *Server) Start(ctx context.Context) error {
 	docsrv, err := micro.AddService(s.conn, micro.Config{ //nolint:exhaustruct
-		Name:    "similarity.shingleindex",
+		Name:    "similarity_shingleindex",
 		Version: "0.0.1",
 	})
 	if err != nil {
