@@ -12,7 +12,7 @@ import (
 
 var errInternal = errors.New("internal error")
 
-func parseSearchSimilarResponse(in []byte) (model.Document, error) {
+func parseFetchDocumentResponse(in []byte) (model.Document, error) {
 	if len(in) == 0 {
 		return model.Document{}, nil
 	}

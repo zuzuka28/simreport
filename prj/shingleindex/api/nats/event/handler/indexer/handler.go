@@ -46,4 +46,6 @@ func (h *Handler) Save(msg *nats.Msg) {
 		_ = msg.Nak()
 		return
 	}
+
+	_ = msg.AckSync()
 }

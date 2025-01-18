@@ -9,16 +9,16 @@ import (
 )
 
 type Repository struct {
-	conn           *nats.Conn
-	group          string
-	endpointSearch string
+	conn         *nats.Conn
+	group        string
+	endpointByID string
 }
 
 func NewRepository(conn *nats.Conn) *Repository {
 	return &Repository{
-		conn:           conn,
-		group:          "document.byid",
-		endpointSearch: "search",
+		conn:         conn,
+		group:        "document",
+		endpointByID: "byid",
 	}
 }
 
@@ -28,7 +28,7 @@ func (s *Repository) Fetch(
 ) (model.Document, error) {
 	reqbody := []byte(query.ID)
 
-	resp, err := s.conn.RequestWithContext(ctx, s.endpoint(s.endpointSearch), reqbody)
+	resp, err := s.conn.RequestWithContext(ctx, s.endpoint(s.endpointByID), reqbody)
 	if err != nil {
 		return model.Document{}, fmt.Errorf("do request: %w", err)
 	}
@@ -37,7 +37,7 @@ func (s *Repository) Fetch(
 		return model.Document{}, err
 	}
 
-	res, err := parseSearchSimilarResponse(resp.Data)
+	res, err := parseFetchDocumentResponse(resp.Data)
 	if err != nil {
 		return model.Document{}, fmt.Errorf("parse fetch document: %w", err)
 	}
