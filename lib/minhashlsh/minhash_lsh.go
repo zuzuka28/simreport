@@ -58,7 +58,7 @@ func (l *MinhashLSH) Insert(
 	return nil
 }
 
-func (l *MinhashLSH) Fetch(
+func (l *MinhashLSH) Query(
 	ctx context.Context,
 	mh *minhash.MinHash,
 ) ([]string, error) {
@@ -96,11 +96,4 @@ func uintsToBytes(in []uint64) []byte {
 	}
 
 	return buf.Bytes()
-}
-
-func (l *MinhashLSH) Query(
-	ctx context.Context,
-	mh *minhash.MinHash,
-) ([]string, error) {
-	return nil, nil
 }

@@ -43,7 +43,7 @@ func TestMinhashLSH(t *testing.T) {
 	err = lsh.Insert(ctx, "key2", mh2)
 	require.NoError(t, err)
 
-	results, err := lsh.Fetch(ctx, mh1)
+	results, err := lsh.Query(ctx, mh1)
 	require.NoError(t, err)
 	require.Contains(t, results, "key1")
 	require.NotContains(t, results, "key2")
@@ -51,7 +51,7 @@ func TestMinhashLSH(t *testing.T) {
 	mh3 := minhash.New(permutationsNum, hasher, seed)
 	mh3.Push([]byte("value5"))
 
-	results, err = lsh.Fetch(ctx, mh3)
+	results, err = lsh.Query(ctx, mh3)
 	require.NoError(t, err)
 	require.Empty(t, results)
 }
