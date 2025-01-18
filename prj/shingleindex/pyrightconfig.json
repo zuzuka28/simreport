@@ -1,6 +1,0 @@
-{
-    "include": [
-        "srv"
-    ],
-    "venvPath": "./venv/bin/python"
-}

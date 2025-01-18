@@ -187,10 +187,8 @@ func InitShingleIndexRepository(
 
 func InitShingleIndexService(
 	_ *shingleindexrepo.Repository,
-	_ *documentsrv.Service,
 ) (*shingleindexsrv.Service, error) {
 	panic(wire.Build(
-		wire.Bind(new(shingleindexsrv.DocumentService), new(*documentsrv.Service)),
 		wire.Bind(new(shingleindexsrv.Repository), new(*shingleindexrepo.Repository)),
 		shingleindexsrv.NewService,
 	))

@@ -5,4 +5,5 @@ use (
 	./prj/anysave
 	./prj/document
 	./prj/fulltextindex
+	./prj/shingleindex
 )

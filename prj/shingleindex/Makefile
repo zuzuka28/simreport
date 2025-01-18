@@ -1,21 +1,11 @@
-startup_env:
-	python3.11 -m venv ./.venv
-	( \
-       source ./.venv/bin/activate; \
-       pip install -r requirements.txt; \
-    )
-
-shutdown_env:
-	rm -rf ./.venv
+wire:
+	wire ./...
 
 run_api:
-	( \
-       source ./.venv/bin/activate; \
-       python3.11 -m src.service_handler; \
-    )
+	go run cmd/shingleindex/*.go --config config/config.yaml run-api
 
-run_indexer:
-	( \
-       source ./.venv/bin/activate; \
-       python3.11 -m src.indexer_handler; \
-    )
+run_async_processing:
+	go run cmd/shingleindex/*.go --config config/config.yaml run-async-processing
+
+run_app:
+	go run cmd/shingleindex/*.go --config config/config.yaml

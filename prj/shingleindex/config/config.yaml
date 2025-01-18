@@ -1,0 +1,4 @@
+port: 8000
+nats: nats://localhost:4222
+redis:
+  dsn: redis://localhost:6379

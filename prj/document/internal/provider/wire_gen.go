@@ -16,14 +16,14 @@ import (
 	"document/internal/config"
 	"document/internal/model"
 	"document/internal/repository/analyzehistory"
-	document2 "document/internal/repository/document"
+	"document/internal/repository/document"
 	"document/internal/repository/documentstatus"
 	"document/internal/repository/filestorage"
 	"document/internal/repository/fulltextindexclient"
 	fulltextindexclient2 "document/internal/repository/semanticindexclient"
 	"document/internal/repository/shingleindexclient"
 	"document/internal/service/analyze"
-	"document/internal/service/document"
+	document2 "document/internal/service/document"
 	"document/internal/service/documentparser"
 	"document/internal/service/documentpipeline"
 	"document/internal/service/documentpipeline/handler/filesaved"
@@ -36,10 +36,10 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
-	"io"
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/minioutil"
 	"github.com/zuzuka28/simreport/lib/tikaclient"
+	"io"
 	"net/http"
 	"os"
 	"sync"
@@ -89,9 +89,9 @@ func InitShingleIndexRepository(conn *nats.Conn) (*shingleindexclient.Repository
 	return repository, nil
 }
 
-func InitShingleIndexService(repository *shingleindexclient.Repository, service *document.Service) (*shingleindex.Service, error) {
-	shingleindexService := shingleindex.NewService(repository, service)
-	return shingleindexService, nil
+func InitShingleIndexService(repository *shingleindexclient.Repository) (*shingleindex.Service, error) {
+	service := shingleindex.NewService(repository)
+	return service, nil
 }
 
 func InitFulltextIndexRepository(conn *nats.Conn) (*fulltextindexclient.Repository, error) {
@@ -114,9 +114,9 @@ func InitSemanticIndexService(repository *fulltextindexclient2.Repository) (*ful
 	return service, nil
 }
 
-func InitDocumentRepository(client *elasticsearch.Client, configConfig *config.Config) (*document2.Repository, error) {
+func InitDocumentRepository(client *elasticsearch.Client, configConfig *config.Config) (*document.Repository, error) {
 	opts := configConfig.DocumentRepo
-	repository, err := document2.NewRepository(opts, client)
+	repository, err := document.NewRepository(opts, client)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func InitDocumentStatusService(repository *documentstatus.Repository) (*document
 	return service, nil
 }
 
-func InitAnalyzeService(configConfig *config.Config, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document.Service, service2 *fulltextindex2.Service, repository *analyzehistory.Repository) (*analyze.Service, error) {
+func InitAnalyzeService(configConfig *config.Config, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document2.Service, service2 *fulltextindex2.Service, repository *analyzehistory.Repository) (*analyze.Service, error) {
 	opts := ProvideAnalyzeServiceOpts()
 	analyzeService := analyze.NewService(opts, documentService, service, fulltextindexService, service2, repository)
 	return analyzeService, nil
@@ -157,17 +157,17 @@ func InitDocumentParserService(client *tikaclient.Client) (*documentparser.Servi
 	return service, nil
 }
 
-func InitDocumentService(configConfig *config.Config, client *tikaclient.Client, repository *filestorage.Repository, documentRepository *document2.Repository) (*document.Service, error) {
+func InitDocumentService(configConfig *config.Config, client *tikaclient.Client, repository *filestorage.Repository, documentRepository *document.Repository) (*document2.Service, error) {
 	opts := ProvideDocumentServiceOpts()
 	service, err := InitDocumentParserService(client)
 	if err != nil {
 		return nil, err
 	}
-	documentService := document.NewService(opts, documentRepository, repository, service)
+	documentService := document2.NewService(opts, documentRepository, repository, service)
 	return documentService, nil
 }
 
-func InitDocumentHandler(service *document.Service) *document3.Handler {
+func InitDocumentHandler(service *document2.Service) *document3.Handler {
 	handler := document3.NewHandler(service)
 	return handler
 }
@@ -216,7 +216,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	shingleindexService, err := InitShingleIndexService(shingleindexclientRepository, service)
+	shingleindexService, err := InitShingleIndexService(shingleindexclientRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -258,12 +258,12 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	return serverServer, nil
 }
 
-func InitFileSavedHandler(service *document.Service, repository *filestorage.Repository) (*filesaved.Handler, error) {
+func InitFileSavedHandler(service *document2.Service, repository *filestorage.Repository) (*filesaved.Handler, error) {
 	handler := filesaved.NewHandler(repository, service)
 	return handler, nil
 }
 
-func InitDocumentNatsHandler(service *document.Service) *document4.Handler {
+func InitDocumentNatsHandler(service *document2.Service) *document4.Handler {
 	handler := document4.NewHandler(service)
 	return handler
 }
@@ -466,8 +466,8 @@ func ProvideAnalyzeServiceOpts() analyze.Opts {
 	return analyze.Opts{}
 }
 
-func ProvideDocumentServiceOpts() document.Opts {
-	return document.Opts{}
+func ProvideDocumentServiceOpts() document2.Opts {
+	return document2.Opts{}
 }
 
 func ProvideDocumentPipelineStages(
