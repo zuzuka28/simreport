@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/document/upload": {
+    "/upload": {
         parameters: {
             query?: never;
             header?: never;
@@ -40,7 +40,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/document/{document_id}/download": {
+    "/{document_id}/download": {
         parameters: {
             query?: never;
             header?: never;

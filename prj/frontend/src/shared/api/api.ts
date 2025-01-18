@@ -2,7 +2,7 @@ import { paths } from "./api-types";
 import axios, { AxiosInstance } from "axios";
 
 export type UploadDocumentResponse =
-    paths["/document/upload"]["post"]["responses"]["200"]["content"]["application/json"];
+    paths["/upload"]["post"]["responses"]["200"]["content"]["application/json"];
 export type SearchDocumentsRequest =
     paths["/document/search"]["post"]["requestBody"]["content"]["application/json"];
 export type SearchDocumentsResponse =
@@ -19,7 +19,7 @@ export class DocumentApi {
 
     async uploadDocument(formData: FormData): Promise<UploadDocumentResponse> {
         const response = await this.axiosInstance.post<UploadDocumentResponse>(
-            "/document/upload",
+            "/upload",
             formData,
             {
                 headers: { "Content-Type": "multipart/form-data" },
