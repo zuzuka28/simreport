@@ -24,7 +24,7 @@ func (s *Service) SearchSimilar(
 ) ([]*model.DocumentSimilarMatch, error) {
 	res, err := s.r.SearchSimilar(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("search fulltext similar: %w", err)
+		return nil, fmt.Errorf("search shingle similar: %w", err)
 	}
 
 	return res, nil
