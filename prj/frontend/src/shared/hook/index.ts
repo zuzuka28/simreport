@@ -1,1 +1,2 @@
-export { useDocuments, useSimilarityCheckDocuments } from "./useDocuments";
+export { useDocuments } from "./useDocuments";
+export {  useSimilarityCheckDocuments } from "./useSimilarityCheckDocuments";

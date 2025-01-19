@@ -27,4 +27,11 @@ type (
 			request openapi.PostAnalyzeHistoryRequestObject,
 		) (openapi.PostAnalyzeHistoryResponseObject, error)
 	}
+
+	AttributeHandler interface {
+		PostAttribute(
+			ctx context.Context,
+			request openapi.PostAttributeRequestObject,
+		) (openapi.PostAttributeResponseObject, error)
+	}
 )

@@ -1,39 +1,63 @@
-.file-upload-form {
-    border: 2px dashed #ccc;
+.upload-container {
+    width: 100%;
+    margin: 50px auto;
     padding: 20px;
-    border-radius: 10px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.upload-container h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #444;
     text-align: center;
-    background: #f9f9f9;
-    transition:
-        background 0.3s,
-        border-color 0.3s;
 }
 
-.file-upload-form.drag-active {
-    border-color: #4caf50;
-    background: #f0fff4;
+.file-uploader,
+.dropdown,
+.submit-button {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.file-upload-label {
-    display: inline-block;
-    padding: 10px 20px;
+.file-uploader button,
+.submit-button button {
     background-color: #007bff;
-    color: #fff;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.file-list {
-    margin-top: 20px;
-    text-align: left;
-}
-
-.file-upload-button {
-    margin: 20px;
-    padding: 10px 20px;
-    background-color: #4caf50;
-    color: #fff;
+    color: white;
     border: none;
-    border-radius: 5px;
+    border-radius: 4px;
+    padding: 10px;
     cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.2s;
+}
+
+.file-uploader button:hover,
+.submit-button button:hover {
+    background-color: #0056b3;
+}
+
+.dropdown select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 1rem;
+    background-color: #f9f9f9;
+}
+
+.dropdown select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 4px rgba(0, 123, 255, 0.25);
+}
+
+.selected-file {
+    font-size: 0.9rem;
+    color: #555;
+    text-align: center;
 }

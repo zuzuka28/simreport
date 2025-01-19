@@ -17,35 +17,39 @@ import (
 
 // AnalyzedDocumentMatch defines model for AnalyzedDocumentMatch.
 type AnalyzedDocumentMatch struct {
-	// Highlights Список фрагментов текста, которые совпадают в документах.
-	Highlights *[]string `json:"highlights,omitempty"`
-
-	// Id Уникальный идентификатор документа.
-	Id *string `json:"id,omitempty"`
-
-	// Rate Коэффициент похожести (например, от 0 до 1).
-	Rate *float32 `json:"rate,omitempty"`
-
-	// SimilarImages Список идентификаторов похожих изображений.
+	Highlights    *[]string `json:"highlights,omitempty"`
+	Id            *string   `json:"id,omitempty"`
+	Rate          *float32  `json:"rate,omitempty"`
 	SimilarImages *[]string `json:"similarImages,omitempty"`
+}
+
+// Attribute defines model for Attribute.
+type Attribute struct {
+	Label string `json:"label"`
+	Value string `json:"value"`
+}
+
+// AttributeRequest defines model for AttributeRequest.
+type AttributeRequest struct {
+	Attribute string `json:"attribute"`
 }
 
 // DocumentSummary defines model for DocumentSummary.
 type DocumentSummary struct {
-	// Id Идентификатор документа
-	Id *string `json:"id,omitempty"`
-
-	// LastUpdated Дата обновления документа
+	GroupID     *[]string  `json:"groupID,omitempty"`
+	Id          *string    `json:"id,omitempty"`
 	LastUpdated *time.Time `json:"lastUpdated,omitempty"`
-
-	// Name Имя документа
-	Name *string `json:"name,omitempty"`
+	Name        *string    `json:"name,omitempty"`
+	ParentID    *string    `json:"parentID,omitempty"`
+	Version     *int       `json:"version,omitempty"`
 }
 
 // SearchRequest defines model for SearchRequest.
 type SearchRequest struct {
-	// Name Имя документа для поиска
-	Name *string `json:"name,omitempty"`
+	GroupID  *[]string `json:"groupID,omitempty"`
+	Name     *string   `json:"name,omitempty"`
+	ParentID *string   `json:"parentID,omitempty"`
+	Version  *string   `json:"version,omitempty"`
 }
 
 // SimilaritySearchHistory defines model for SimilaritySearchHistory.
@@ -67,21 +71,19 @@ type SimilaritySearchHistoryRequest struct {
 
 // UploadRequest defines model for UploadRequest.
 type UploadRequest struct {
-	// FileID Уникальный идентификатор файла
-	FileID string `json:"fileID"`
-
-	// GroupID Уникальный идентификатор группы
-	GroupID *string `json:"groupID,omitempty"`
-
-	// ParentID Уникальный идентификатор родительского документа
-	ParentID *string `json:"parentID,omitempty"`
-
-	// Version Версия документа
-	Version *int `json:"version,omitempty"`
+	FileID   string    `json:"fileID"`
+	GroupID  *[]string `json:"groupID,omitempty"`
+	ParentID *string   `json:"parentID,omitempty"`
+	Version  *int      `json:"version,omitempty"`
 }
 
 // DocumentId defines model for DocumentId.
 type DocumentId = string
+
+// AttributeResult defines model for AttributeResult.
+type AttributeResult struct {
+	Items *[]Attribute `json:"items,omitempty"`
+}
 
 // BadRequest defines model for BadRequest.
 type BadRequest struct {
@@ -111,12 +113,14 @@ type SimilaritySearchResult struct {
 
 // UploadSuccess defines model for UploadSuccess.
 type UploadSuccess struct {
-	// DocumentID Уникальный идентификатор загруженного документа
 	DocumentID *string `json:"documentID,omitempty"`
 }
 
 // PostAnalyzeHistoryJSONRequestBody defines body for PostAnalyzeHistory for application/json ContentType.
 type PostAnalyzeHistoryJSONRequestBody = SimilaritySearchHistoryRequest
+
+// PostAttributeJSONRequestBody defines body for PostAttribute for application/json ContentType.
+type PostAttributeJSONRequestBody = AttributeRequest
 
 // PostDocumentSearchJSONRequestBody defines body for PostDocumentSearch for application/json ContentType.
 type PostDocumentSearchJSONRequestBody = SearchRequest
@@ -126,16 +130,19 @@ type PostDocumentUploadJSONRequestBody = UploadRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	//  История поиска подожих документов
+
 	// (POST /analyze/history)
 	PostAnalyzeHistory(w http.ResponseWriter, r *http.Request)
-	// Поиск подожих документов
+
 	// (GET /analyze/{document_id}/similar)
 	GetAnalyzeDocumentIdSimilar(w http.ResponseWriter, r *http.Request, documentId DocumentId)
-	// Поиск документов по имени
+
+	// (POST /attribute)
+	PostAttribute(w http.ResponseWriter, r *http.Request)
+
 	// (POST /document/search)
 	PostDocumentSearch(w http.ResponseWriter, r *http.Request)
-	// Загрузка документа
+
 	// (POST /document/upload)
 	PostDocumentUpload(w http.ResponseWriter, r *http.Request)
 }
@@ -179,6 +186,20 @@ func (siw *ServerInterfaceWrapper) GetAnalyzeDocumentIdSimilar(w http.ResponseWr
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetAnalyzeDocumentIdSimilar(w, r, documentId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// PostAttribute operation middleware
+func (siw *ServerInterfaceWrapper) PostAttribute(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostAttribute(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -333,11 +354,17 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/analyze/{document_id}/similar", wrapper.GetAnalyzeDocumentIdSimilar).Methods("GET")
 
+	r.HandleFunc(options.BaseURL+"/attribute", wrapper.PostAttribute).Methods("POST")
+
 	r.HandleFunc(options.BaseURL+"/document/search", wrapper.PostDocumentSearch).Methods("POST")
 
 	r.HandleFunc(options.BaseURL+"/document/upload", wrapper.PostDocumentUpload).Methods("POST")
 
 	return r
+}
+
+type AttributeResultJSONResponse struct {
+	Items *[]Attribute `json:"items,omitempty"`
 }
 
 type BadRequestJSONResponse struct {
@@ -362,7 +389,6 @@ type SimilaritySearchResultJSONResponse struct {
 }
 
 type UploadSuccessJSONResponse struct {
-	// DocumentID Уникальный идентификатор загруженного документа
 	DocumentID *string `json:"documentID,omitempty"`
 }
 
@@ -440,6 +466,41 @@ func (response GetAnalyzeDocumentIdSimilar500JSONResponse) VisitGetAnalyzeDocume
 	return json.NewEncoder(w).Encode(response)
 }
 
+type PostAttributeRequestObject struct {
+	Body *PostAttributeJSONRequestBody
+}
+
+type PostAttributeResponseObject interface {
+	VisitPostAttributeResponse(w http.ResponseWriter) error
+}
+
+type PostAttribute200JSONResponse struct{ AttributeResultJSONResponse }
+
+func (response PostAttribute200JSONResponse) VisitPostAttributeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostAttribute400JSONResponse struct{ BadRequestJSONResponse }
+
+func (response PostAttribute400JSONResponse) VisitPostAttributeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostAttribute500JSONResponse struct{ ServerErrorJSONResponse }
+
+func (response PostAttribute500JSONResponse) VisitPostAttributeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 type PostDocumentSearchRequestObject struct {
 	Body *PostDocumentSearchJSONRequestBody
 }
@@ -503,16 +564,19 @@ func (response PostDocumentUpload400JSONResponse) VisitPostDocumentUploadRespons
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	//  История поиска подожих документов
+
 	// (POST /analyze/history)
 	PostAnalyzeHistory(ctx context.Context, request PostAnalyzeHistoryRequestObject) (PostAnalyzeHistoryResponseObject, error)
-	// Поиск подожих документов
+
 	// (GET /analyze/{document_id}/similar)
 	GetAnalyzeDocumentIdSimilar(ctx context.Context, request GetAnalyzeDocumentIdSimilarRequestObject) (GetAnalyzeDocumentIdSimilarResponseObject, error)
-	// Поиск документов по имени
+
+	// (POST /attribute)
+	PostAttribute(ctx context.Context, request PostAttributeRequestObject) (PostAttributeResponseObject, error)
+
 	// (POST /document/search)
 	PostDocumentSearch(ctx context.Context, request PostDocumentSearchRequestObject) (PostDocumentSearchResponseObject, error)
-	// Загрузка документа
+
 	// (POST /document/upload)
 	PostDocumentUpload(ctx context.Context, request PostDocumentUploadRequestObject) (PostDocumentUploadResponseObject, error)
 }
@@ -596,6 +660,37 @@ func (sh *strictHandler) GetAnalyzeDocumentIdSimilar(w http.ResponseWriter, r *h
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(GetAnalyzeDocumentIdSimilarResponseObject); ok {
 		if err := validResponse.VisitGetAnalyzeDocumentIdSimilarResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// PostAttribute operation middleware
+func (sh *strictHandler) PostAttribute(w http.ResponseWriter, r *http.Request) {
+	var request PostAttributeRequestObject
+
+	var body PostAttributeJSONRequestBody
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.PostAttribute(ctx, request.(PostAttributeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostAttribute")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(PostAttributeResponseObject); ok {
+		if err := validResponse.VisitPostAttributeResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

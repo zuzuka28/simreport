@@ -1,0 +1,39 @@
+.file-upload-form {
+    border: 2px dashed #ccc;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    background: #f9f9f9;
+    transition:
+        background 0.3s,
+        border-color 0.3s;
+}
+
+.file-upload-form.drag-active {
+    border-color: #4caf50;
+    background: #f0fff4;
+}
+
+.file-upload-label {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: #fff;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.file-list {
+    margin-top: 20px;
+    text-align: left;
+}
+
+.file-upload-button {
+    margin: 20px;
+    padding: 10px 20px;
+    background-color: #4caf50;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}

@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"time"
+
+	"github.com/zuzuka28/simreport/lib/elasticutil"
 )
 
 //nolint:gochecknoglobals
@@ -14,7 +15,7 @@ var now = time.Now
 
 func mapDocumentToInternal(src model.Document) document {
 	return document{
-		ID:          src.ID,
+		ParentID:    src.ParentID,
 		Name:        src.Name,
 		Version:     src.Version,
 		GroupID:     src.GroupID,
@@ -52,7 +53,7 @@ func mapSearchResponseToDocuments(in *elasticutil.SearchResponse) ([]model.Docum
 
 func mapDocument(in document) model.Document {
 	return model.Document{
-		ID:          in.ID,
+		ParentID:    in.ParentID,
 		Name:        in.Name,
 		LastUpdated: in.LastUpdated,
 		Version:     in.Version,
@@ -70,12 +71,36 @@ func mapDocument(in document) model.Document {
 func buildSearchQuery(query model.DocumentSearchQuery) ([]byte, error) {
 	searchQuery := make(map_)
 
-	if query.Name != "" {
-		searchQuery = map_{
-			"query": map_{
-				"query_string": map_{
-					"query": fmt.Sprintf("name: %s*", query.Name),
-				},
+	var filter []map_
+
+	if query.ParentID != "" {
+		filter = append(filter, map_{
+			"term": map_{
+				"id.keyword": query.ParentID,
+			},
+		})
+	}
+
+	if query.Version != "" {
+		filter = append(filter, map_{
+			"term": map_{
+				"version": query.Version,
+			},
+		})
+	}
+
+	if len(query.GroupID) > 0 {
+		filter = append(filter, map_{
+			"terms": map_{
+				"groupID": query.GroupID,
+			},
+		})
+	}
+
+	if len(filter) > 0 {
+		searchQuery["query"] = map_{
+			"bool": map_{
+				"filter": filter,
 			},
 		}
 	}

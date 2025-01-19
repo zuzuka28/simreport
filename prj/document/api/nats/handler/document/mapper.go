@@ -7,7 +7,7 @@ import (
 
 func mapDocumentToResponse(in model.Document) Document {
 	return Document{
-		ID:   in.ID,
+		ID:   in.ParentID,
 		Text: in.Text.Content,
 	}
 }

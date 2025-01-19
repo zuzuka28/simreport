@@ -95,7 +95,7 @@ func (s *Service) Save(
 
 	g, gCtx := errgroup.WithContext(ctx)
 
-	if cmd.Item.ID != "" {
+	if cmd.Item.ParentID != "" {
 		g.Go(func() error {
 			return s.r.Save(gCtx, model.DocumentSaveCommand{
 				Item: mapDocumentWithContentToDocument(cmd.Item),
@@ -148,10 +148,8 @@ func (s *Service) Save(
 func (*Service) prepareSaveCommand(
 	cmd model.DocumentSaveCommand,
 ) model.DocumentSaveCommand {
-	if cmd.Item.ID == "" {
-		// TODO: use uuid to support file reuploading and history
-		// cmd.Item.ID = genID()
-		cmd.Item.ID = cmd.Item.Source.Sha256
+	if cmd.Item.ParentID == "" {
+		cmd.Item.ParentID= genID()
 	}
 
 	if cmd.Item.Source.Sha256 != "" {
@@ -253,7 +251,7 @@ func (s *Service) enrichContent(
 	}
 
 	return model.Document{
-		ID:          doc.ID,
+		ParentID:    doc.ParentID,
 		Name:        doc.Name,
 		LastUpdated: doc.LastUpdated,
 		Version:     doc.Version,

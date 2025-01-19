@@ -11,16 +11,13 @@ import (
 	anysave3 "anysave/api/rest/server/handler/anysave"
 	"anysave/internal/config"
 	"anysave/internal/repository/anysave"
-	"anysave/internal/repository/documentstatus"
 	anysave2 "anysave/internal/service/anysave"
-	documentstatus2 "anysave/internal/service/documentstatus"
 	"context"
-	"fmt"
 	"github.com/minio/minio-go/v7"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
-	"io"
 	"github.com/zuzuka28/simreport/lib/minioutil"
+	"io"
 	"os"
 	"sync"
 )
@@ -53,20 +50,6 @@ func InitDocumentFileRepository(client *minio.Client, configConfig *config.Confi
 	return repository, nil
 }
 
-func InitDocumentStatusRepository(ctx context.Context, js jetstream.JetStream) (*documentstatus.Repository, error) {
-	keyValue, err := ProvideDocumentStatusJetstreamKV(ctx, js)
-	if err != nil {
-		return nil, err
-	}
-	repository := documentstatus.NewRepository(keyValue, js)
-	return repository, nil
-}
-
-func InitDocumentStatusService(repository *documentstatus.Repository) (*documentstatus2.Service, error) {
-	service := documentstatus2.NewService(repository)
-	return service, nil
-}
-
 func InitAnysaveService(client *minio.Client, configConfig *config.Config) (*anysave2.Service, error) {
 	opts := ProvideAnysaveServiceOpts()
 	repository, err := InitDocumentFileRepository(client, configConfig)
@@ -77,8 +60,8 @@ func InitAnysaveService(client *minio.Client, configConfig *config.Config) (*any
 	return service, nil
 }
 
-func InitAnysaveHandler(service *documentstatus2.Service, anysaveService *anysave2.Service) *anysave3.Handler {
-	handler := anysave3.NewHandler(anysaveService, service)
+func InitAnysaveHandler(service *anysave2.Service) *anysave3.Handler {
+	handler := anysave3.NewHandler(service)
 	return handler
 }
 
@@ -88,31 +71,15 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	conn, err := ProvideNats(contextContext, configConfig)
-	if err != nil {
-		return nil, err
-	}
-	jetStream, err := InitNatsJetstream(conn)
-	if err != nil {
-		return nil, err
-	}
-	repository, err := InitDocumentStatusRepository(contextContext, jetStream)
-	if err != nil {
-		return nil, err
-	}
-	service, err := InitDocumentStatusService(repository)
-	if err != nil {
-		return nil, err
-	}
 	client, err := ProvideS3(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	anysaveService, err := InitAnysaveService(client, configConfig)
+	service, err := InitAnysaveService(client, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	handler := InitAnysaveHandler(service, anysaveService)
+	handler := InitAnysaveHandler(service)
 	opts := server.Opts{
 		Port:        int2,
 		Spec:        v,
@@ -177,36 +144,6 @@ func ProvideS3(
 	})
 
 	return s3Cli, err
-}
-
-func ProvideDocumentStatusJetstreamKV(
-	ctx context.Context,
-	js jetstream.JetStream,
-) (jetstream.KeyValue, error) {
-	kv, err := js.CreateOrUpdateKeyValue(ctx, jetstream.KeyValueConfig{
-		Bucket: "documentstatus",
-	})
-	if err != nil {
-		return nil, fmt.Errorf("new kv: %w", err)
-	}
-
-	return kv, nil
-}
-
-func ProvideDocumentStatusJetstreamStream(
-	ctx context.Context,
-	js jetstream.JetStream,
-) (jetstream.Stream, error) {
-	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
-		Name:      "documentstatus",
-		Subjects:  []string{"documentstatus.>"},
-		Retention: jetstream.InterestPolicy,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("new steream: %w", err)
-	}
-
-	return s, nil
 }
 
 func ProvideAnysaveServiceOpts() anysave2.Opts {

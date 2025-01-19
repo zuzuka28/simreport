@@ -1,5 +1,8 @@
 package model
 
 type DocumentSearchQuery struct {
-	Name string
+	GroupID  []string
+	Name     string
+	ParentID string
+	Version  string
 }

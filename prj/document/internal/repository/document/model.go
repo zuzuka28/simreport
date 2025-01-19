@@ -3,7 +3,7 @@ package document
 import "time"
 
 type document struct {
-	ID          string    `json:"id"`
+	ParentID    string    `json:"parentID"`
 	Name        string    `json:"name"`
 	Version     int       `json:"version"`
 	GroupID     []string  `json:"groupIDs"`

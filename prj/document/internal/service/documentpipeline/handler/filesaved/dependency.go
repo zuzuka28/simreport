@@ -6,14 +6,11 @@ import (
 )
 
 type (
-	FileService interface {
+	DocumentService interface {
 		Fetch(
 			ctx context.Context,
-			query model.FileQuery,
-		) (model.File, error)
-	}
-
-	DocumentService interface {
+			query model.DocumentQuery,
+		) (model.Document, error)
 		Parse(
 			_ context.Context,
 			item model.File,

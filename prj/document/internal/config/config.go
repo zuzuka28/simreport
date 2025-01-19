@@ -1,9 +1,11 @@
 package config
 
 import (
-	"fmt"
 	"document/internal/repository/analyzehistory"
+	"document/internal/repository/attribute"
 	"document/internal/repository/document"
+	"fmt"
+
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/minioutil"
 
@@ -31,6 +33,7 @@ type Config struct {
 	Tika               string              `yaml:"tika"`
 	Elastic            elasticutil.Config  `yaml:"elastic"`
 	DocumentRepo       document.Opts       `yaml:"documentRepo"`
+	AttributeRepo      attribute.Opts      `yaml:"attributeRepo"`
 	AnalyzeHistoryRepo analyzehistory.Opts `yaml:"analyzeHistoryRepo"`
 }
 

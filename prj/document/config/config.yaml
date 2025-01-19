@@ -27,6 +27,8 @@ elastic:
       alias: ""
       shards: 1
       replics: 1
+attributeRepo:
+  index: "document"
 documentRepo:
   index: "document"
 analyzeHistoryRepo:

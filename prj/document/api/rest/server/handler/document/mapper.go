@@ -1,11 +1,9 @@
 package document
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"errors"
 	openapi "document/api/rest/gen"
 	"document/internal/model"
+	"errors"
 	"time"
 )
 
@@ -18,15 +16,11 @@ func mapSearchRequestToQuery(
 		return model.DocumentSearchQuery{}, errNoBody
 	}
 
-	params := in.Body
-
-	var name string
-	if params.Name != nil {
-		name = *params.Name
-	}
-
 	return model.DocumentSearchQuery{
-		Name: name,
+		GroupID:  valOrDefault(in.Body.GroupID),
+		Name:     valOrDefault(in.Body.Name),
+		ParentID: valOrDefault(in.Body.ParentID),
+		Version:  valOrDefault(in.Body.Version),
 	}, nil
 }
 
@@ -38,10 +32,15 @@ func mapDocumentsToSearchResponse(
 	for _, v := range in {
 		v := v
 
+		docID := v.ID()
+
 		docs = append(docs, openapi.DocumentSummary{
+			GroupID:     &v.GroupID,
+			Id:          &docID,
 			LastUpdated: &v.LastUpdated,
-			Id:          &v.ID,
 			Name:        &v.Name,
+			ParentID:    &v.ParentID,
+			Version:     &v.Version,
 		})
 	}
 
@@ -54,20 +53,20 @@ func mapDocumentsToSearchResponse(
 
 func mapUploadRequestToCommand(
 	in openapi.PostDocumentUploadRequestObject,
-) (model.DocumentSaveCommand, error) {
+) (model.DocumentSaveCommand, error) { //nolint:unparam
 	return model.DocumentSaveCommand{
 		Item: model.Document{
-			ID:          valOrDefault(in.Body.ParentID),
+			ParentID:    valOrDefault(in.Body.ParentID),
 			Name:        "",
 			LastUpdated: time.Time{},
 			Version:     valOrDefault(in.Body.Version),
-			GroupID:     []string{valOrDefault(in.Body.GroupID)},
+			GroupID:     valOrDefault(in.Body.GroupID),
 			SourceID:    in.Body.FileID,
 			TextID:      "",
 			ImageIDs:    nil,
 			WithContent: false,
-			Source:      model.File{},
-			Text:        model.File{},
+			Source:      model.File{}, //nolint:exhaustruct
+			Text:        model.File{}, //nolint:exhaustruct
 			Images:      nil,
 		},
 	}, nil
@@ -76,20 +75,15 @@ func mapUploadRequestToCommand(
 func mapUploadCommandToResponse(
 	doc *model.Document,
 ) openapi.PostDocumentUpload200JSONResponse {
+	docID := doc.ID()
+
 	return openapi.PostDocumentUpload200JSONResponse{
 		UploadSuccessJSONResponse: openapi.UploadSuccessJSONResponse(
 			openapi.UploadSuccess{
-				DocumentID: &doc.ID,
+				DocumentID: &docID,
 			},
 		),
 	}
-}
-
-func sha256String(in []byte) string {
-	hash := sha256.New()
-	_, _ = hash.Write(in)
-
-	return hex.EncodeToString(hash.Sum(nil))
 }
 
 func valOrDefault[T any](in *T) T {

@@ -4,7 +4,7 @@ import "document/internal/model"
 
 func mapDocumentWithContentToDocument(in model.Document) model.Document {
 	return model.Document{
-		ID:          in.ID,
+		ParentID:    in.ParentID,
 		Name:        in.Name,
 		LastUpdated: in.Source.LastUpdated,
 		Version:     in.Version,

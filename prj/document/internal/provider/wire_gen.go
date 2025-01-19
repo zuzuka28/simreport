@@ -12,10 +12,12 @@ import (
 	server2 "document/api/nats/server"
 	"document/api/rest/server"
 	analyze2 "document/api/rest/server/handler/analyze"
+	attribute3 "document/api/rest/server/handler/attribute"
 	document3 "document/api/rest/server/handler/document"
 	"document/internal/config"
 	"document/internal/model"
 	"document/internal/repository/analyzehistory"
+	"document/internal/repository/attribute"
 	"document/internal/repository/document"
 	"document/internal/repository/documentstatus"
 	"document/internal/repository/filestorage"
@@ -23,6 +25,7 @@ import (
 	fulltextindexclient2 "document/internal/repository/semanticindexclient"
 	"document/internal/repository/shingleindexclient"
 	"document/internal/service/analyze"
+	attribute2 "document/internal/service/attribute"
 	document2 "document/internal/service/document"
 	"document/internal/service/documentparser"
 	"document/internal/service/documentpipeline"
@@ -47,8 +50,8 @@ import (
 
 // Injectors from wire.go:
 
-func InitConfig(path string) (*config.Config, error) {
-	configConfig, err := config.New(path)
+func InitConfig(string2 string) (*config.Config, error) {
+	configConfig, err := config.New(string2)
 	if err != nil {
 		return nil, err
 	}
@@ -123,6 +126,15 @@ func InitDocumentRepository(client *elasticsearch.Client, configConfig *config.C
 	return repository, nil
 }
 
+func InitAttributeRepository(client *elasticsearch.Client, configConfig *config.Config) (*attribute.Repository, error) {
+	opts := configConfig.AttributeRepo
+	repository, err := attribute.NewRepository(opts, client)
+	if err != nil {
+		return nil, err
+	}
+	return repository, nil
+}
+
 func InitAnalyzeHistoryRepository(client *elasticsearch.Client, configConfig *config.Config) (*analyzehistory.Repository, error) {
 	opts := configConfig.AnalyzeHistoryRepo
 	repository, err := analyzehistory.NewRepository(opts, client)
@@ -132,13 +144,18 @@ func InitAnalyzeHistoryRepository(client *elasticsearch.Client, configConfig *co
 	return repository, nil
 }
 
-func InitDocumentStatusRepository(ctx context.Context, js jetstream.JetStream) (*documentstatus.Repository, error) {
-	keyValue, err := ProvideDocumentStatusJetstreamKV(ctx, js)
+func InitDocumentStatusRepository(contextContext context.Context, jetStream jetstream.JetStream) (*documentstatus.Repository, error) {
+	keyValue, err := ProvideDocumentStatusJetstreamKV(contextContext, jetStream)
 	if err != nil {
 		return nil, err
 	}
-	repository := documentstatus.NewRepository(keyValue, js)
+	repository := documentstatus.NewRepository(keyValue, jetStream)
 	return repository, nil
+}
+
+func InitAttributeService(repository *attribute.Repository) (*attribute2.Service, error) {
+	service := attribute2.NewService(repository)
+	return service, nil
 }
 
 func InitDocumentStatusService(repository *documentstatus.Repository) (*documentstatus2.Service, error) {
@@ -167,13 +184,18 @@ func InitDocumentService(configConfig *config.Config, client *tikaclient.Client,
 	return documentService, nil
 }
 
-func InitDocumentHandler(service *document2.Service) *document3.Handler {
-	handler := document3.NewHandler(service)
+func InitDocumentHandler(service *document2.Service, documentstatusService *documentstatus2.Service) *document3.Handler {
+	handler := document3.NewHandler(service, documentstatusService)
 	return handler
 }
 
 func InitAnalyzeHandler(service *analyze.Service) *analyze2.Handler {
 	handler := analyze2.NewHandler(service)
+	return handler
+}
+
+func InitAttributeHandler(service *attribute2.Service) *attribute3.Handler {
+	handler := attribute3.NewHandler(service)
 	return handler
 }
 
@@ -207,11 +229,23 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	handler := InitDocumentHandler(service)
 	conn, err := ProvideNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
+	jetStream, err := InitNatsJetstream(conn)
+	if err != nil {
+		return nil, err
+	}
+	documentstatusRepository, err := InitDocumentStatusRepository(contextContext, jetStream)
+	if err != nil {
+		return nil, err
+	}
+	documentstatusService, err := InitDocumentStatusService(documentstatusRepository)
+	if err != nil {
+		return nil, err
+	}
+	handler := InitDocumentHandler(service, documentstatusService)
 	shingleindexclientRepository, err := InitShingleIndexRepository(conn)
 	if err != nil {
 		return nil, err
@@ -245,11 +279,21 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 		return nil, err
 	}
 	analyzeHandler := InitAnalyzeHandler(analyzeService)
+	attributeRepository, err := InitAttributeRepository(elasticsearchClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	attributeService, err := InitAttributeService(attributeRepository)
+	if err != nil {
+		return nil, err
+	}
+	attributeHandler := InitAttributeHandler(attributeService)
 	opts := server.Opts{
-		Port:            int2,
-		Spec:            v,
-		DocumentHandler: handler,
-		AnalyzeHandler:  analyzeHandler,
+		Port:             int2,
+		Spec:             v,
+		DocumentHandler:  handler,
+		AnalyzeHandler:   analyzeHandler,
+		AttributeHandler: attributeHandler,
 	}
 	serverServer, err := server.New(opts)
 	if err != nil {
@@ -258,8 +302,8 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	return serverServer, nil
 }
 
-func InitFileSavedHandler(service *document2.Service, repository *filestorage.Repository) (*filesaved.Handler, error) {
-	handler := filesaved.NewHandler(repository, service)
+func InitFileSavedHandler(service *document2.Service) (*filesaved.Handler, error) {
+	handler := filesaved.NewHandler(service)
 	return handler, nil
 }
 
@@ -347,7 +391,7 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	handler, err := InitFileSavedHandler(documentService, filestorageRepository)
+	handler, err := InitFileSavedHandler(documentService)
 	if err != nil {
 		return nil, err
 	}
@@ -401,7 +445,7 @@ var (
 )
 
 func ProvideNats(
-	ctx context.Context,
+	_ context.Context,
 	cfg *config.Config,
 ) (*nats.Conn, error) {
 	var err error

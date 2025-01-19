@@ -2,20 +2,17 @@ package anysave
 
 import (
 	openapi "anysave/api/rest/gen"
-	"anysave/internal/model"
 	"context"
 	"fmt"
 )
 
 type Handler struct {
-	s  Service
-	ss StatusService
+	s Service
 }
 
-func NewHandler(s Service, ss StatusService) *Handler {
+func NewHandler(s Service) *Handler {
 	return &Handler{
-		s:  s,
-		ss: ss,
+		s: s,
 	}
 }
 
@@ -29,13 +26,6 @@ func (h *Handler) PostUpload(
 	}
 
 	if err := h.s.Save(ctx, cmd); err != nil {
-		return nil, fmt.Errorf("upload file: %w", err)
-	}
-
-	if err := h.ss.Update(ctx, model.DocumentStatusUpdateCommand{
-		ID:     cmd.Item.Sha256,
-		Status: model.DocumentProcessingStatusFileSaved,
-	}); err != nil {
 		return nil, fmt.Errorf("upload file: %w", err)
 	}
 

@@ -2,17 +2,20 @@ package document
 
 import (
 	"context"
-	"fmt"
 	openapi "document/api/rest/gen"
+	"document/internal/model"
+	"fmt"
 )
 
 type Handler struct {
-	s Service
+	s  Service
+	ss StatusService
 }
 
-func NewHandler(s Service) *Handler {
+func NewHandler(s Service, ss StatusService) *Handler {
 	return &Handler{
-		s: s,
+		s:  s,
+		ss: ss,
 	}
 }
 
@@ -45,6 +48,13 @@ func (h *Handler) PostDocumentUpload(
 	doc, err := h.s.Save(ctx, cmd)
 	if err != nil {
 		return nil, fmt.Errorf("upload document: %w", err)
+	}
+
+	if err := h.ss.Update(ctx, model.DocumentStatusUpdateCommand{
+		ID:     doc.ID(),
+		Status: model.DocumentProcessingStatusFileSaved,
+	}); err != nil {
+		return nil, fmt.Errorf("update document status: %w", err)
 	}
 
 	return mapUploadCommandToResponse(doc), nil

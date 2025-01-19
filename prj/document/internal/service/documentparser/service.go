@@ -3,8 +3,8 @@ package documentparser
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"document/internal/model"
+	"fmt"
 	"github.com/zuzuka28/simreport/lib/tikaclient"
 	"time"
 
@@ -27,7 +27,7 @@ func (s *Service) Parse(ctx context.Context, item model.File) (model.Document, e
 	}
 
 	doc := model.Document{
-		ID:          "",
+		ParentID:    "",
 		Name:        item.Name,
 		LastUpdated: time.Now(),
 		Version:     0,

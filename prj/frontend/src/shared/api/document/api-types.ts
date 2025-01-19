@@ -4,7 +4,7 @@
  */
 
 export interface paths {
-    "/upload": {
+    "/document/upload": {
         parameters: {
             query?: never;
             header?: never;
@@ -13,10 +13,6 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Загрузка документа
-         * @description Загружает документ для дальнейшего анализа на сходство.
-         */
         post: {
             parameters: {
                 query?: never;
@@ -26,7 +22,7 @@ export interface paths {
             };
             requestBody: {
                 content: {
-                    "multipart/form-data": components["schemas"]["UploadRequest"];
+                    "application/json": components["schemas"]["UploadRequest"];
                 };
             };
             responses: {
@@ -40,44 +36,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/{document_id}/download": {
+    "/attribute": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /**
-         * Скачать документ
-         * @description Позволяет скачать загруженный документ по его идентификатору.
-         */
-        get: {
+        get?: never;
+        put?: never;
+        post: {
             parameters: {
                 query?: never;
                 header?: never;
-                path: {
-                    /** @description Уникальный идентификатор документа */
-                    document_id: components["parameters"]["DocumentId"];
-                };
+                path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
-            responses: {
-                /** @description Успешная загрузка документа */
-                200: {
-                    headers: {
-                        "Content-Disposition"?: string;
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/octet-stream": string;
-                    };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["AttributeRequest"];
                 };
-                404: components["responses"]["DocumentNotFound"];
+            };
+            responses: {
+                200: components["responses"]["AttributeResult"];
+                400: components["responses"]["BadRequest"];
+                500: components["responses"]["ServerError"];
             };
         };
-        put?: never;
-        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -93,10 +78,6 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /**
-         * Поиск документов по имени
-         * @description Получить список документов, соответствующих заданному имени.
-         */
         post: {
             parameters: {
                 query?: never;
@@ -128,16 +109,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /**
-         * Поиск подожих документов
-         * @description Получить список документов, наиболее похожих на загруженный
-         */
         get: {
             parameters: {
                 query?: never;
                 header?: never;
                 path: {
-                    /** @description Уникальный идентификатор документа */
                     document_id: components["parameters"]["DocumentId"];
                 };
                 cookie?: never;
@@ -157,76 +133,121 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/analyze/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["SimilaritySearchHistoryRequest"];
+                };
+            };
+            responses: {
+                200: components["responses"]["SimilaritySearchHistoryResult"];
+                400: components["responses"]["BadRequest"];
+                500: components["responses"]["ServerError"];
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
         UploadRequest: {
-            /**
-             * Format: binary
-             * @description Документ для загрузки
-             */
-            document?: string;
+            fileID: string;
+            groupID?: string[];
+            parentID?: string;
+            version?: number;
+        };
+        AttributeRequest: {
+            attribute: string;
         };
         SearchRequest: {
-            /**
-             * @description Имя документа для поиска
-             * @example Документ 1
-             */
+            parentID?: string;
             name?: string;
+            version?: string;
+            groupID?: string[];
         };
         Document: {
             ID?: string;
             ImageIDs?: string[];
-            /** @description Содержимое текста документа */
             TextContent?: string;
         };
         DocumentSummary: {
-            /**
-             * @description Идентификатор документа
-             * @example 123
-             */
+            groupID?: string[];
+            parentID?: string;
+            version?: number;
             id?: string;
-            /**
-             * @description Имя документа
-             * @example Документ 1
-             */
             name?: string;
-            /**
-             * Format: date-time
-             * @description Дата обновления документа
-             * @example 2024-10-01T12:00:00Z
-             */
+            /** Format: date-time */
             lastUpdated?: string;
         };
         AnalyzedDocumentMatch: {
-            /** @description Уникальный идентификатор документа. */
             id?: string;
-            /**
-             * Format: float
-             * @description Коэффициент похожести (например, от 0 до 1).
-             */
+            /** Format: float */
             rate?: number;
-            /** @description Список фрагментов текста, которые совпадают в документах. */
             highlights?: string[];
-            /** @description Список идентификаторов похожих изображений. */
             similarImages?: string[];
+        };
+        SimilaritySearchHistoryRequest: {
+            documentID?: string;
+            limit?: number;
+            offset?: number;
+            /** Format: date-time */
+            dateFrom?: string;
+            /** Format: date-time */
+            dateTo?: string;
+        };
+        SimilaritySearchHistory: {
+            /** Format: date-time */
+            date?: string;
+            documentID?: string;
+            id?: string;
+            matches?: components["schemas"]["AnalyzedDocumentMatch"][];
+        };
+        Attribute: {
+            label: string;
+            value: string;
         };
     };
     responses: {
-        /** @description Документ успешно загружен */
         UploadSuccess: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
                 "application/json": {
-                    /** @description Уникальный идентификатор загруженного документа */
                     documentID?: string;
                 };
             };
         };
-        /** @description Результаты поиска документов */
+        AttributeResult: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    items?: components["schemas"]["Attribute"][];
+                };
+            };
+        };
         SearchResult: {
             headers: {
                 [name: string]: unknown;
@@ -237,7 +258,6 @@ export interface components {
                 };
             };
         };
-        /** @description Результаты поиска схожих документов */
         SimilaritySearchResult: {
             headers: {
                 [name: string]: unknown;
@@ -248,45 +268,49 @@ export interface components {
                 };
             };
         };
-        /** @description Документ не найден */
+        SimilaritySearchHistoryResult: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    documents?: components["schemas"]["SimilaritySearchHistory"][];
+                    count?: number;
+                };
+            };
+        };
         DocumentNotFound: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
                 "application/json": {
-                    /** @example Документ не найден */
                     error?: string;
                 };
             };
         };
-        /** @description Ошибка валидации или неверный формат запроса */
         BadRequest: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
                 "application/json": {
-                    /** @example Неверный запрос */
                     error?: string;
                 };
             };
         };
-        /** @description Внутренняя ошибка сервера */
         ServerError: {
             headers: {
                 [name: string]: unknown;
             };
             content: {
                 "application/json": {
-                    /** @example Ошибка сервера */
                     error?: string;
                 };
             };
         };
     };
     parameters: {
-        /** @description Уникальный идентификатор документа */
         DocumentId: string;
     };
     requestBodies: never;

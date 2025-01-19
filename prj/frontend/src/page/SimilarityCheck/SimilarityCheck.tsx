@@ -1,6 +1,6 @@
 import { FC, useState } from "react";
 import { DocumentList } from "widget/DocumentList";
-import { DocumentUploader } from "widget/DocumentUploader";
+import { FileUploader } from "widget/FileUploader";
 import { DocumentSimilarityMatchList } from "widget/DocumentSimilarityMatchList";
 import { Popup } from "widget/Popup";
 import { useDocuments, useSimilarityCheckDocuments } from "shared/hook";
@@ -9,18 +9,22 @@ import "./style.css";
 export const SimilarityCheck: FC = () => {
   const [panelMinimized, setPanelMinimized] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
-  const {
-    documents,
-    loading: documents_loading,
-    error: documents_error,
-  } = useDocuments("");
+
+  const [dquery] = useState<{ groupID: string[], name: string }>({
+    groupID: [],
+    name: "",
+  });
+
+  const { data: documentsData, loading: documentsLoading, error: documentsError } = useDocuments(dquery);
 
   const [query, setQuery] = useState("");
   const {
-    documents: matches,
-    loading: matches_loading,
-    error: matches_error,
+    data: matchesData,
+    loading: matchesLoading,
+    error: matchesError,
   } = useSimilarityCheckDocuments(query);
+
+  let matches = matchesData?.documents || []
 
   const togglePanel = () => {
     setPanelMinimized(!panelMinimized);
@@ -47,7 +51,7 @@ export const SimilarityCheck: FC = () => {
       >
         {!panelMinimized && (
           <>
-            <DocumentUploader onDocumentUploaded={handleDocumentSelect} />
+            <FileUploader onDocumentUploaded={handleDocumentSelect} />
             <button className="popup-button" onClick={openPopup}>
               Select Existing File
             </button>
@@ -65,9 +69,9 @@ export const SimilarityCheck: FC = () => {
         <Popup onClose={closePopup}>
           <h2>Select a File</h2>
           <DocumentList
-            documents={documents}
-            loading={documents_loading}
-            error={documents_error}
+            documents={documentsData?.documents || []}
+            loading={documentsLoading}
+            error={documentsError}
             onDocumentClick={handleDocumentSelect}
           />
         </Popup>
@@ -75,8 +79,8 @@ export const SimilarityCheck: FC = () => {
 
       <DocumentSimilarityMatchList
         documents={matches}
-        loading={matches_loading}
-        error={matches_error}
+        loading={matchesLoading}
+        error={matchesError}
       />
     </>
   );

@@ -8,6 +8,7 @@ import { Toolbar } from "widget/Toolbar/Toolbar";
 import { Layout } from "app/Layout/Layout";
 import { DocumentManager } from "page/DocumentManager";
 import { SimilarityCheck } from "page/SimilarityCheck/SimilarityCheck";
+import { DocumentUpload } from "page/DocumentUpload/DocumentUpload";
 
 const routes: RouteObject = {
   path: "/",
@@ -16,6 +17,10 @@ const routes: RouteObject = {
       toolbar={
         <Toolbar
           items={[
+            {
+              label: "upload",
+              path: "/upload",
+            },
             {
               label: "files",
               path: "/files",
@@ -31,6 +36,11 @@ const routes: RouteObject = {
   ),
   errorElement: <div>Page 404</div>,
   children: [
+    {
+      path: "upload",
+      element: <DocumentUpload />,
+      errorElement: <div>Page 404</div>,
+    },
     {
       path: "files",
       element: <DocumentManager />,

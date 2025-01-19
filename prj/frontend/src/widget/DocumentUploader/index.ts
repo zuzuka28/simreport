@@ -1,1 +1,1 @@
-export { DocumentUploader } from "./DocumentUploader";
+export {DocumentUploader} from "./DocumentUploader"

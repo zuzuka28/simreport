@@ -1,14 +1,11 @@
 openapi: 3.0.0
 info:
   title: Document Similarity API
-  description: API для анализа сходства документов и поиска документов по имени
-  version: 1.5.0
+  version: 0.0.1
 
 paths:
   /document/upload:
     post:
-      summary: Загрузка документа
-      description: Загружает документ для дальнейшего анализа на сходство.
       requestBody:
         required: true
         content:
@@ -21,10 +18,24 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
+  /attribute:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AttributeRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/AttributeResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
   /document/search:
     post:
-      summary: Поиск документов по имени
-      description: Получить список документов, соответствующих заданному имени.
       requestBody:
         required: true
         content:
@@ -41,8 +52,6 @@ paths:
 
   /analyze/{document_id}/similar:
     get:
-      summary: Поиск подожих документов
-      description: Получить список документов, наиболее похожих на загруженный
       parameters:
         - $ref: "#/components/parameters/DocumentId"
       responses:
@@ -55,8 +64,6 @@ paths:
 
   /analyze/history:
     post:
-      summary:  История поиска подожих документов
-      description: Получить список документов, наиболее похожих на загруженный
       requestBody:
         required: true
         content:
@@ -78,26 +85,38 @@ components:
       properties:
         fileID:
           type: string
-          description: Уникальный идентификатор файла
         groupID:
-          type: string
-          description: Уникальный идентификатор группы
+          type: array
+          items:
+            type: string
         parentID:
           type: string
-          description: Уникальный идентификатор родительского документа
         version:
           type: integer
-          description: Версия документа
       required:
         - fileID
+
+    AttributeRequest:
+      type: object
+      properties:
+        attribute:
+          type: string
+      required:
+        - attribute
 
     SearchRequest:
       type: object
       properties:
+        parentID:
+          type: string
         name:
           type: string
-          description: Имя документа для поиска
-          example: "Документ 1"
+        version:
+          type: string
+        groupID:
+          type: array
+          items:
+            type: string
 
     Document:
       type: object
@@ -110,45 +129,42 @@ components:
             type: string
         TextContent:
           type: string
-          description: Содержимое текста документа
 
     DocumentSummary:
       type: object
       properties:
+        groupID:
+          type: array
+          items:
+            type: string
+        parentID:
+          type: string
+        version:
+          type: integer
         id:
           type: string
-          description: Идентификатор документа
-          example: "123"
         name:
           type: string
-          description: Имя документа
-          example: "Документ 1"
         lastUpdated:
           type: string
           format: date-time
-          description: Дата обновления документа
-          example: "2024-10-01T12:00:00Z"
 
     AnalyzedDocumentMatch:
       type: object
       properties:
         id:
           type: string
-          description: Уникальный идентификатор документа.
         rate:
           type: number
           format: float
-          description: Коэффициент похожести (например, от 0 до 1).
         highlights:
           type: array
           items:
             type: string
-          description: Список фрагментов текста, которые совпадают в документах.
         similarImages:
           type: array
           items:
             type: string
-          description: Список идентификаторов похожих изображений.
 
     SimilaritySearchHistoryRequest:
       type: object
@@ -181,9 +197,19 @@ components:
           items:
             $ref: "#/components/schemas/AnalyzedDocumentMatch"
 
+    Attribute:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+      required:
+        - label
+        - value
+
   responses:
     UploadSuccess:
-      description: Документ успешно загружен
       content:
         application/json:
           schema:
@@ -191,10 +217,19 @@ components:
             properties:
               documentID:
                 type: string
-                description: Уникальный идентификатор загруженного документа
+
+    AttributeResult:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              items:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Attribute"
 
     SearchResult:
-      description: Результаты поиска документов
       content:
         application/json:
           schema:
@@ -206,7 +241,6 @@ components:
                   $ref: "#/components/schemas/DocumentSummary"
 
     SimilaritySearchResult:
-      description: Результаты поиска схожих документов
       content:
         application/json:
           schema:
@@ -218,7 +252,6 @@ components:
                   $ref: "#/components/schemas/AnalyzedDocumentMatch"
 
     SimilaritySearchHistoryResult:
-      description: История поиска схожих элементов
       content:
         application/json:
           schema:
@@ -232,7 +265,6 @@ components:
                 type: integer
 
     DocumentNotFound:
-      description: Документ не найден
       content:
         application/json:
           schema:
@@ -240,10 +272,8 @@ components:
             properties:
               error:
                 type: string
-                example: "Документ не найден"
 
     BadRequest:
-      description: Ошибка валидации или неверный формат запроса
       content:
         application/json:
           schema:
@@ -251,10 +281,8 @@ components:
             properties:
               error:
                 type: string
-                example: "Неверный запрос"
 
     ServerError:
-      description: Внутренняя ошибка сервера
       content:
         application/json:
           schema:
@@ -262,7 +290,6 @@ components:
             properties:
               error:
                 type: string
-                example: "Ошибка сервера"
 
   parameters:
     DocumentId:
@@ -271,4 +298,3 @@ components:
       required: true
       schema:
         type: string
-      description: Уникальный идентификатор документа

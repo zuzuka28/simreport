@@ -1,9 +1,12 @@
 package model
 
-import "time"
+import (
+	"strconv"
+	"time"
+)
 
 type Document struct {
-	ID          string
+	ParentID    string
 	Name        string
 	LastUpdated time.Time
 
@@ -18,4 +21,8 @@ type Document struct {
 	Source      File
 	Text        File
 	Images      []File
+}
+
+func (d *Document) ID() string {
+	return d.ParentID + "_" + strconv.Itoa(d.Version)
 }

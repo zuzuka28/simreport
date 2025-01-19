@@ -1,8 +1,8 @@
 package anysave
 
 import (
-	"context"
 	"anysave/internal/model"
+	"context"
 )
 
 type (
@@ -15,12 +15,5 @@ type (
 			ctx context.Context,
 			query model.FileQuery,
 		) (model.File, error)
-	}
-
-	StatusService interface {
-		Update(
-			ctx context.Context,
-			cmd model.DocumentStatusUpdateCommand,
-		) error
 	}
 )

@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { components } from "shared/api/api-types";
+import { components } from "shared/api/document/api-types";
 import "./style.css";
 
 type DocumentSimilarityMatch = components["schemas"]["AnalyzedDocumentMatch"];

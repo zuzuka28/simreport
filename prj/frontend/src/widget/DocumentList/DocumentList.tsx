@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { components } from "shared/api/api-types";
+import { components } from "shared/api/document/api-types";
 import "./style.css";
 
 type Document = components["schemas"]["DocumentSummary"];
@@ -20,6 +20,7 @@ export const DocumentList: FC<DocumentListProps> = ({
     if (onDocumentClick == undefined) {
         onDocumentClick = (_: string) => { }; // eslint-disable-line
     }
+
 
     if (loading) {
         return <p className="loading">Loading...</p>;
@@ -53,7 +54,12 @@ export const DocumentListItem: FC<{
     return (
         <div className="document-card" onClick={() => onClick(doc.id || "")}>
             <h3 className="doc-title">{doc.name}</h3>
-            <p className="doc-description">{doc.lastUpdated}</p>
+            <div className="doc-description">
+                <p>{doc.parentID}</p>
+                <p>{doc.groupID || "-"}</p>
+                <p>{doc.version || "1"}</p>
+                <p>{doc.lastUpdated}</p>
+            </div>
         </div>
     );
 };

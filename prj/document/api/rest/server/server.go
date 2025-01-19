@@ -2,10 +2,10 @@ package server
 
 import (
 	"context"
+	openapi "document/api/rest/gen"
 	"fmt"
 	"log/slog"
 	"net/http"
-	openapi "document/api/rest/gen"
 	"time"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -30,9 +30,10 @@ type Server struct {
 type Opts struct {
 	Port int
 
-	Spec            []byte
-	DocumentHandler DocumentHandler
-	AnalyzeHandler  AnalyzeHandler
+	Spec             []byte
+	DocumentHandler  DocumentHandler
+	AnalyzeHandler   AnalyzeHandler
+	AttributeHandler AttributeHandler
 }
 
 func New(
@@ -53,9 +54,11 @@ func New(
 	compose := struct {
 		DocumentHandler
 		AnalyzeHandler
+		AttributeHandler
 	}{
-		DocumentHandler: opts.DocumentHandler,
-		AnalyzeHandler:  opts.AnalyzeHandler,
+		DocumentHandler:  opts.DocumentHandler,
+		AnalyzeHandler:   opts.AnalyzeHandler,
+		AttributeHandler: opts.AttributeHandler,
 	}
 
 	stricthandler := openapi.NewStrictHandlerWithOptions(

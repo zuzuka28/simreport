@@ -4,18 +4,16 @@ package provider
 
 import (
 	"context"
-	"fmt"
-	"io"
-	"net/http"
-	"os"
 	documentnats "document/api/nats/handler/document"
 	servernats "document/api/nats/server"
 	serverhttp "document/api/rest/server"
 	analyzeapi "document/api/rest/server/handler/analyze"
+	attributeapi "document/api/rest/server/handler/attribute"
 	documentapi "document/api/rest/server/handler/document"
 	"document/internal/config"
 	"document/internal/model"
 	analyzehistoryrepo "document/internal/repository/analyzehistory"
+	attributerepo "document/internal/repository/attribute"
 	documentrepo "document/internal/repository/document"
 	documentstatusrepo "document/internal/repository/documentstatus"
 	"document/internal/repository/filestorage"
@@ -23,6 +21,7 @@ import (
 	semanticindexrepo "document/internal/repository/semanticindexclient"
 	shingleindexrepo "document/internal/repository/shingleindexclient"
 	analyzesrv "document/internal/service/analyze"
+	attributesrv "document/internal/service/attribute"
 	documentsrv "document/internal/service/document"
 	documentparsersrv "document/internal/service/documentparser"
 	"document/internal/service/documentpipeline"
@@ -31,10 +30,15 @@ import (
 	fulltextindexsrv "document/internal/service/fulltextindex"
 	semanticindexsrv "document/internal/service/semanticindex"
 	shingleindexsrv "document/internal/service/shingleindex"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"sync"
+
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/minioutil"
 	"github.com/zuzuka28/simreport/lib/tikaclient"
-	"sync"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/google/wire"
@@ -46,18 +50,18 @@ import (
 func ProvideSpec() ([]byte, error) {
 	f, err := os.Open("./api/rest/doc/openapi.yaml")
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	spec, err := io.ReadAll(f)
 	if err != nil {
-		return nil, err
+		return nil, err //nolint:wrapcheck
 	}
 
 	return spec, nil
 }
 
-func InitConfig(path string) (*config.Config, error) {
+func InitConfig(_ string) (*config.Config, error) {
 	panic(wire.Build(config.New))
 }
 
@@ -77,7 +81,7 @@ func ProvideElastic(
 		elasticCli, err = elasticutil.NewClientWithStartup(ctx, cfg.Elastic)
 	})
 
-	return elasticCli, err
+	return elasticCli, err //nolint:wrapcheck
 }
 
 //nolint:gochecknoglobals
@@ -87,7 +91,7 @@ var (
 )
 
 func ProvideNats(
-	ctx context.Context,
+	_ context.Context,
 	cfg *config.Config,
 ) (*nats.Conn, error) {
 	var err error
@@ -96,7 +100,7 @@ func ProvideNats(
 		natsCli, err = nats.Connect(cfg.Nats)
 	})
 
-	return natsCli, err
+	return natsCli, err //nolint:wrapcheck
 }
 
 func InitTika(
@@ -126,7 +130,7 @@ func ProvideS3(
 		s3Cli, err = minioutil.NewClientWithStartup(ctx, cfg.S3)
 	})
 
-	return s3Cli, err
+	return s3Cli, err //nolint:wrapcheck
 }
 
 func InitNatsJetstream(
@@ -238,6 +242,16 @@ func InitDocumentRepository(
 	))
 }
 
+func InitAttributeRepository(
+	_ *elasticsearch.Client,
+	_ *config.Config,
+) (*attributerepo.Repository, error) {
+	panic(wire.Build(
+		wire.FieldsOf(new(*config.Config), "AttributeRepo"),
+		attributerepo.NewRepository,
+	))
+}
+
 func InitAnalyzeHistoryRepository(
 	_ *elasticsearch.Client,
 	_ *config.Config,
@@ -249,13 +263,22 @@ func InitAnalyzeHistoryRepository(
 }
 
 func InitDocumentStatusRepository(
-	ctx context.Context,
-	js jetstream.JetStream,
+	_ context.Context,
+	_ jetstream.JetStream,
 ) (*documentstatusrepo.Repository, error) {
 	panic(wire.Build(
 		ProvideDocumentStatusJetstreamKV,
 		wire.Bind(new(jetstream.Publisher), new(jetstream.JetStream)),
 		documentstatusrepo.NewRepository,
+	))
+}
+
+func InitAttributeService(
+	_ *attributerepo.Repository,
+) (*attributesrv.Service, error) {
+	panic(wire.Build(
+		wire.Bind(new(attributesrv.Repository), new(*attributerepo.Repository)),
+		attributesrv.NewService,
 	))
 }
 
@@ -269,7 +292,7 @@ func InitDocumentStatusService(
 }
 
 func ProvideAnalyzeServiceOpts() analyzesrv.Opts {
-	return analyzesrv.Opts{} //nolint:exhaustruct
+	return analyzesrv.Opts{}
 }
 
 func InitAnalyzeService(
@@ -321,9 +344,11 @@ func InitDocumentService(
 
 func InitDocumentHandler(
 	_ *documentsrv.Service,
+	_ *documentstatussrv.Service,
 ) *documentapi.Handler {
 	panic(wire.Build(
 		wire.Bind(new(documentapi.Service), new(*documentsrv.Service)),
+		wire.Bind(new(documentapi.StatusService), new(*documentstatussrv.Service)),
 		documentapi.NewHandler,
 	))
 }
@@ -337,6 +362,15 @@ func InitAnalyzeHandler(
 	))
 }
 
+func InitAttributeHandler(
+	_ *attributesrv.Service,
+) *attributeapi.Handler {
+	panic(wire.Build(
+		wire.Bind(new(attributeapi.Service), new(*attributesrv.Service)),
+		attributeapi.NewHandler,
+	))
+}
+
 func InitRestAPI(
 	_ context.Context,
 	_ *config.Config,
@@ -346,7 +380,11 @@ func InitRestAPI(
 		ProvideS3,
 		ProvideElastic,
 		ProvideNats,
+		InitNatsJetstream,
 		InitTika,
+
+		InitDocumentStatusRepository,
+		InitDocumentStatusService,
 
 		InitShingleIndexRepository,
 		InitShingleIndexService,
@@ -357,10 +395,14 @@ func InitRestAPI(
 		InitSemanticIndexRepository,
 		InitSemanticIndexService,
 
-        InitFilestorageRepository,
+		InitFilestorageRepository,
+
+		InitAttributeRepository,
 
 		InitDocumentRepository,
 		InitAnalyzeHistoryRepository,
+
+		InitAttributeService,
 
 		InitDocumentService,
 
@@ -368,8 +410,10 @@ func InitRestAPI(
 
 		InitDocumentHandler,
 		InitAnalyzeHandler,
+		InitAttributeHandler,
 		wire.Bind(new(serverhttp.DocumentHandler), new(*documentapi.Handler)),
 		wire.Bind(new(serverhttp.AnalyzeHandler), new(*analyzeapi.Handler)),
+		wire.Bind(new(serverhttp.AttributeHandler), new(*attributeapi.Handler)),
 		wire.FieldsOf(new(*config.Config), "Port"),
 		wire.Struct(new(serverhttp.Opts), "*"),
 		serverhttp.New,
@@ -378,10 +422,8 @@ func InitRestAPI(
 
 func InitFileSavedHandler(
 	_ *documentsrv.Service,
-	_ *filestorage.Repository,
 ) (*filesavedhandler.Handler, error) {
 	panic(wire.Build(
-		wire.Bind(new(filesavedhandler.FileService), new(*filestorage.Repository)),
 		wire.Bind(new(filesavedhandler.DocumentService), new(*documentsrv.Service)),
 		filesavedhandler.NewHandler,
 	))
@@ -406,7 +448,7 @@ func InitNatsAPI(
 		ProvideNats,
 		InitTika,
 
-        InitFilestorageRepository,
+		InitFilestorageRepository,
 
 		InitDocumentRepository,
 
@@ -450,7 +492,7 @@ func InitDocumentPipeline(
 		InitDocumentStatusRepository,
 		InitDocumentStatusService,
 
-        InitFilestorageRepository,
+		InitFilestorageRepository,
 
 		InitDocumentRepository,
 

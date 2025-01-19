@@ -2,8 +2,8 @@ package analyze
 
 import (
 	"context"
-	"fmt"
 	"document/internal/model"
+	"fmt"
 	"sort"
 	"sync"
 	"time"

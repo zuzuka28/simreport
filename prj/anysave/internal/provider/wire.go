@@ -7,15 +7,13 @@ import (
 	anysaveapi "anysave/api/rest/server/handler/anysave"
 	"anysave/internal/config"
 	anysaverepo "anysave/internal/repository/anysave"
-	documentstatusrepo "anysave/internal/repository/documentstatus"
 	anysavesrv "anysave/internal/service/anysave"
-	documentstatussrv "anysave/internal/service/documentstatus"
-	"github.com/zuzuka28/simreport/lib/minioutil"
 	"context"
-	"fmt"
 	"io"
 	"os"
 	"sync"
+
+	"github.com/zuzuka28/simreport/lib/minioutil"
 
 	"github.com/google/wire"
 	"github.com/minio/minio-go/v7"
@@ -88,62 +86,12 @@ func InitNatsJetstream(
 	))
 }
 
-func ProvideDocumentStatusJetstreamKV(
-	ctx context.Context,
-	js jetstream.JetStream,
-) (jetstream.KeyValue, error) {
-	kv, err := js.CreateOrUpdateKeyValue(ctx, jetstream.KeyValueConfig{ //nolint:exhaustruct
-		Bucket: "documentstatus",
-	})
-	if err != nil {
-		return nil, fmt.Errorf("new kv: %w", err)
-	}
-
-	return kv, nil
-}
-
-func ProvideDocumentStatusJetstreamStream(
-	ctx context.Context,
-	js jetstream.JetStream,
-) (jetstream.Stream, error) {
-	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{ //nolint:exhaustruct
-		Name:      "documentstatus",
-		Subjects:  []string{"documentstatus.>"},
-		Retention: jetstream.InterestPolicy,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("new steream: %w", err)
-	}
-
-	return s, nil
-}
-
 func InitDocumentFileRepository(
 	_ *minio.Client,
 	_ *config.Config,
 ) (*anysaverepo.Repository, error) {
 	panic(wire.Build(
 		anysaverepo.NewRepository,
-	))
-}
-
-func InitDocumentStatusRepository(
-	ctx context.Context,
-	js jetstream.JetStream,
-) (*documentstatusrepo.Repository, error) {
-	panic(wire.Build(
-		ProvideDocumentStatusJetstreamKV,
-		wire.Bind(new(jetstream.Publisher), new(jetstream.JetStream)),
-		documentstatusrepo.NewRepository,
-	))
-}
-
-func InitDocumentStatusService(
-	_ *documentstatusrepo.Repository,
-) (*documentstatussrv.Service, error) {
-	panic(wire.Build(
-		wire.Bind(new(documentstatussrv.Repository), new(*documentstatusrepo.Repository)),
-		documentstatussrv.NewService,
 	))
 }
 
@@ -164,12 +112,10 @@ func InitAnysaveService(
 }
 
 func InitAnysaveHandler(
-	_ *documentstatussrv.Service,
 	_ *anysavesrv.Service,
 ) *anysaveapi.Handler {
 	panic(wire.Build(
 		wire.Bind(new(anysaveapi.Service), new(*anysavesrv.Service)),
-		wire.Bind(new(anysaveapi.StatusService), new(*documentstatussrv.Service)),
 		anysaveapi.NewHandler,
 	))
 }
@@ -181,11 +127,6 @@ func InitRestAPI(
 	panic(wire.Build(
 		ProvideSpec,
 		ProvideS3,
-		ProvideNats,
-		InitNatsJetstream,
-
-		InitDocumentStatusRepository,
-		InitDocumentStatusService,
 
 		InitAnysaveService,
 
