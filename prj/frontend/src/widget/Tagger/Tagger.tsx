@@ -16,10 +16,13 @@ export const Tagger: FC<TaggerProps> = ({ initialValues = [], onBubblesChange, s
     useEffect(() => {
         const loadSuggestion = async () => {
             if (fetchSuggestions) {
-                await fetchSuggestions(inputValue).then((result) => setFilteredSuggestions(result));
-            } else {
+                await fetchSuggestions("").then((result) => setFilteredSuggestions(result));
+            }
+
+            if (inputValue !== "") {
+                console.log(filteredSuggestions, inputValue.toLowerCase())
                 setFilteredSuggestions(
-                    suggestions.filter((suggestion) =>
+                    filteredSuggestions.filter((suggestion) =>
                         suggestion.toLowerCase().includes(inputValue.toLowerCase())
                     )
                 );
@@ -27,7 +30,6 @@ export const Tagger: FC<TaggerProps> = ({ initialValues = [], onBubblesChange, s
         }
 
         loadSuggestion()
-
     }, [inputValue]);
 
     const handleInputChange = (event) => {

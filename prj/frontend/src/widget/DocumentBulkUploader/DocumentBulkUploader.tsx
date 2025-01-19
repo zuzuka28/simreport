@@ -19,7 +19,7 @@ export const DocumentBulkUploader: FC<DocumentBulkUploadProps> = ({
 
     const groups = items || [];
 
-    return groups.map((doc: any) => (doc.title));
+    return groups.map((doc: any) => (doc.value));
   };
 
   const handleFileUploaded = (id: string) => {

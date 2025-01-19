@@ -34,7 +34,7 @@ func buildSearchQuery(query model.AttributeQuery) ([]byte, error) {
 	searchQuery["aggs"] = map_{
 		"attr": map_{
 			"terms": map_{
-				"field": query.ID,
+				"field": query.ID + ".keyword",
 			},
 		},
 	}
