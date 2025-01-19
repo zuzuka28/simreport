@@ -9,6 +9,7 @@ import { Layout } from "app/Layout/Layout";
 import { DocumentManager } from "page/DocumentManager";
 import { SimilarityCheck } from "page/SimilarityCheck/SimilarityCheck";
 import { DocumentUpload } from "page/DocumentUpload/DocumentUpload";
+import { DocumentBulkUpload } from "page/DocumentBulkUpload";
 
 const routes: RouteObject = {
   path: "/",
@@ -20,6 +21,10 @@ const routes: RouteObject = {
             {
               label: "upload",
               path: "/upload",
+            },
+            {
+              label: "bulk_upload",
+              path: "/bulk_upload",
             },
             {
               label: "files",
@@ -39,6 +44,11 @@ const routes: RouteObject = {
     {
       path: "upload",
       element: <DocumentUpload />,
+      errorElement: <div>Page 404</div>,
+    },
+    {
+      path: "bulk_upload",
+      element: <DocumentBulkUpload />,
       errorElement: <div>Page 404</div>,
     },
     {

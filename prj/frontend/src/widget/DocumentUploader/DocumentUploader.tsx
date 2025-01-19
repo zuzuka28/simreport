@@ -18,7 +18,7 @@ export const DocumentUploader: FC<DocumentUploadProps> = ({
 
   const provideGroupIDs = async () => {
     const { items } = await client.attribute.fetchValues({
-      attribute: "groupID",
+      attribute: "groupIDs",
     });
 
     const groups = items || [];

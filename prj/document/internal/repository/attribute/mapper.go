@@ -31,12 +31,10 @@ func mapSearchResponseToAttributes(in *elasticutil.SearchResponse) ([]model.Attr
 func buildSearchQuery(query model.AttributeQuery) ([]byte, error) {
 	searchQuery := make(map_)
 
-	searchQuery["query"] = map_{
-		"aggs": map_{
-			"attr": map_{
-				"terms": map_{
-					"field": query.ID,
-				},
+	searchQuery["aggs"] = map_{
+		"attr": map_{
+			"terms": map_{
+				"field": query.ID,
 			},
 		},
 	}
