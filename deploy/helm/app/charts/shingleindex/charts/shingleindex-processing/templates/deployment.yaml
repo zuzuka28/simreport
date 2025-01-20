@@ -29,7 +29,7 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python3.11", "-m", "src.indexer_handler"]
+          command: ["./app", "--config", "/etc/config/config.yaml", "run-async-processing"]
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
