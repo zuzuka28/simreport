@@ -2,7 +2,8 @@ package shingleindex
 
 import (
 	"context"
-	"shingleindex/internal/model"
+
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/model"
 
 	"github.com/nats-io/nats.go/micro"
 )

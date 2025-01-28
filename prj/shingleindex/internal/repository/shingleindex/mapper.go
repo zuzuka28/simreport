@@ -1,6 +1,6 @@
 package shingleindex
 
-import "shingleindex/internal/model"
+import "github.com/zuzuka28/simreport/prj/shingleindex/internal/model"
 
 func mapCandidatesToMatches(in []string) []*model.MinhashSimilarMatch {
 	res := make([]*model.MinhashSimilarMatch, 0, len(in))

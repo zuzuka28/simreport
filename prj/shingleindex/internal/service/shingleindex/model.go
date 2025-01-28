@@ -2,7 +2,8 @@ package shingleindex
 
 import (
 	"hash/fnv"
-	"shingleindex/internal/model"
+
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/model"
 )
 
 const (

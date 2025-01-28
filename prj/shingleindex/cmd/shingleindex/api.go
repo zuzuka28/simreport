@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"shingleindex/internal/provider"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/provider"
 
 	"github.com/urfave/cli/v2"
 )

@@ -2,7 +2,8 @@ package shingleindex
 
 import (
 	"errors"
-	"shingleindex/internal/model"
+
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/model"
 )
 
 func mapDocumentToResponse(in []*model.DocumentSimilarMatch) []documentSimilarMatch {

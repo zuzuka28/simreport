@@ -5,8 +5,9 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"shingleindex/internal/provider"
 	"syscall"
+
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/provider"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/sync/errgroup"

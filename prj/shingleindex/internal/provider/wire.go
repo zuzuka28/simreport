@@ -4,15 +4,16 @@ package provider
 
 import (
 	"context"
-	serverevent "shingleindex/api/nats/event"
-	indexerevent "shingleindex/api/nats/event/handler/indexer"
-	shingleindexmicro "shingleindex/api/nats/micro/handler/shingleindex"
-	servermicro "shingleindex/api/nats/micro/server"
-	"shingleindex/internal/config"
-	documentrepo "shingleindex/internal/repository/document"
-	shingleindexrepo "shingleindex/internal/repository/shingleindex"
-	documentsrv "shingleindex/internal/service/document"
-	shingleindexsrv "shingleindex/internal/service/shingleindex"
+
+	serverevent "github.com/zuzuka28/simreport/prj/shingleindex/api/nats/event"
+	indexerevent "github.com/zuzuka28/simreport/prj/shingleindex/api/nats/event/handler/indexer"
+	shingleindexmicro "github.com/zuzuka28/simreport/prj/shingleindex/api/nats/micro/handler/shingleindex"
+	servermicro "github.com/zuzuka28/simreport/prj/shingleindex/api/nats/micro/server"
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/config"
+	documentrepo "github.com/zuzuka28/simreport/prj/shingleindex/internal/repository/document"
+	shingleindexrepo "github.com/zuzuka28/simreport/prj/shingleindex/internal/repository/shingleindex"
+	documentsrv "github.com/zuzuka28/simreport/prj/shingleindex/internal/service/document"
+	shingleindexsrv "github.com/zuzuka28/simreport/prj/shingleindex/internal/service/shingleindex"
 
 	"github.com/google/wire"
 	"github.com/nats-io/nats.go"

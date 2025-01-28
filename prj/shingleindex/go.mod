@@ -1,4 +1,4 @@
-module shingleindex
+module github.com/zuzuka28/simreport/prj/shingleindex
 
 go 1.23.2
 

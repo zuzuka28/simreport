@@ -3,10 +3,11 @@ package shingleindex
 import (
 	"context"
 	"fmt"
-	"shingleindex/internal/model"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/model"
 
 	"github.com/zuzuka28/simreport/lib/minhash"
 	"github.com/zuzuka28/simreport/lib/sequencematcher"
