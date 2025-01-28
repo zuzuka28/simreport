@@ -1,4 +1,4 @@
-package fulltextindex
+package semanticindex
 
 import (
 	"context"

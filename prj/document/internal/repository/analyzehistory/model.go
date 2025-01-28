@@ -2,10 +2,13 @@ package analyzehistory
 
 import "time"
 
+//nolint:revive
+type map_ map[string]any
+
 type history struct {
-	Date       time.Time              `json:"date"`
-	DocumentID string                 `json:"documentID"`
-	ID         string                 `json:"id"`
+	Date       time.Time               `json:"date"`
+	DocumentID string                  `json:"documentID"`
+	ID         string                  `json:"id"`
 	Matches    []*documentSimilarMatch `json:"matches"`
 }
 

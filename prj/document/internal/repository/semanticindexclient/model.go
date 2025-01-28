@@ -1,4 +1,4 @@
-package fulltextindexclient
+package semanticindexclient
 
 type documentSimilarMatch struct {
 	ID            string   `json:"id"`

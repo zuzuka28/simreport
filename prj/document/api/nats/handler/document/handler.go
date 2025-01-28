@@ -1,12 +1,6 @@
 package document
 
-import (
-	"context"
-	"document/internal/model"
-	"time"
-
-	"github.com/nats-io/nats.go/micro"
-)
+import "time"
 
 const requestTimeout = 60 * time.Second
 
@@ -20,27 +14,4 @@ func NewHandler(
 	return &Handler{
 		s: s,
 	}
-}
-
-func (h *Handler) Fetch(msg micro.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	defer cancel()
-
-	id := string(msg.Data())
-
-	doc, err := h.s.Fetch(ctx, model.DocumentQuery{
-		ID:          id,
-		WithContent: true,
-		Include: []model.DocumentQueryInclude{
-			model.DocumentQueryIncludeSource,
-			model.DocumentQueryIncludeText,
-			model.DocumentQueryIncludeImages,
-		},
-	})
-	if err != nil {
-		_ = msg.Error(mapErrorToStatus(err), err.Error(), nil)
-		return
-	}
-
-	_ = msg.RespondJSON(mapDocumentToResponse(doc))
 }

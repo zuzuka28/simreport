@@ -1,5 +1,8 @@
 package attribute
 
+//nolint:revive
+type map_ map[string]any
+
 type termsAggsBucket struct {
 	Key string `json:"key"`
 }

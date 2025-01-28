@@ -2,6 +2,9 @@ package document
 
 import "time"
 
+//nolint:revive
+type map_ map[string]any
+
 type document struct {
 	ParentID    string    `json:"parentID"`
 	Name        string    `json:"name"`
