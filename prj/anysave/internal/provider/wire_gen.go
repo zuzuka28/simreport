@@ -7,16 +7,16 @@
 package provider
 
 import (
-	"anysave/api/rest/server"
-	anysave3 "anysave/api/rest/server/handler/anysave"
-	"anysave/internal/config"
-	"anysave/internal/repository/anysave"
-	anysave2 "anysave/internal/service/anysave"
 	"context"
 	"github.com/minio/minio-go/v7"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/zuzuka28/simreport/lib/minioutil"
+	"github.com/zuzuka28/simreport/prj/anysave/api/rest/server"
+	anysave3 "github.com/zuzuka28/simreport/prj/anysave/api/rest/server/handler/anysave"
+	"github.com/zuzuka28/simreport/prj/anysave/internal/config"
+	"github.com/zuzuka28/simreport/prj/anysave/internal/repository/anysave"
+	anysave2 "github.com/zuzuka28/simreport/prj/anysave/internal/service/anysave"
 	"io"
 	"os"
 	"sync"

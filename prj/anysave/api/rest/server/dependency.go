@@ -1,8 +1,9 @@
 package server
 
 import (
-	openapi "anysave/api/rest/gen"
 	"context"
+
+	openapi "github.com/zuzuka28/simreport/prj/anysave/api/rest/gen"
 )
 
 type (

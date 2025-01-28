@@ -1,13 +1,14 @@
 package anysave
 
 import (
-	"anysave/internal/model"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/zuzuka28/simreport/prj/anysave/internal/model"
 
 	"github.com/minio/minio-go/v7"
 )

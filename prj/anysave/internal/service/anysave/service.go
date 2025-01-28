@@ -2,12 +2,13 @@
 package anysave
 
 import (
-	"anysave/internal/model"
 	"context"
+
+	"github.com/zuzuka28/simreport/prj/anysave/internal/model"
 )
 
 const (
-	bucketAnysave = "anysave"
+	bucketAnysave = "github.com/zuzuka28/simreport/prj/anysave"
 )
 
 type Opts struct {

@@ -1,9 +1,10 @@
 package anysave
 
 import (
-	openapi "anysave/api/rest/gen"
 	"context"
 	"fmt"
+
+	openapi "github.com/zuzuka28/simreport/prj/anysave/api/rest/gen"
 )
 
 func (h *Handler) PostUpload(

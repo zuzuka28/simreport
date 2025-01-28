@@ -1,12 +1,13 @@
 package main
 
 import (
-	"anysave/internal/provider"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/zuzuka28/simreport/prj/anysave/internal/provider"
 
 	"github.com/urfave/cli/v2"
 )

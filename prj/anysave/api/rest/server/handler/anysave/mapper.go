@@ -1,8 +1,6 @@
 package anysave
 
 import (
-	openapi "anysave/api/rest/gen"
-	"anysave/internal/model"
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
@@ -11,6 +9,9 @@ import (
 	"io"
 	"mime/multipart"
 	"time"
+
+	openapi "github.com/zuzuka28/simreport/prj/anysave/api/rest/gen"
+	"github.com/zuzuka28/simreport/prj/anysave/internal/model"
 )
 
 var (

@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"anysave/internal/model"
+
+	"github.com/zuzuka28/simreport/prj/anysave/internal/model"
 )
 
 func responseErrorHandler(w http.ResponseWriter, _ *http.Request, err error) {

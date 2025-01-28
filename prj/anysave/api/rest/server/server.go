@@ -1,12 +1,13 @@
 package server
 
 import (
-	openapi "anysave/api/rest/gen"
 	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
+
+	openapi "github.com/zuzuka28/simreport/prj/anysave/api/rest/gen"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"

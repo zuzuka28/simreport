@@ -3,15 +3,16 @@
 package provider
 
 import (
-	serverhttp "anysave/api/rest/server"
-	anysaveapi "anysave/api/rest/server/handler/anysave"
-	"anysave/internal/config"
-	anysaverepo "anysave/internal/repository/anysave"
-	anysavesrv "anysave/internal/service/anysave"
 	"context"
 	"io"
 	"os"
 	"sync"
+
+	serverhttp "github.com/zuzuka28/simreport/prj/anysave/api/rest/server"
+	anysaveapi "github.com/zuzuka28/simreport/prj/anysave/api/rest/server/handler/anysave"
+	"github.com/zuzuka28/simreport/prj/anysave/internal/config"
+	anysaverepo "github.com/zuzuka28/simreport/prj/anysave/internal/repository/anysave"
+	anysavesrv "github.com/zuzuka28/simreport/prj/anysave/internal/service/anysave"
 
 	"github.com/zuzuka28/simreport/lib/minioutil"
 

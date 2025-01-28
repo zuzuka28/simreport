@@ -1,8 +1,9 @@
 package anysave
 
 import (
-	"anysave/internal/model"
 	"context"
+
+	"github.com/zuzuka28/simreport/prj/anysave/internal/model"
 )
 
 type (

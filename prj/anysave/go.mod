@@ -1,4 +1,4 @@
-module anysave
+module github.com/zuzuka28/simreport/prj/anysave
 
 go 1.23.2
 

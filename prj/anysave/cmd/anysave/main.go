@@ -9,8 +9,8 @@ import (
 
 func main() {
 	app := &cli.App{ //nolint:exhaustruct
-		Name:  "anysave-service API",
-		Usage: "anysave-service API service",
+		Name:  "github.com/zuzuka28/simreport/prj/anysave-service API",
+		Usage: "github.com/zuzuka28/simreport/prj/anysave-service API service",
 		Flags: []cli.Flag{
 			&cli.StringFlag{ //nolint:exhaustruct
 				Name:  "config",

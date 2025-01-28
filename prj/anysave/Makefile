@@ -10,3 +10,6 @@ run_api:
 
 run_app:
 	go run cmd/anysave/*.go --config config/config.yaml
+
+format_code:
+	go run mvdan.cc/gofumpt@latest -w .

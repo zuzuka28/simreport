@@ -1,9 +1,10 @@
 package anysave
 
 import (
-	"anysave/internal/model"
 	"context"
 	"fmt"
+
+	"github.com/zuzuka28/simreport/prj/anysave/internal/model"
 
 	"golang.org/x/sync/errgroup"
 )

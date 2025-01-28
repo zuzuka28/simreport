@@ -2,9 +2,10 @@
 package anysave
 
 import (
-	"anysave/internal/model"
 	"context"
 	"fmt"
+
+	"github.com/zuzuka28/simreport/prj/anysave/internal/model"
 )
 
 func (s *Service) Fetch(
