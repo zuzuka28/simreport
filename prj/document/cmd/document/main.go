@@ -9,8 +9,8 @@ import (
 
 func main() {
 	app := &cli.App{ //nolint:exhaustruct
-		Name:  "document-service API",
-		Usage: "document-service API service",
+		Name:  "github.com/zuzuka28/simreport/prj/document-service API",
+		Usage: "github.com/zuzuka28/simreport/prj/document-service API service",
 		Flags: []cli.Flag{
 			&cli.StringFlag{ //nolint:exhaustruct
 				Name:  "config",

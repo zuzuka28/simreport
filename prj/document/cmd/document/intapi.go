@@ -5,8 +5,9 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"document/internal/provider"
 	"syscall"
+
+	"github.com/zuzuka28/simreport/prj/document/internal/provider"
 
 	"github.com/urfave/cli/v2"
 )

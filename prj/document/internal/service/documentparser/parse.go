@@ -3,9 +3,10 @@ package documentparser
 import (
 	"bytes"
 	"context"
-	"document/internal/model"
 	"fmt"
 	"time"
+
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
 
 	"golang.org/x/sync/errgroup"
 )

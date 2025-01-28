@@ -2,9 +2,10 @@ package document
 
 import (
 	"context"
-	"document/internal/model"
 	"fmt"
 	"sync"
+
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
 
 	"golang.org/x/sync/errgroup"
 )

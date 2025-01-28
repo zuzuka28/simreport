@@ -3,11 +3,12 @@ package filestorage
 import (
 	"bytes"
 	"context"
-	"document/internal/model"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
 
 	"github.com/minio/minio-go/v7"
 )

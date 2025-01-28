@@ -1,10 +1,11 @@
 package config
 
 import (
-	"document/internal/repository/analyzehistory"
-	"document/internal/repository/attribute"
-	"document/internal/repository/document"
 	"fmt"
+
+	"github.com/zuzuka28/simreport/prj/document/internal/repository/analyzehistory"
+	"github.com/zuzuka28/simreport/prj/document/internal/repository/attribute"
+	"github.com/zuzuka28/simreport/prj/document/internal/repository/document"
 
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/minioutil"
@@ -32,7 +33,7 @@ type Config struct {
 	Nats               string              `yaml:"nats"`
 	Tika               string              `yaml:"tika"`
 	Elastic            elasticutil.Config  `yaml:"elastic"`
-	DocumentRepo       document.Opts       `yaml:"documentRepo"`
+	DocumentRepo       document.Opts       `yaml:"github.com/zuzuka28/simreport/prj/documentRepo"`
 	AttributeRepo      attribute.Opts      `yaml:"attributeRepo"`
 	AnalyzeHistoryRepo analyzehistory.Opts `yaml:"analyzeHistoryRepo"`
 }

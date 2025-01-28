@@ -2,8 +2,9 @@ package attribute
 
 import (
 	"context"
-	openapi "document/api/rest/gen"
 	"fmt"
+
+	openapi "github.com/zuzuka28/simreport/prj/document/api/rest/gen"
 )
 
 func (h *Handler) PostAttribute(

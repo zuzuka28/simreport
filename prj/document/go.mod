@@ -1,4 +1,4 @@
-module document
+module github.com/zuzuka28/simreport/prj/document
 
 go 1.23.2
 

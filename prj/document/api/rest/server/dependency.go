@@ -2,7 +2,8 @@ package server
 
 import (
 	"context"
-	openapi "document/api/rest/gen"
+
+	openapi "github.com/zuzuka28/simreport/prj/document/api/rest/gen"
 )
 
 type (

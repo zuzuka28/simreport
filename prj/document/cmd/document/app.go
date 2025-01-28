@@ -1,12 +1,13 @@
 package main
 
 import (
-	"document/internal/provider"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/zuzuka28/simreport/prj/document/internal/provider"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/sync/errgroup"

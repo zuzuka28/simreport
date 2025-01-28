@@ -2,7 +2,8 @@ package document
 
 import (
 	"errors"
-	"document/internal/model"
+
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
 )
 
 func mapDocumentToResponse(in model.Document) Document {

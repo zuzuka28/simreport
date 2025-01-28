@@ -1,6 +1,6 @@
 package document
 
-import "document/internal/model"
+import "github.com/zuzuka28/simreport/prj/document/internal/model"
 
 func mapDocumentWithContentToDocument(in model.Document) model.Document {
 	return model.Document{

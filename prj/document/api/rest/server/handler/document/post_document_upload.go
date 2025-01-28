@@ -2,9 +2,10 @@ package document
 
 import (
 	"context"
-	openapi "document/api/rest/gen"
-	"document/internal/model"
 	"fmt"
+
+	openapi "github.com/zuzuka28/simreport/prj/document/api/rest/gen"
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
 )
 
 func (h *Handler) PostDocumentUpload(

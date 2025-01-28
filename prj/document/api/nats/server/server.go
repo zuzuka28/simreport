@@ -25,14 +25,14 @@ func NewServer(
 
 func (s *Server) Start(ctx context.Context) error {
 	docsrv, err := micro.AddService(s.conn, micro.Config{ //nolint:exhaustruct
-		Name:    "document",
+		Name:    "github.com/zuzuka28/simreport/prj/document",
 		Version: "0.0.1",
 	})
 	if err != nil {
 		return fmt.Errorf("create document service: %w", err)
 	}
 
-	docsrvg := docsrv.AddGroup("document")
+	docsrvg := docsrv.AddGroup("github.com/zuzuka28/simreport/prj/document")
 
 	defer func() { _ = docsrv.Stop() }()
 

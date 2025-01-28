@@ -8,32 +8,6 @@ package provider
 
 import (
 	"context"
-	document4 "document/api/nats/handler/document"
-	server2 "document/api/nats/server"
-	"document/api/rest/server"
-	analyze2 "document/api/rest/server/handler/analyze"
-	attribute3 "document/api/rest/server/handler/attribute"
-	document3 "document/api/rest/server/handler/document"
-	"document/internal/config"
-	"document/internal/model"
-	"document/internal/repository/analyzehistory"
-	"document/internal/repository/attribute"
-	"document/internal/repository/document"
-	"document/internal/repository/documentstatus"
-	"document/internal/repository/filestorage"
-	"document/internal/repository/fulltextindexclient"
-	fulltextindexclient2 "document/internal/repository/semanticindexclient"
-	"document/internal/repository/shingleindexclient"
-	"document/internal/service/analyze"
-	attribute2 "document/internal/service/attribute"
-	document2 "document/internal/service/document"
-	"document/internal/service/documentparser"
-	"document/internal/service/documentpipeline"
-	"document/internal/service/documentpipeline/handler/filesaved"
-	documentstatus2 "document/internal/service/documentstatus"
-	"document/internal/service/fulltextindex"
-	fulltextindex2 "document/internal/service/semanticindex"
-	"document/internal/service/shingleindex"
 	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/minio/minio-go/v7"
@@ -42,6 +16,32 @@ import (
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/minioutil"
 	"github.com/zuzuka28/simreport/lib/tikaclient"
+	document4 "github.com/zuzuka28/simreport/prj/document/api/nats/handler/document"
+	server2 "github.com/zuzuka28/simreport/prj/document/api/nats/server"
+	"github.com/zuzuka28/simreport/prj/document/api/rest/server"
+	analyze2 "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/analyze"
+	attribute3 "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/attribute"
+	document3 "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/document"
+	"github.com/zuzuka28/simreport/prj/document/internal/config"
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
+	"github.com/zuzuka28/simreport/prj/document/internal/repository/analyzehistory"
+	"github.com/zuzuka28/simreport/prj/document/internal/repository/attribute"
+	"github.com/zuzuka28/simreport/prj/document/internal/repository/document"
+	"github.com/zuzuka28/simreport/prj/document/internal/repository/documentstatus"
+	"github.com/zuzuka28/simreport/prj/document/internal/repository/filestorage"
+	"github.com/zuzuka28/simreport/prj/document/internal/repository/fulltextindexclient"
+	fulltextindexclient2 "github.com/zuzuka28/simreport/prj/document/internal/repository/semanticindexclient"
+	"github.com/zuzuka28/simreport/prj/document/internal/repository/shingleindexclient"
+	"github.com/zuzuka28/simreport/prj/document/internal/service/analyze"
+	attribute2 "github.com/zuzuka28/simreport/prj/document/internal/service/attribute"
+	document2 "github.com/zuzuka28/simreport/prj/document/internal/service/document"
+	"github.com/zuzuka28/simreport/prj/document/internal/service/documentparser"
+	"github.com/zuzuka28/simreport/prj/document/internal/service/documentpipeline"
+	"github.com/zuzuka28/simreport/prj/document/internal/service/documentpipeline/handler/filesaved"
+	documentstatus2 "github.com/zuzuka28/simreport/prj/document/internal/service/documentstatus"
+	"github.com/zuzuka28/simreport/prj/document/internal/service/fulltextindex"
+	fulltextindex2 "github.com/zuzuka28/simreport/prj/document/internal/service/semanticindex"
+	"github.com/zuzuka28/simreport/prj/document/internal/service/shingleindex"
 	"io"
 	"net/http"
 	"os"
@@ -481,7 +481,7 @@ func ProvideDocumentStatusJetstreamKV(
 	js jetstream.JetStream,
 ) (jetstream.KeyValue, error) {
 	kv, err := js.CreateOrUpdateKeyValue(ctx, jetstream.KeyValueConfig{
-		Bucket: "documentstatus",
+		Bucket: "github.com/zuzuka28/simreport/prj/documentstatus",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new kv: %w", err)
@@ -495,8 +495,8 @@ func ProvideDocumentStatusJetstreamStream(
 	js jetstream.JetStream,
 ) (jetstream.Stream, error) {
 	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
-		Name:      "documentstatus",
-		Subjects:  []string{"documentstatus.>"},
+		Name:      "github.com/zuzuka28/simreport/prj/documentstatus",
+		Subjects:  []string{"github.com/zuzuka28/simreport/prj/documentstatus.>"},
 		Retention: jetstream.InterestPolicy,
 	})
 	if err != nil {

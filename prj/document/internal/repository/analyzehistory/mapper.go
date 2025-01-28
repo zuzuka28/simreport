@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"document/internal/model"
-	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"time"
+
+	"github.com/zuzuka28/simreport/lib/elasticutil"
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
 )
 
 //nolint:gochecknoglobals
@@ -115,7 +116,7 @@ func buildSearchQuery(query model.SimilarityHistoryQuery) ([]byte, error) {
 	if query.DocumentID != "" {
 		filter = append(filter, map_{
 			"term": map_{
-				"documentID": query.DocumentID,
+				"github.com/zuzuka28/simreport/prj/documentID": query.DocumentID,
 			},
 		})
 	}

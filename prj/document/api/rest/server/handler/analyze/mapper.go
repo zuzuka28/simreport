@@ -1,8 +1,8 @@
 package analyze
 
 import (
-	openapi "document/api/rest/gen"
-	"document/internal/model"
+	openapi "github.com/zuzuka28/simreport/prj/document/api/rest/gen"
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
 )
 
 func mapSearchSimilarRequestToQuery(

@@ -1,10 +1,11 @@
 package document
 
 import (
-	openapi "document/api/rest/gen"
-	"document/internal/model"
 	"errors"
 	"time"
+
+	openapi "github.com/zuzuka28/simreport/prj/document/api/rest/gen"
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
 )
 
 var errNoBody = errors.New("no body")

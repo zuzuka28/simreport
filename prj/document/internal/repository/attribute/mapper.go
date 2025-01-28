@@ -1,10 +1,11 @@
 package attribute
 
 import (
-	"document/internal/model"
 	"encoding/json"
 	"errors"
 	"fmt"
+
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
 
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 )

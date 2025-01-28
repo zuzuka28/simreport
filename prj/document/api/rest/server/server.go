@@ -2,11 +2,12 @@ package server
 
 import (
 	"context"
-	openapi "document/api/rest/gen"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
+
+	openapi "github.com/zuzuka28/simreport/prj/document/api/rest/gen"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"

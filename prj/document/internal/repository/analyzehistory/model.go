@@ -7,7 +7,7 @@ type map_ map[string]any
 
 type history struct {
 	Date       time.Time               `json:"date"`
-	DocumentID string                  `json:"documentID"`
+	DocumentID string                  `json:"github.com/zuzuka28/simreport/prj/documentID"`
 	ID         string                  `json:"id"`
 	Matches    []*documentSimilarMatch `json:"matches"`
 }

@@ -2,7 +2,8 @@ package fulltextindex
 
 import (
 	"context"
-	"document/internal/model"
+
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
 )
 
 type (

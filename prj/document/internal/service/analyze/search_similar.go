@@ -2,10 +2,11 @@ package analyze
 
 import (
 	"context"
-	"document/internal/model"
 	"fmt"
 	"sort"
 	"sync"
+
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
 
 	"golang.org/x/sync/errgroup"
 )

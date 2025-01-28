@@ -3,12 +3,13 @@ package documentpipeline
 import (
 	"context"
 	"fmt"
-	"document/internal/model"
+
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
 
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-const subject = "documentstatus"
+const subject = "github.com/zuzuka28/simreport/prj/documentstatus"
 
 type stageHandler struct {
 	ss    StatusService

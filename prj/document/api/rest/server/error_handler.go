@@ -5,7 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"document/internal/model"
+
+	"github.com/zuzuka28/simreport/prj/document/internal/model"
 )
 
 func responseErrorHandler(w http.ResponseWriter, _ *http.Request, err error) {

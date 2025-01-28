@@ -55,7 +55,7 @@ type SearchRequest struct {
 // SimilaritySearchHistory defines model for SimilaritySearchHistory.
 type SimilaritySearchHistory struct {
 	Date       *time.Time               `json:"date,omitempty"`
-	DocumentID *string                  `json:"documentID,omitempty"`
+	DocumentID *string                  `json:"github.com/zuzuka28/simreport/prj/documentID,omitempty"`
 	Id         *string                  `json:"id,omitempty"`
 	Matches    *[]AnalyzedDocumentMatch `json:"matches,omitempty"`
 }
@@ -64,7 +64,7 @@ type SimilaritySearchHistory struct {
 type SimilaritySearchHistoryRequest struct {
 	DateFrom   *time.Time `json:"dateFrom,omitempty"`
 	DateTo     *time.Time `json:"dateTo,omitempty"`
-	DocumentID *string    `json:"documentID,omitempty"`
+	DocumentID *string    `json:"github.com/zuzuka28/simreport/prj/documentID,omitempty"`
 	Limit      *int       `json:"limit,omitempty"`
 	Offset     *int       `json:"offset,omitempty"`
 }
@@ -92,7 +92,7 @@ type BadRequest struct {
 
 // SearchResult defines model for SearchResult.
 type SearchResult struct {
-	Documents *[]DocumentSummary `json:"documents,omitempty"`
+	Documents *[]DocumentSummary `json:"github.com/zuzuka28/simreport/prj/documents,omitempty"`
 }
 
 // ServerError defines model for ServerError.
@@ -103,17 +103,17 @@ type ServerError struct {
 // SimilaritySearchHistoryResult defines model for SimilaritySearchHistoryResult.
 type SimilaritySearchHistoryResult struct {
 	Count     *int                       `json:"count,omitempty"`
-	Documents *[]SimilaritySearchHistory `json:"documents,omitempty"`
+	Documents *[]SimilaritySearchHistory `json:"github.com/zuzuka28/simreport/prj/documents,omitempty"`
 }
 
 // SimilaritySearchResult defines model for SimilaritySearchResult.
 type SimilaritySearchResult struct {
-	Documents *[]AnalyzedDocumentMatch `json:"documents,omitempty"`
+	Documents *[]AnalyzedDocumentMatch `json:"github.com/zuzuka28/simreport/prj/documents,omitempty"`
 }
 
 // UploadSuccess defines model for UploadSuccess.
 type UploadSuccess struct {
-	DocumentID *string `json:"documentID,omitempty"`
+	DocumentID *string `json:"github.com/zuzuka28/simreport/prj/documentID,omitempty"`
 }
 
 // PostAnalyzeHistoryJSONRequestBody defines body for PostAnalyzeHistory for application/json ContentType.
@@ -175,12 +175,12 @@ func (siw *ServerInterfaceWrapper) GetAnalyzeDocumentIdSimilar(w http.ResponseWr
 
 	var err error
 
-	// ------------- Path parameter "document_id" -------------
+	// ------------- Path parameter "github.com/zuzuka28/simreport/prj/document_id" -------------
 	var documentId DocumentId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "document_id", mux.Vars(r)["document_id"], &documentId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "github.com/zuzuka28/simreport/prj/document_id", mux.Vars(r)["github.com/zuzuka28/simreport/prj/document_id"], &documentId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "document_id", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "github.com/zuzuka28/simreport/prj/document_id", Err: err})
 		return
 	}
 
@@ -372,7 +372,7 @@ type BadRequestJSONResponse struct {
 }
 
 type SearchResultJSONResponse struct {
-	Documents *[]DocumentSummary `json:"documents,omitempty"`
+	Documents *[]DocumentSummary `json:"github.com/zuzuka28/simreport/prj/documents,omitempty"`
 }
 
 type ServerErrorJSONResponse struct {
@@ -381,15 +381,15 @@ type ServerErrorJSONResponse struct {
 
 type SimilaritySearchHistoryResultJSONResponse struct {
 	Count     *int                       `json:"count,omitempty"`
-	Documents *[]SimilaritySearchHistory `json:"documents,omitempty"`
+	Documents *[]SimilaritySearchHistory `json:"github.com/zuzuka28/simreport/prj/documents,omitempty"`
 }
 
 type SimilaritySearchResultJSONResponse struct {
-	Documents *[]AnalyzedDocumentMatch `json:"documents,omitempty"`
+	Documents *[]AnalyzedDocumentMatch `json:"github.com/zuzuka28/simreport/prj/documents,omitempty"`
 }
 
 type UploadSuccessJSONResponse struct {
-	DocumentID *string `json:"documentID,omitempty"`
+	DocumentID *string `json:"github.com/zuzuka28/simreport/prj/documentID,omitempty"`
 }
 
 type PostAnalyzeHistoryRequestObject struct {
@@ -430,7 +430,7 @@ func (response PostAnalyzeHistory500JSONResponse) VisitPostAnalyzeHistoryRespons
 }
 
 type GetAnalyzeDocumentIdSimilarRequestObject struct {
-	DocumentId DocumentId `json:"document_id"`
+	DocumentId DocumentId `json:"github.com/zuzuka28/simreport/prj/document_id"`
 }
 
 type GetAnalyzeDocumentIdSimilarResponseObject interface {
