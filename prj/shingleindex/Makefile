@@ -9,3 +9,6 @@ run_async_processing:
 
 run_app:
 	go run cmd/shingleindex/*.go --config config/config.yaml
+
+format_code:
+	go run mvdan.cc/gofumpt@latest -w .
