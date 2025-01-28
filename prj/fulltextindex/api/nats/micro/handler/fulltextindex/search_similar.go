@@ -2,7 +2,8 @@ package fulltextindex
 
 import (
 	"context"
-	"fulltextindex/internal/model"
+
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/model"
 
 	"github.com/nats-io/nats.go/micro"
 )

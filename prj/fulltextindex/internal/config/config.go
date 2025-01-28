@@ -2,8 +2,9 @@ package config
 
 import (
 	"fmt"
-	"fulltextindex/internal/repository/fulltextindex"
+
 	"github.com/zuzuka28/simreport/lib/elasticutil"
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/fulltextindex"
 
 	"github.com/ilyakaznacheev/cleanenv"
 )

@@ -8,18 +8,18 @@ package provider
 
 import (
 	"context"
-	server2 "fulltextindex/api/nats/event"
-	"fulltextindex/api/nats/event/handler/indexer"
-	fulltextindex3 "fulltextindex/api/nats/micro/handler/fulltextindex"
-	"fulltextindex/api/nats/micro/server"
-	"fulltextindex/internal/config"
-	"fulltextindex/internal/repository/document"
-	"fulltextindex/internal/repository/fulltextindex"
-	document2 "fulltextindex/internal/service/document"
-	fulltextindex2 "fulltextindex/internal/service/fulltextindex"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/nats-io/nats.go"
 	"github.com/zuzuka28/simreport/lib/elasticutil"
+	server2 "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/event"
+	"github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/event/handler/indexer"
+	fulltextindex3 "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/micro/handler/fulltextindex"
+	"github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/micro/server"
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/config"
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/document"
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/fulltextindex"
+	document2 "github.com/zuzuka28/simreport/prj/fulltextindex/internal/service/document"
+	fulltextindex2 "github.com/zuzuka28/simreport/prj/fulltextindex/internal/service/fulltextindex"
 )
 
 // Injectors from wire.go:

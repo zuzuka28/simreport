@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"fulltextindex/internal/model"
+
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/model"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/micro"

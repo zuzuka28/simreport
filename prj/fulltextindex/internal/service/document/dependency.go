@@ -2,7 +2,8 @@ package document
 
 import (
 	"context"
-	"fulltextindex/internal/model"
+
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/model"
 )
 
 type (

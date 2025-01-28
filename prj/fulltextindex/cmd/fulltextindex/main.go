@@ -9,8 +9,8 @@ import (
 
 func main() {
 	app := &cli.App{ //nolint:exhaustruct
-		Name:  "fulltextindex-service API",
-		Usage: "fulltextindex-service API service",
+		Name:  "github.com/zuzuka28/simreport/prj/fulltextindex-service API",
+		Usage: "github.com/zuzuka28/simreport/prj/fulltextindex-service API service",
 		Flags: []cli.Flag{
 			&cli.StringFlag{ //nolint:exhaustruct
 				Name:  "config",

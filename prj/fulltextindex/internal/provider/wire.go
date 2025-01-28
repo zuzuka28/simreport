@@ -4,16 +4,17 @@ package provider
 
 import (
 	"context"
-	serverevent "fulltextindex/api/nats/event"
-	indexerevent "fulltextindex/api/nats/event/handler/indexer"
-	fulltextindexmicro "fulltextindex/api/nats/micro/handler/fulltextindex"
-	servermicro "fulltextindex/api/nats/micro/server"
-	"fulltextindex/internal/config"
-	documentrepo "fulltextindex/internal/repository/document"
-	fulltextindexrepo "fulltextindex/internal/repository/fulltextindex"
-	documentsrv "fulltextindex/internal/service/document"
-	fulltextindexsrv "fulltextindex/internal/service/fulltextindex"
+
 	"github.com/zuzuka28/simreport/lib/elasticutil"
+	serverevent "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/event"
+	indexerevent "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/event/handler/indexer"
+	fulltextindexmicro "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/micro/handler/fulltextindex"
+	servermicro "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/micro/server"
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/config"
+	documentrepo "github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/document"
+	fulltextindexrepo "github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/fulltextindex"
+	documentsrv "github.com/zuzuka28/simreport/prj/fulltextindex/internal/service/document"
+	fulltextindexsrv "github.com/zuzuka28/simreport/prj/fulltextindex/internal/service/fulltextindex"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/google/wire"

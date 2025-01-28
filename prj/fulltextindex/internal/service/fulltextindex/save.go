@@ -3,7 +3,8 @@ package fulltextindex
 import (
 	"context"
 	"fmt"
-	"fulltextindex/internal/model"
+
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/model"
 )
 
 func (s *Service) Save(

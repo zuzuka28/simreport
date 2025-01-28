@@ -5,8 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"fulltextindex/internal/model"
+
 	"github.com/zuzuka28/simreport/lib/elasticutil"
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/model"
 
 	"github.com/elastic/go-elasticsearch/v8"
 )

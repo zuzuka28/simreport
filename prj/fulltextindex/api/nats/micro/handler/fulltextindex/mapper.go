@@ -2,7 +2,8 @@ package fulltextindex
 
 import (
 	"errors"
-	"fulltextindex/internal/model"
+
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/model"
 )
 
 func mapDocumentToResponse(in []model.DocumentSimilarMatch) []documentSimilarMatch {

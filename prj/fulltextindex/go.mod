@@ -1,4 +1,4 @@
-module fulltextindex
+module github.com/zuzuka28/simreport/prj/fulltextindex
 
 go 1.23.2
 
