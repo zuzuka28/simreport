@@ -1,10 +1,7 @@
 package shingleindex
 
 import (
-	"context"
-	"fmt"
 	"hash/fnv"
-	"shingleindex/internal/model"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/zuzuka28/simreport/lib/minhashlsh"
@@ -44,27 +41,4 @@ func NewRepository(
 	return &Repository{
 		lsh: lsh,
 	}, nil
-}
-
-func (r *Repository) Save(
-	ctx context.Context,
-	cmd model.MinhashSaveCommand,
-) error {
-	if err := r.lsh.Insert(ctx, cmd.DocumentID, cmd.Minhash); err != nil {
-		return fmt.Errorf("insert into lsh: %w", err)
-	}
-
-	return nil
-}
-
-func (r *Repository) SearchSimilar(
-	ctx context.Context,
-	query model.MinhashSimilarQuery,
-) ([]*model.MinhashSimilarMatch, error) {
-	candidates, err := r.lsh.Query(ctx, query.Minhash)
-	if err != nil {
-		return nil, fmt.Errorf("query candidates lsh: %w", err)
-	}
-
-	return mapCandidatesToMatches(candidates), nil
 }
