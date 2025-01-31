@@ -8,10 +8,14 @@ import (
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
+type TemplateData struct {
+	Package  string
+	Services []ServiceData
+}
+
 type ServiceData struct {
-	Name          string
-	LowercaseName string
-	Methods       []MethodData
+	Name    string
+	Methods []MethodData
 }
 
 type MethodData struct {
@@ -20,19 +24,17 @@ type MethodData struct {
 	OutputType string
 }
 
-type TemplateData struct {
-	Package  string
-	Services []ServiceData
-}
-
-func GenerateFile(gen *protogen.Plugin, file *protogen.File) {
+func GenerateFile(gen *protogen.Plugin, file *protogen.File) error {
 	filename := file.GeneratedFilenamePrefix + "_nats.pb.go"
 	g := gen.NewGeneratedFile(filename, file.GoImportPath)
 
-	tmpl, err := template.New("service").Parse(serviceTmpl)
+	funcMap := template.FuncMap{
+		"lower": strings.ToLower,
+	}
+
+	tmpl, err := template.New("service").Funcs(funcMap).Parse(serviceTmpl)
 	if err != nil {
-		gen.Error(err)
-		return
+		return err
 	}
 
 	data := TemplateData{
@@ -42,9 +44,8 @@ func GenerateFile(gen *protogen.Plugin, file *protogen.File) {
 
 	for _, service := range file.Services {
 		svcData := ServiceData{
-			Name:          service.GoName,
-			LowercaseName: strings.ToLower(service.GoName),
-			Methods:       make([]MethodData, 0, len(service.Methods)),
+			Name:    service.GoName,
+			Methods: make([]MethodData, 0, len(service.Methods)),
 		}
 
 		for _, method := range service.Methods {
@@ -60,9 +61,9 @@ func GenerateFile(gen *protogen.Plugin, file *protogen.File) {
 
 	var buf bytes.Buffer
 	if err := tmpl.Execute(&buf, data); err != nil {
-		gen.Error(err)
-		return
+		return err
 	}
 
 	g.P(buf.String())
+	return nil
 }

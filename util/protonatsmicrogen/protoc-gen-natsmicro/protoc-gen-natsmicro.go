@@ -14,7 +14,9 @@ func main() {
 			if !f.Generate {
 				continue
 			}
-			generator.GenerateFile(gen, f)
+			if err := generator.GenerateFile(gen, f); err != nil {
+				return err
+			}
 		}
 		return nil
 	})

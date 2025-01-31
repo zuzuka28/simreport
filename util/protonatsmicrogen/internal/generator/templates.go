@@ -6,84 +6,103 @@ const serviceTmpl = `
 package {{ .Package }}
 
 import (
-	"context"
-	"fmt"
-	"github.com/nats-io/nats.go"
-	"github.com/nats-io/nats.go/micro"
+    "context"
+    "fmt"
+    "github.com/nats-io/nats.go"
+    "github.com/nats-io/nats.go/micro"
 )
 
 {{ range .Services }}
 // {{ .Name }}Server is the server API for {{ .Name }} service.
 type {{ .Name }}Server interface {
-	{{- range .Methods }}
-	{{ .Name }}(context.Context, *{{ .InputType }}) (*{{ .OutputType }}, error)
-	{{- end }}
+    {{- range .Methods }}
+    {{ .Name }}(context.Context, *{{ .InputType }}) (*{{ .OutputType }}, error)
+    {{- end }}
 }
 
 type {{ lower .Name }}Server struct {
-	srv  micro.Service
-	impl {{ .Name }}Server
+    srv  micro.Service
+    impl {{ .Name }}Server
 }
 
 // New{{ .Name }}Server creates a new NATS microservice server
-func New{{ .Name }}Server(nc *nats.Conn, impl {{ .Name }}Server) (*{{ lower .Name }}Server, error) {
-	srv, err := micro.AddService(nc, micro.Config{
-		Name: "{{ .Name }}",
-	})
-	if err != nil {
-		return nil, err
-	}
+func New{{ .Name }}Server(nc *nats.Conn, impl {{ .Name }}Server, opts ...micro.Option) (*{{ lower .Name }}Server, error) {
+    config := micro.Config{
+        Name:        "{{ lower .Name }}",
+        Version:     "1.0.0",
+        Description: "{{ .Name }} microservice",
+    }
 
-	s := &{{ lower .Name }}Server{
-		srv:  srv,
-		impl: impl,
-	}
+    srv, err := micro.AddService(nc, config, opts...)
+    if err != nil {
+        return nil, fmt.Errorf("failed to create microservice: %w", err)
+    }
 
-	// Register handlers
-	{{- range .Methods }}
-	if err := srv.AddEndpoint("{{ .Name }}", micro.HandlerFunc(s.handle{{ .Name }})); err != nil {
-		return nil, err
-	}
-	{{- end }}
+    s := &{{ lower .Name }}Server{
+        srv:  srv,
+        impl: impl,
+    }
 
-	return s, nil
+    // Register handlers
+    {{- range .Methods }}
+    if err := srv.AddEndpoint("{{ lower $.Name }}.{{ lower .Name }}", micro.HandlerFunc(s.handle{{ .Name }})); err != nil {
+        return nil, fmt.Errorf("failed to add endpoint {{ .Name }}: %w", err)
+    }
+    {{- end }}
+
+    return s, nil
+}
+
+// Start starts the microservice
+func (s *{{ lower .Name }}Server) Start() error {
+    return s.srv.Start()
+}
+
+// Stop stops the microservice
+func (s *{{ lower .Name }}Server) Stop() error {
+    return s.srv.Stop()
 }
 
 {{ range .Methods }}
-func (s *{{ lower .Name }}Server) handle{{ .Name }}(ctx context.Context, req any) (any, error) {
-	msg, ok := req.(*{{ .InputType }})
-	if !ok {
-		return nil, fmt.Errorf("invalid request type: %T", req)
-	}
+func (s *{{ lower $.Name }}Server) handle{{ .Name }}(ctx context.Context, req any) (any, error) {
+    msg, ok := req.(*{{ .InputType }})
+    if !ok {
+        return nil, fmt.Errorf("invalid request type: %T", req)
+    }
 
-	return s.impl.{{ .Name }}(ctx, msg)
+    return s.impl.{{ .Name }}(ctx, msg)
 }
 {{ end }}
 
 // {{ .Name }}Client is the client API for {{ .Name }} service.
 type {{ .Name }}Client struct {
-	nc *nats.Conn
+    nc *nats.Conn
 }
 
 // New{{ .Name }}Client creates a new NATS microservice client
 func New{{ .Name }}Client(nc *nats.Conn) *{{ .Name }}Client {
-	return &{{ .Name }}Client{nc: nc}
+    return &{{ .Name }}Client{nc: nc}
 }
 
 {{ range .Methods }}
 func (c *{{ $.Name }}Client) {{ .Name }}(ctx context.Context, req *{{ .InputType }}) (*{{ .OutputType }}, error) {
-	resp := new({{ .OutputType }})
+    resp := new({{ .OutputType }})
 
-	msg, err := c.nc.RequestWithContext(ctx, "{{ $.Name }}.{{ .Name }}", req)
-	if err != nil {
-		return nil, err
-	}
+    data, err := req.MarshalVT()
+    if err != nil {
+        return nil, fmt.Errorf("failed to marshal request: %w", err)
+    }
 
-	if err := resp.UnmarshalVT(msg.Data); err != nil {
-		return nil, err
-	}
+    msg, err := c.nc.RequestWithContext(ctx, "{{ lower $.Name }}.{{ lower .Name }}", data)
+    if err != nil {
+        return nil, fmt.Errorf("failed to send request: %w", err)
+    }
 
-	return resp, nil
+    if err := resp.UnmarshalVT(msg.Data); err != nil {
+        return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+    }
+
+    return resp, nil
 }
 {{ end }}
 {{ end }}
