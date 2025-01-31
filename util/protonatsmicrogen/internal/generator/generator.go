@@ -28,7 +28,7 @@ func GenerateFile(gen *protogen.Plugin, file *protogen.File) error {
 	filename := file.GeneratedFilenamePrefix + "_nats.pb.go"
 	g := gen.NewGeneratedFile(filename, file.GoImportPath)
 
-	tmpl, err := template.New("service").Funcs(sprig.FuncMap()).Parse(serviceTmpl)
+	tmpl, err := template.New(".").Funcs(sprig.FuncMap()).Parse(serviceTmpl)
 	if err != nil {
 		return err
 	}
