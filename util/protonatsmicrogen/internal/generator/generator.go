@@ -9,8 +9,10 @@ import (
 )
 
 type TemplateData struct {
-	Package  string
-	Services []ServiceData
+	Package      string
+	PackageAlias string
+	PackagePath  string
+	Services     []ServiceData
 }
 
 type ServiceData struct {
@@ -20,6 +22,7 @@ type ServiceData struct {
 
 type MethodData struct {
 	Name       string
+	Reciever   string
 	InputType  string
 	OutputType string
 }
@@ -33,9 +36,14 @@ func GenerateFile(gen *protogen.Plugin, file *protogen.File) error {
 		return err
 	}
 
+	packageAlias := string(file.GoPackageName)
+	packagePath := string(file.GoImportPath)
+
 	data := TemplateData{
-		Package:  string(file.GoPackageName),
-		Services: make([]ServiceData, 0, len(file.Services)),
+		Package:      packageAlias,
+		PackageAlias: packageAlias,
+		PackagePath:  packagePath,
+		Services:     make([]ServiceData, 0, len(file.Services)),
 	}
 
 	for _, service := range file.Services {
@@ -47,8 +55,9 @@ func GenerateFile(gen *protogen.Plugin, file *protogen.File) error {
 		for _, method := range service.Methods {
 			svcData.Methods = append(svcData.Methods, MethodData{
 				Name:       method.GoName,
-				InputType:  method.Input.GoIdent.String(),
-				OutputType: method.Output.GoIdent.String(),
+				Reciever:   svcData.Name,
+				InputType:  method.Input.GoIdent.GoName,
+				OutputType: method.Output.GoIdent.GoName,
 			})
 		}
 
