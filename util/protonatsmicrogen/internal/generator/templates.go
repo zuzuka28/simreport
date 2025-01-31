@@ -12,23 +12,12 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/micro"
-	"github.com/prometheus/client_golang/prometheus"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/protobuf/proto"
 )
 
-const requestTimeout = time.Second * 60
+type Handler func(ctx context.Context, req micro.Request)
 
-var (
-    requestCounter = prometheus.NewCounterVec(
-        prometheus.CounterOpts{
-            Name: "service_requests_total",
-            Help: "Total number of requests processed by the service",
-        },
-        []string{"service", "method"},
-    )
-)
+type Middleware func(Handler) Handler
 
 {{ range .Services }}
 // {{ .Name }}Server is the server API for {{ .Name }} service.
@@ -38,34 +27,43 @@ type {{ .Name }}Server interface {
     {{- end }}
 }
 
+type {{ .Name }}ServerConfig struct {
+	micro.Config
+	RequestTimeout  time.Duration
+	Middleware      Middleware
+	OnError         func(ctx context.Context, err error)
+}
+
 type {{ lower .Name }}Server struct {
     srv    micro.Service
     impl   {{ .Name }}Server
-    tr     trace.Tracer
+    cfg    {{ .Name }}ServerConfig
 }
 
-// New{{ .Name }}Server creates a new NATS microservice server
+// New{{ .Name }}Server creates a new NATS microservice server.
 func New{{ .Name }}Server(
-    cfg micro.Config,
+    cfg {{ .Name }}ServerConfig,
     nc *nats.Conn,
     impl {{ .Name }}Server,
 ) (*{{ lower .Name }}Server, error) {
-    srv, err := micro.AddService(nc, cfg)
+    srv, err := micro.AddService(nc, cfg.Config)
     if err != nil {
         return nil, fmt.Errorf("failed to create microservice: %w", err)
     }
 
-    tr := otel.Tracer("{{ .Name }}")
+    if cfg.RequestTimeout == 0 {
+        cfg.RequestTimeout = time.Second * 60
+    }
 
     s := &{{ lower .Name }}Server{
         srv:    srv,
         impl:   impl,
-        tr: tr,
+        cfg: cfg,
     }
 
     // Register handlers
     {{- range .Methods }}
-    if err := srv.AddEndpoint(cfg.Name+".{{ lower .Name }}", micro.HandlerFunc(s.handle{{ .Name }})); err != nil {
+    if err := srv.AddEndpoint(cfg.Name+".{{ lower .Name }}", s.toMicroHandler(s.handle{{ .Name }})); err != nil {
         return nil, fmt.Errorf("failed to add endpoint {{ .Name }}: %w", err)
     }
     {{- end }}
@@ -73,21 +71,29 @@ func New{{ .Name }}Server(
     return s, nil
 }
 
-// Stop stops the microservice
+// Stop stops the microservice.
 func (s *{{ lower .Name }}Server) Stop() error {
     return s.srv.Stop()
 }
 
+func (s *{{ lower .Name }}Server) toMicroHandler(h Handler) micro.HandlerFunc {
+	return func(req micro.Request) {
+	    ctx, cancel := context.WithTimeout(context.Background(), s.cfg.RequestTimeout)
+	    defer cancel()
+
+	    if s.cfg.Middleware != nil {
+            h = s.cfg.Middleware(h)
+	    }
+
+	    h(ctx, req)
+	}
+}
+
 {{ range .Methods }}
-func (s *{{ lower .Reciever }}Server) handle{{ .Name }}(req micro.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), requestCounter)
-	defer cancel()
-
-	ctx, span := s.tr.Start(ctx, "{{ .Name }}")
-	defer span.End()
-
-    requestCounter.WithLabelValues("{{ lower .Name }}", "{{ .Name }}").Inc()
-
+func (s *{{ lower .Reciever }}Server) handle{{ .Name }}(
+    ctx context.Context,
+    req micro.Request,
+) {
 	msg := new({{ .InputType }})
 
 	if err := proto.Unmarshal(req.Data(), msg); err != nil {
@@ -103,6 +109,10 @@ func (s *{{ lower .Reciever }}Server) handle{{ .Name }}(req micro.Request) {
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
+	    if s.cfg.OnError != nil {
+	        s.cfg.OnError(ctx, err)
+	    }
+
 		req.Error("500", "server error", nil, nil)
 		return
 	}
@@ -114,13 +124,11 @@ func (s *{{ lower .Reciever }}Server) handle{{ .Name }}(req micro.Request) {
 // {{ .Name }}Client is the client API for {{ .Name }} service.
 type {{ .Name }}Client struct {
     nc     *nats.Conn
-    tr     trace.Tracer
 }
 
-// New{{ .Name }}Client creates a new NATS microservice client
+// New{{ .Name }}Client creates a new NATS microservice client.
 func New{{ .Name }}Client(nc *nats.Conn) *{{ .Name }}Client {
-    tr := otel.Tracer("{{ .Name }}")
-    return &{{ .Name }}Client{nc: nc, tr: tr}
+    return &{{ .Name }}Client{nc: nc}
 }
 
 {{ range .Methods }}
@@ -128,9 +136,6 @@ func (c *{{ .Reciever }}Client) {{ .Name }}(
     ctx context.Context,
     req *{{ .InputType }},
 ) (*{{ .OutputType }}, error) {
-    ctx, span := c.tr.Start(ctx, "{{ .Name }}")
-    defer span.End()
-
     resp := new({{ .OutputType }})
 
     data, err := proto.Marshal(req)
