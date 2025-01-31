@@ -20,13 +20,13 @@ type {{ .Name }}Server interface {
 	{{- end }}
 }
 
-type {{ .LowercaseName }}Server struct {
+type {{ lower .Name }}Server struct {
 	srv  micro.Service
 	impl {{ .Name }}Server
 }
 
 // New{{ .Name }}Server creates a new NATS microservice server
-func New{{ .Name }}Server(nc *nats.Conn, impl {{ .Name }}Server) (*{{ .LowercaseName }}Server, error) {
+func New{{ .Name }}Server(nc *nats.Conn, impl {{ .Name }}Server) (*{{ lower .Name }}Server, error) {
 	srv, err := micro.AddService(nc, micro.Config{
 		Name: "{{ .Name }}",
 	})
@@ -34,7 +34,7 @@ func New{{ .Name }}Server(nc *nats.Conn, impl {{ .Name }}Server) (*{{ .Lowercase
 		return nil, err
 	}
 
-	s := &{{ .LowercaseName }}Server{
+	s := &{{ lower .Name }}Server{
 		srv:  srv,
 		impl: impl,
 	}
@@ -50,7 +50,7 @@ func New{{ .Name }}Server(nc *nats.Conn, impl {{ .Name }}Server) (*{{ .Lowercase
 }
 
 {{ range .Methods }}
-func (s *{{ $.LowercaseName }}Server) handle{{ .Name }}(ctx context.Context, req any) (any, error) {
+func (s *{{ lower .Name }}Server) handle{{ .Name }}(ctx context.Context, req any) (any, error) {
 	msg, ok := req.(*{{ .InputType }})
 	if !ok {
 		return nil, fmt.Errorf("invalid request type: %T", req)
