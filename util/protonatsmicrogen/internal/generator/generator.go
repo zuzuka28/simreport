@@ -2,9 +2,9 @@ package generator
 
 import (
 	"bytes"
-	"strings"
 	"text/template"
 
+	"github.com/Masterminds/sprig/v3"
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
@@ -28,11 +28,7 @@ func GenerateFile(gen *protogen.Plugin, file *protogen.File) error {
 	filename := file.GeneratedFilenamePrefix + "_nats.pb.go"
 	g := gen.NewGeneratedFile(filename, file.GoImportPath)
 
-	funcMap := template.FuncMap{
-		"lower": strings.ToLower,
-	}
-
-	tmpl, err := template.New("service").Funcs(funcMap).Parse(serviceTmpl)
+	tmpl, err := template.New("service").Funcs(sprig.FuncMap()).Parse(serviceTmpl)
 	if err != nil {
 		return err
 	}
