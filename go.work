@@ -6,4 +6,5 @@ use (
 	./prj/document
 	./prj/fulltextindex
 	./prj/shingleindex
+	./util/protonatsmicrogen
 )

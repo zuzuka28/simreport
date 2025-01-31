@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/zuzuka28/simreport/util/protomicrogen/internal/generator"
+	"github.com/zuzuka28/simreport/util/protonatsmicrogen/internal/generator"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/types/pluginpb"
 )
