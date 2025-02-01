@@ -27,7 +27,7 @@ func NewServer(
 	}
 
 	srv, err := pb.NewFullTextIndexServiceNatsServer(
-		pb.FullTextIndexServiceServerConfig{
+		pb.FullTextIndexServiceNatsServerConfig{
 			Config: micro.Config{
 				Name:         "similarity_fulltext",
 				Endpoint:     nil,

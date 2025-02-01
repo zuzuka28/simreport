@@ -2,9 +2,9 @@ syntax = "proto3";
 
 package shingleindex;
 
-option go_package = "pkg/pb/v1;fulltextindex";
+option go_package = "pkg/pb/v1;shingleindex";
 
-service FullTextIndexService {
+service ShingleIndexService {
   rpc SearchSimilar(SearchSimilarRequest) returns (SearchSimilarResponse);
 }
 

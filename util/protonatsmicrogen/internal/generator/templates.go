@@ -17,6 +17,8 @@ import (
 
 type Handler func(ctx context.Context, req micro.Request)
 
+type ErrorHandler func(ctx context.Context, msg micro.Request, err error)
+
 type Middleware func(Handler) Handler
 
 {{ range .Services }}
@@ -27,22 +29,22 @@ type {{ .Name }}Server interface {
     {{- end }}
 }
 
-type {{ .Name }}ServerConfig struct {
+type {{ .Name }}NatsServerConfig struct {
 	micro.Config
 	RequestTimeout  time.Duration
 	Middleware      Middleware
-	OnError         func(ctx context.Context, err error)
+	OnError         ErrorHandler
 }
 
 type {{ .Name }}NatsServer struct {
     srv    micro.Service
     impl   {{ .Name }}Server
-    cfg    {{ .Name }}ServerConfig
+    cfg    {{ .Name }}NatsServerConfig
 }
 
 // New{{ .Name }}NatsServer  creates a new NATS microservice server.
 func New{{ .Name }}NatsServer(
-    cfg {{ .Name }}ServerConfig,
+    cfg {{ .Name }}NatsServerConfig,
     nc *nats.Conn,
     impl {{ .Name }}Server,
 ) (*{{ .Name }}NatsServer, error) {
@@ -105,16 +107,17 @@ func (s *{{ .Reciever }}NatsServer) handle{{ .Name }}(
 
 	res, err := s.impl.{{ .Name }}(ctx, msg)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+	    if s.cfg.OnError != nil {
+	        s.cfg.OnError(ctx, req, err)
+	    } else {
+		    req.Error("500", "server error", nil, nil)
+	    }
+
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-	    if s.cfg.OnError != nil {
-	        s.cfg.OnError(ctx, err)
-	    }
-
 		req.Error("500", "server error", nil, nil)
 		return
 	}
@@ -123,18 +126,26 @@ func (s *{{ .Reciever }}NatsServer) handle{{ .Name }}(
 }
 {{ end }}
 
+type {{ .Name }}NatsClientConfig struct {
+	ServerName string
+}
+
 // {{ .Name }}Client is the client API for {{ .Name }} service.
-type {{ .Name }}Client struct {
+type {{ .Name }}NatsClient struct {
     nc     *nats.Conn
+    cfg    {{ .Name }}NatsClientConfig
 }
 
 // New{{ .Name }}Client creates a new NATS microservice client.
-func New{{ .Name }}Client(nc *nats.Conn) *{{ .Name }}Client {
-    return &{{ .Name }}Client{nc: nc}
+func New{{ .Name }}Client(
+    cfg {{ .Name }}NatsClientConfig,
+    nc *nats.Conn,
+) *{{ .Name }}NatsClient {
+    return &{{ .Name }}NatsClient{nc: nc, cfg: cfg}
 }
 
 {{ range .Methods }}
-func (c *{{ .Reciever }}Client) {{ .Name }}(
+func (c *{{ .Reciever }}NatsClient) {{ .Name }}(
     ctx context.Context,
     req *{{ .InputType }},
 ) (*{{ .OutputType }}, error) {
@@ -145,7 +156,7 @@ func (c *{{ .Reciever }}Client) {{ .Name }}(
         return nil, fmt.Errorf("failed to marshal request: %w", err)
     }
 
-    msg, err := c.nc.RequestWithContext(ctx, "{{ lower .Reciever }}.{{ snakecase .Name }}", data)
+    msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".{{ snakecase .Name }}", data)
     if err != nil {
         return nil, fmt.Errorf("failed to send request: %w", err)
     }

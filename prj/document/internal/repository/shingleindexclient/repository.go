@@ -7,11 +7,16 @@ import (
 )
 
 type Repository struct {
-	cli *pb.FullTextIndexServiceClient
+	cli *pb.ShingleIndexServiceNatsClient
 }
 
 func NewRepository(conn *nats.Conn) *Repository {
 	return &Repository{
-		cli: pb.NewFullTextIndexServiceClient(conn),
+		cli: pb.NewShingleIndexServiceClient(
+			pb.ShingleIndexServiceNatsClientConfig{
+				ServerName: "similarity_shingle",
+			},
+			conn,
+		),
 	}
 }

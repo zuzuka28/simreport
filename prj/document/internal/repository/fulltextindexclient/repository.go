@@ -7,11 +7,16 @@ import (
 )
 
 type Repository struct {
-	cli *pb.FullTextIndexServiceClient
+	cli *pb.FullTextIndexServiceNatsClient
 }
 
 func NewRepository(conn *nats.Conn) *Repository {
 	return &Repository{
-		cli: pb.NewFullTextIndexServiceClient(conn),
+		cli: pb.NewFullTextIndexServiceClient(
+			pb.FullTextIndexServiceNatsClientConfig{
+				ServerName: "similarity_fulltext",
+			},
+			conn,
+		),
 	}
 }

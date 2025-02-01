@@ -7,11 +7,16 @@ import (
 )
 
 type Repository struct {
-	cli *pb.DocumentServiceClient
+	cli *pb.DocumentServiceNatsClient
 }
 
 func NewRepository(conn *nats.Conn) *Repository {
 	return &Repository{
-		cli: pb.NewDocumentServiceClient(conn),
+		cli: pb.NewDocumentServiceClient(
+			pb.DocumentServiceNatsClientConfig{
+				ServerName: "document",
+			},
+			conn,
+		),
 	}
 }

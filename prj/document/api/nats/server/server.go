@@ -33,7 +33,7 @@ func NewServer(
 	}
 
 	srv, err := pb.NewDocumentServiceNatsServer(
-		pb.DocumentServiceServerConfig{
+		pb.DocumentServiceNatsServerConfig{
 			Config: micro.Config{
 				Name:         "document",
 				Endpoint:     nil,

@@ -14,6 +14,8 @@ import (
 
 type Handler func(ctx context.Context, req micro.Request)
 
+type ErrorHandler func(ctx context.Context, msg micro.Request, err error)
+
 type Middleware func(Handler) Handler
 
 // FullTextIndexServiceServer is the server API for FullTextIndexService service.
@@ -21,22 +23,22 @@ type FullTextIndexServiceServer interface {
 	SearchSimilar(context.Context, *SearchSimilarRequest) (*SearchSimilarResponse, error)
 }
 
-type FullTextIndexServiceServerConfig struct {
+type FullTextIndexServiceNatsServerConfig struct {
 	micro.Config
 	RequestTimeout time.Duration
 	Middleware     Middleware
-	OnError        func(ctx context.Context, err error)
+	OnError        ErrorHandler
 }
 
 type FullTextIndexServiceNatsServer struct {
 	srv  micro.Service
 	impl FullTextIndexServiceServer
-	cfg  FullTextIndexServiceServerConfig
+	cfg  FullTextIndexServiceNatsServerConfig
 }
 
 // NewFullTextIndexServiceNatsServer  creates a new NATS microservice server.
 func NewFullTextIndexServiceNatsServer(
-	cfg FullTextIndexServiceServerConfig,
+	cfg FullTextIndexServiceNatsServerConfig,
 	nc *nats.Conn,
 	impl FullTextIndexServiceServer,
 ) (*FullTextIndexServiceNatsServer, error) {
@@ -96,16 +98,17 @@ func (s *FullTextIndexServiceNatsServer) handleSearchSimilar(
 
 	res, err := s.impl.SearchSimilar(ctx, msg)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		if s.cfg.OnError != nil {
+			s.cfg.OnError(ctx, req, err)
+		} else {
+			req.Error("500", "server error", nil, nil)
+		}
+
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		if s.cfg.OnError != nil {
-			s.cfg.OnError(ctx, err)
-		}
-
 		req.Error("500", "server error", nil, nil)
 		return
 	}
@@ -113,17 +116,25 @@ func (s *FullTextIndexServiceNatsServer) handleSearchSimilar(
 	req.Respond(resp)
 }
 
+type FullTextIndexServiceNatsClientConfig struct {
+	ServerName string
+}
+
 // FullTextIndexServiceClient is the client API for FullTextIndexService service.
-type FullTextIndexServiceClient struct {
-	nc *nats.Conn
+type FullTextIndexServiceNatsClient struct {
+	nc  *nats.Conn
+	cfg FullTextIndexServiceNatsClientConfig
 }
 
 // NewFullTextIndexServiceClient creates a new NATS microservice client.
-func NewFullTextIndexServiceClient(nc *nats.Conn) *FullTextIndexServiceClient {
-	return &FullTextIndexServiceClient{nc: nc}
+func NewFullTextIndexServiceClient(
+	cfg FullTextIndexServiceNatsClientConfig,
+	nc *nats.Conn,
+) *FullTextIndexServiceNatsClient {
+	return &FullTextIndexServiceNatsClient{nc: nc, cfg: cfg}
 }
 
-func (c *FullTextIndexServiceClient) SearchSimilar(
+func (c *FullTextIndexServiceNatsClient) SearchSimilar(
 	ctx context.Context,
 	req *SearchSimilarRequest,
 ) (*SearchSimilarResponse, error) {
@@ -134,7 +145,7 @@ func (c *FullTextIndexServiceClient) SearchSimilar(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, "fulltextindexservice.search_similar", data)
+	msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".search_similar", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}

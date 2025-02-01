@@ -14,6 +14,8 @@ import (
 
 type Handler func(ctx context.Context, req micro.Request)
 
+type ErrorHandler func(ctx context.Context, msg micro.Request, err error)
+
 type Middleware func(Handler) Handler
 
 // DocumentServiceServer is the server API for DocumentService service.
@@ -26,22 +28,22 @@ type DocumentServiceServer interface {
 	SearchSimilarityHistory(context.Context, *SearchSimilarityHistoryRequest) (*SearchSimilarityHistoryResponse, error)
 }
 
-type DocumentServiceServerConfig struct {
+type DocumentServiceNatsServerConfig struct {
 	micro.Config
 	RequestTimeout time.Duration
 	Middleware     Middleware
-	OnError        func(ctx context.Context, err error)
+	OnError        ErrorHandler
 }
 
 type DocumentServiceNatsServer struct {
 	srv  micro.Service
 	impl DocumentServiceServer
-	cfg  DocumentServiceServerConfig
+	cfg  DocumentServiceNatsServerConfig
 }
 
 // NewDocumentServiceNatsServer  creates a new NATS microservice server.
 func NewDocumentServiceNatsServer(
-	cfg DocumentServiceServerConfig,
+	cfg DocumentServiceNatsServerConfig,
 	nc *nats.Conn,
 	impl DocumentServiceServer,
 ) (*DocumentServiceNatsServer, error) {
@@ -116,16 +118,17 @@ func (s *DocumentServiceNatsServer) handleFetchDocument(
 
 	res, err := s.impl.FetchDocument(ctx, msg)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		if s.cfg.OnError != nil {
+			s.cfg.OnError(ctx, req, err)
+		} else {
+			req.Error("500", "server error", nil, nil)
+		}
+
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		if s.cfg.OnError != nil {
-			s.cfg.OnError(ctx, err)
-		}
-
 		req.Error("500", "server error", nil, nil)
 		return
 	}
@@ -146,16 +149,17 @@ func (s *DocumentServiceNatsServer) handleUploadDocument(
 
 	res, err := s.impl.UploadDocument(ctx, msg)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		if s.cfg.OnError != nil {
+			s.cfg.OnError(ctx, req, err)
+		} else {
+			req.Error("500", "server error", nil, nil)
+		}
+
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		if s.cfg.OnError != nil {
-			s.cfg.OnError(ctx, err)
-		}
-
 		req.Error("500", "server error", nil, nil)
 		return
 	}
@@ -176,16 +180,17 @@ func (s *DocumentServiceNatsServer) handleSearchAttribute(
 
 	res, err := s.impl.SearchAttribute(ctx, msg)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		if s.cfg.OnError != nil {
+			s.cfg.OnError(ctx, req, err)
+		} else {
+			req.Error("500", "server error", nil, nil)
+		}
+
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		if s.cfg.OnError != nil {
-			s.cfg.OnError(ctx, err)
-		}
-
 		req.Error("500", "server error", nil, nil)
 		return
 	}
@@ -206,16 +211,17 @@ func (s *DocumentServiceNatsServer) handleSearchDocument(
 
 	res, err := s.impl.SearchDocument(ctx, msg)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		if s.cfg.OnError != nil {
+			s.cfg.OnError(ctx, req, err)
+		} else {
+			req.Error("500", "server error", nil, nil)
+		}
+
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		if s.cfg.OnError != nil {
-			s.cfg.OnError(ctx, err)
-		}
-
 		req.Error("500", "server error", nil, nil)
 		return
 	}
@@ -236,16 +242,17 @@ func (s *DocumentServiceNatsServer) handleSearchSimilar(
 
 	res, err := s.impl.SearchSimilar(ctx, msg)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		if s.cfg.OnError != nil {
+			s.cfg.OnError(ctx, req, err)
+		} else {
+			req.Error("500", "server error", nil, nil)
+		}
+
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		if s.cfg.OnError != nil {
-			s.cfg.OnError(ctx, err)
-		}
-
 		req.Error("500", "server error", nil, nil)
 		return
 	}
@@ -266,16 +273,17 @@ func (s *DocumentServiceNatsServer) handleSearchSimilarityHistory(
 
 	res, err := s.impl.SearchSimilarityHistory(ctx, msg)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		if s.cfg.OnError != nil {
+			s.cfg.OnError(ctx, req, err)
+		} else {
+			req.Error("500", "server error", nil, nil)
+		}
+
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		if s.cfg.OnError != nil {
-			s.cfg.OnError(ctx, err)
-		}
-
 		req.Error("500", "server error", nil, nil)
 		return
 	}
@@ -283,17 +291,25 @@ func (s *DocumentServiceNatsServer) handleSearchSimilarityHistory(
 	req.Respond(resp)
 }
 
+type DocumentServiceNatsClientConfig struct {
+	ServerName string
+}
+
 // DocumentServiceClient is the client API for DocumentService service.
-type DocumentServiceClient struct {
-	nc *nats.Conn
+type DocumentServiceNatsClient struct {
+	nc  *nats.Conn
+	cfg DocumentServiceNatsClientConfig
 }
 
 // NewDocumentServiceClient creates a new NATS microservice client.
-func NewDocumentServiceClient(nc *nats.Conn) *DocumentServiceClient {
-	return &DocumentServiceClient{nc: nc}
+func NewDocumentServiceClient(
+	cfg DocumentServiceNatsClientConfig,
+	nc *nats.Conn,
+) *DocumentServiceNatsClient {
+	return &DocumentServiceNatsClient{nc: nc, cfg: cfg}
 }
 
-func (c *DocumentServiceClient) FetchDocument(
+func (c *DocumentServiceNatsClient) FetchDocument(
 	ctx context.Context,
 	req *FetchDocumentRequest,
 ) (*FetchDocumentResponse, error) {
@@ -304,7 +320,7 @@ func (c *DocumentServiceClient) FetchDocument(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, "documentservice.fetch_document", data)
+	msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".fetch_document", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -316,7 +332,7 @@ func (c *DocumentServiceClient) FetchDocument(
 	return resp, nil
 }
 
-func (c *DocumentServiceClient) UploadDocument(
+func (c *DocumentServiceNatsClient) UploadDocument(
 	ctx context.Context,
 	req *UploadDocumentRequest,
 ) (*UploadDocumentResponse, error) {
@@ -327,7 +343,7 @@ func (c *DocumentServiceClient) UploadDocument(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, "documentservice.upload_document", data)
+	msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".upload_document", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -339,7 +355,7 @@ func (c *DocumentServiceClient) UploadDocument(
 	return resp, nil
 }
 
-func (c *DocumentServiceClient) SearchAttribute(
+func (c *DocumentServiceNatsClient) SearchAttribute(
 	ctx context.Context,
 	req *SearchAttributeRequest,
 ) (*SearchAttributeResponse, error) {
@@ -350,7 +366,7 @@ func (c *DocumentServiceClient) SearchAttribute(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, "documentservice.search_attribute", data)
+	msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".search_attribute", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -362,7 +378,7 @@ func (c *DocumentServiceClient) SearchAttribute(
 	return resp, nil
 }
 
-func (c *DocumentServiceClient) SearchDocument(
+func (c *DocumentServiceNatsClient) SearchDocument(
 	ctx context.Context,
 	req *SearchRequest,
 ) (*SearchDocumentResponse, error) {
@@ -373,7 +389,7 @@ func (c *DocumentServiceClient) SearchDocument(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, "documentservice.search_document", data)
+	msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".search_document", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -385,7 +401,7 @@ func (c *DocumentServiceClient) SearchDocument(
 	return resp, nil
 }
 
-func (c *DocumentServiceClient) SearchSimilar(
+func (c *DocumentServiceNatsClient) SearchSimilar(
 	ctx context.Context,
 	req *DocumentId,
 ) (*SearchSimilarResponse, error) {
@@ -396,7 +412,7 @@ func (c *DocumentServiceClient) SearchSimilar(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, "documentservice.search_similar", data)
+	msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".search_similar", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -408,7 +424,7 @@ func (c *DocumentServiceClient) SearchSimilar(
 	return resp, nil
 }
 
-func (c *DocumentServiceClient) SearchSimilarityHistory(
+func (c *DocumentServiceNatsClient) SearchSimilarityHistory(
 	ctx context.Context,
 	req *SearchSimilarityHistoryRequest,
 ) (*SearchSimilarityHistoryResponse, error) {
@@ -419,7 +435,7 @@ func (c *DocumentServiceClient) SearchSimilarityHistory(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, "documentservice.search_similarity_history", data)
+	msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".search_similarity_history", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}

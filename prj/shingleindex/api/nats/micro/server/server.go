@@ -13,7 +13,7 @@ import (
 const requestTimeout = 60 * time.Second
 
 type Server struct {
-	s *pb.FullTextIndexServiceNatsServer
+	s *pb.ShingleIndexServiceNatsServer
 }
 
 func NewServer(
@@ -26,10 +26,10 @@ func NewServer(
 		Handler: h,
 	}
 
-	srv, err := pb.NewFullTextIndexServiceNatsServer(
-		pb.FullTextIndexServiceServerConfig{
+	srv, err := pb.NewShingleIndexServiceNatsServer(
+		pb.ShingleIndexServiceNatsServerConfig{
 			Config: micro.Config{
-				Name:         "similarity_fulltext",
+				Name:         "similarity_shingle",
 				Endpoint:     nil,
 				Version:      "0.0.1",
 				Description:  "",
