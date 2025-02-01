@@ -63,7 +63,7 @@ func New{{ .Name }}Server(
 
     // Register handlers
     {{- range .Methods }}
-    if err := srv.AddEndpoint(cfg.Name+".{{ lower .Name }}", s.toMicroHandler(s.handle{{ .Name }})); err != nil {
+    if err := srv.AddEndpoint(cfg.Name+".{{ snakecase .Name }}", s.toMicroHandler(s.handle{{ .Name }})); err != nil {
         return nil, fmt.Errorf("failed to add endpoint {{ .Name }}: %w", err)
     }
     {{- end }}
@@ -143,7 +143,7 @@ func (c *{{ .Reciever }}Client) {{ .Name }}(
         return nil, fmt.Errorf("failed to marshal request: %w", err)
     }
 
-    msg, err := c.nc.RequestWithContext(ctx, "{{ lower .Reciever }}.{{ lower .Name }}", data)
+    msg, err := c.nc.RequestWithContext(ctx, "{{ lower .Reciever }}.{{ snakecase .Name }}", data)
     if err != nil {
         return nil, fmt.Errorf("failed to send request: %w", err)
     }
