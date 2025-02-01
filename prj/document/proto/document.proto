@@ -44,15 +44,11 @@ message FetchDocumentResponse {
 }
 
 message Document {
-  string parent_id = 1;
+  string id = 1;
   string name = 2;
   google.protobuf.Timestamp last_updated = 3;
   int64 version = 4;
   repeated string group_ids = 5;
-  string source_id = 6;
-  string text_id = 7;
-  repeated string image_ids = 8;
-  bool with_content = 9;
   File source = 10;
   File text = 11;
   repeated File images = 12;
@@ -60,7 +56,8 @@ message Document {
 
 message File {
   bytes content = 1;
-  string filename = 2;
+  string id = 2;
+  string filename = 3;
 }
 
 message UploadDocumentRequest {

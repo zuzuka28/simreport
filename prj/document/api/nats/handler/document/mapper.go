@@ -102,6 +102,7 @@ func mapFileToPb(
 ) *pb.File {
 	return &pb.File{
 		Content:  in.Content,
+		Id:       in.Sha256,
 		Filename: in.Name,
 	}
 }
@@ -116,15 +117,11 @@ func mapDocumentToPb(
 	}
 
 	return &pb.Document{
-		ParentId:    in.ParentID,
+		Id:          in.ID(),
 		Name:        in.Name,
 		LastUpdated: timestamppb.New(in.LastUpdated),
 		Version:     int64(in.Version),
 		GroupIds:    in.GroupID,
-		SourceId:    in.SourceID,
-		TextId:      in.TextID,
-		ImageIds:    in.ImageIDs,
-		WithContent: in.WithContent,
 		Source:      mapFileToPb(in.Source),
 		Text:        mapFileToPb(in.Text),
 		Images:      imgs,
