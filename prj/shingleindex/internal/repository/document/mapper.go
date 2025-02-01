@@ -1,49 +1,43 @@
 package document
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/model"
 
-	"github.com/nats-io/nats.go"
-	"github.com/nats-io/nats.go/micro"
+	pb "github.com/zuzuka28/simreport/prj/document/pkg/pb/v1"
 )
 
 var errInternal = errors.New("internal error")
 
-func parseFetchDocumentResponse(in []byte) (model.Document, error) {
-	if len(in) == 0 {
+func parseFetchDocumentResponse(in *pb.FetchDocumentResponse) (model.Document, error) {
+	raw := in.GetDocument()
+
+	if in == nil || raw.GetText() == nil {
 		return model.Document{}, nil
 	}
 
-	var raw document
-
-	if err := json.Unmarshal(in, &raw); err != nil {
-		return model.Document{}, fmt.Errorf("unmarshal raw: %w", err)
-	}
-
 	return model.Document{
-		ID:   raw.ID,
-		Text: raw.Text,
+		ID:   raw.GetText().GetId(),
+		Text: raw.GetText().GetContent(),
 	}, nil
 }
 
-func isErr(in *nats.Msg) error {
-	status := in.Header.Get(micro.ErrorCodeHeader)
-	if status == "" {
+func isErr(in *pb.Error) error {
+	if in == nil {
 		return nil
 	}
 
+	status := in.GetStatus()
 	switch status {
-	case "404":
-		return model.ErrNotFound
+	case 404:
+		return fmt.Errorf("%w: %s", model.ErrNotFound, in.GetDescription())
 
-	case "400":
-		return model.ErrInvalid
+	case 400:
+		return fmt.Errorf("%w: %s", model.ErrInvalid, in.GetDescription())
 
 	default:
-		return errInternal
+		return fmt.Errorf("%w: %s", errInternal, in.GetDescription())
 	}
 }

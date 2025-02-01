@@ -122,7 +122,7 @@ func InitNatsMicroAPI(
 
 		InitShingleHandler,
 
-		wire.Bind(new(servermicro.FileindexHandler), new(*shingleindexmicro.Handler)),
+		wire.Bind(new(servermicro.Handler), new(*shingleindexmicro.Handler)),
 		servermicro.NewServer,
 	))
 }

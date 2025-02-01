@@ -2,18 +2,16 @@ package document
 
 import (
 	"github.com/nats-io/nats.go"
+
+	pb "github.com/zuzuka28/simreport/prj/document/pkg/pb/v1"
 )
 
 type Repository struct {
-	conn         *nats.Conn
-	group        string
-	endpointByID string
+	cli *pb.DocumentServiceClient
 }
 
 func NewRepository(conn *nats.Conn) *Repository {
 	return &Repository{
-		conn:         conn,
-		group:        "document",
-		endpointByID: "byid",
+		cli: pb.NewDocumentServiceClient(conn),
 	}
 }
