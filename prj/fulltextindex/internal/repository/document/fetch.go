@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	pb "github.com/zuzuka28/simreport/prj/document/pkg/pb/v1"
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/model"
 )
 
@@ -11,27 +12,23 @@ func (s *Repository) Fetch(
 	ctx context.Context,
 	query model.DocumentQuery,
 ) (model.Document, error) {
-	reqbody := []byte(query.ID)
-
-	resp, err := s.conn.RequestWithContext(ctx, s.endpoint(s.endpointByID), reqbody)
+	resp, err := s.cli.FetchDocument(ctx, &pb.FetchDocumentRequest{
+		Id:          query.ID,
+		WithContent: false,
+		Include:     nil,
+	})
 	if err != nil {
 		return model.Document{}, fmt.Errorf("do request: %w", err)
 	}
 
-	if err := isErr(resp); err != nil {
+	if err := isErr(resp.GetError()); err != nil {
 		return model.Document{}, err
 	}
 
-	res, err := parseFetchDocumentResponse(resp.Data)
+	res, err := parseFetchDocumentResponse(resp)
 	if err != nil {
 		return model.Document{}, fmt.Errorf("parse fetch document: %w", err)
 	}
 
 	return res, nil
-}
-
-func (s *Repository) endpoint(
-	method string,
-) string {
-	return s.group + "." + method
 }

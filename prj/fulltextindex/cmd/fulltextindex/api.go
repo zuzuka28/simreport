@@ -18,31 +18,18 @@ func runMicroServer(c *cli.Context) error {
 		return fmt.Errorf("read config: %w", err)
 	}
 
-	api, err := provider.InitNatsMicroAPI(c.Context, cfg)
+	_, err = provider.InitNatsMicroAPI(c.Context, cfg)
 	if err != nil {
 		return fmt.Errorf("init api: %w", err)
 	}
 
-	errCh := make(chan error)
-
-	go func() {
-		if err := api.Start(c.Context); err != nil {
-			errCh <- fmt.Errorf("run webserver: %w", err)
-		}
-	}()
-
 	osSignals := make(chan os.Signal, 1)
 	signal.Notify(osSignals, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
-	select {
-	case err := <-errCh:
-		return err
+	sig := <-osSignals
+	slog.Warn("got signal", "sig", sig)
 
-	case sig := <-osSignals:
-		slog.Warn("got signal", "sig", sig)
+	// TODO: Add graceful shutdown logic here
 
-		// TODO: Add graceful shutdown logic here
-
-		return nil
-	}
+	return nil
 }

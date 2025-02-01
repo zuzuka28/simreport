@@ -1,32 +1,26 @@
 package fulltextindex
 
 import (
-	"errors"
-
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/model"
+	pb "github.com/zuzuka28/simreport/prj/fulltextindex/pkg/pb/v1"
 )
 
-func mapDocumentToResponse(in []model.DocumentSimilarMatch) []documentSimilarMatch {
-	items := make([]documentSimilarMatch, 0, len(in))
+func mapDocumentToResponse(
+	in []model.DocumentSimilarMatch,
+) *pb.SearchSimilarResponse {
+	items := make([]*pb.SimilarityDocumentMatch, 0, len(in))
+
 	for _, v := range in {
-		items = append(items, documentSimilarMatch{
-			ID:            v.ID,
+		items = append(items, &pb.SimilarityDocumentMatch{
+			Id:            v.ID,
 			Rate:          v.Rate,
 			Highlights:    v.Highlights,
 			SimilarImages: v.SimilarImages,
 		})
 	}
-	return items
-}
 
-func mapErrorToStatus(err error) string {
-	if errors.Is(err, model.ErrNotFound) {
-		return "404"
+	return &pb.SearchSimilarResponse{
+		Error:   nil,
+		Matches: items,
 	}
-
-	if errors.Is(err, model.ErrInvalid) {
-		return "400"
-	}
-
-	return "500"
 }

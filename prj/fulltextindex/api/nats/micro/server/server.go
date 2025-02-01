@@ -1,46 +1,60 @@
 package server
 
 import (
-	"context"
 	"fmt"
+	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/micro"
+
+	pb "github.com/zuzuka28/simreport/prj/fulltextindex/pkg/pb/v1"
 )
 
+const requestTimeout = 60 * time.Second
+
 type Server struct {
-	conn *nats.Conn
-	dh   FileindexHandler
+	s *pb.FullTextIndexServiceNatsServer
 }
 
 func NewServer(
 	conn *nats.Conn,
-	dh FileindexHandler,
-) *Server {
-	return &Server{
-		conn: conn,
-		dh:   dh,
+	h Handler,
+) (*Server, error) {
+	compose := struct {
+		Handler
+	}{
+		Handler: h,
 	}
+
+	srv, err := pb.NewFullTextIndexServiceNatsServer(
+		pb.FullTextIndexServiceServerConfig{
+			Config: micro.Config{
+				Name:         "similarity_fulltext",
+				Endpoint:     nil,
+				Version:      "0.0.1",
+				Description:  "",
+				Metadata:     nil,
+				QueueGroup:   "",
+				StatsHandler: nil,
+				DoneHandler:  nil,
+				ErrorHandler: nil,
+			},
+			RequestTimeout: requestTimeout,
+			Middleware:     nil,
+			OnError:        nil,
+		},
+		conn,
+		compose,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create server: %w", err)
+	}
+
+	return &Server{
+		s: srv,
+	}, nil
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	docsrv, err := micro.AddService(s.conn, micro.Config{ //nolint:exhaustruct
-		Name:    "similarity_fulltextindex",
-		Version: "0.0.1",
-	})
-	if err != nil {
-		return fmt.Errorf("create document service: %w", err)
-	}
-
-	docsrvg := docsrv.AddGroup("similarity.fulltextindex")
-
-	defer func() { _ = docsrv.Stop() }()
-
-	if err := docsrvg.AddEndpoint("search", micro.HandlerFunc(s.dh.SearchSimilar)); err != nil {
-		return fmt.Errorf("create fulltext handler: %w", err)
-	}
-
-	<-ctx.Done()
-
-	return nil
+func (s *Server) Stop() error {
+	return s.s.Stop() //nolint:wrapcheck
 }

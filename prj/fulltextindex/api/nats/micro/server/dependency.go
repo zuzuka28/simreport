@@ -1,11 +1,16 @@
 package server
 
 import (
-	"github.com/nats-io/nats.go/micro"
+	"context"
+
+	pb "github.com/zuzuka28/simreport/prj/fulltextindex/pkg/pb/v1"
 )
 
 type (
-	FileindexHandler interface {
-		SearchSimilar(msg micro.Request)
+	Handler interface {
+		SearchSimilar(
+			ctx context.Context,
+			params *pb.SearchSimilarRequest,
+		) (*pb.SearchSimilarResponse, error)
 	}
 )

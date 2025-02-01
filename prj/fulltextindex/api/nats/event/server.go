@@ -28,7 +28,7 @@ func (s *Server) Start(ctx context.Context) error {
 		return fmt.Errorf("create jetstream: %w", err)
 	}
 
-	sub, err := js.QueueSubscribe("documentstatus.document_parsed", "github.com/zuzuka28/simreport/prj/fulltextindex_injest", s.dh.Save)
+	sub, err := js.QueueSubscribe("documentstatus.document_parsed", "fulltextindex_injest", s.dh.Save)
 	if err != nil {
 		return fmt.Errorf("create indexer sub: %w", err)
 	}

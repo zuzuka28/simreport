@@ -2,24 +2,23 @@ package fulltextindex
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/model"
-
-	"github.com/nats-io/nats.go/micro"
+	pb "github.com/zuzuka28/simreport/prj/fulltextindex/pkg/pb/v1"
 )
 
-func (h *Handler) SearchSimilar(msg micro.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), requestTimeout)
-	defer cancel()
-
-	id := string(msg.Data())
+func (h *Handler) SearchSimilar(
+	ctx context.Context,
+	params *pb.SearchSimilarRequest,
+) (*pb.SearchSimilarResponse, error) {
+	id := params.GetId()
 
 	doc, err := h.ds.Fetch(ctx, model.DocumentQuery{
 		ID: id,
 	})
 	if err != nil {
-		_ = msg.Error(mapErrorToStatus(err), err.Error(), nil)
-		return
+		return nil, fmt.Errorf("fetch source document: %w", err)
 	}
 
 	res, err := h.s.SearchSimilar(ctx, model.DocumentSimilarQuery{
@@ -27,9 +26,8 @@ func (h *Handler) SearchSimilar(msg micro.Request) {
 		Item: doc,
 	})
 	if err != nil {
-		_ = msg.Error(mapErrorToStatus(err), err.Error(), nil)
-		return
+		return nil, fmt.Errorf("search similar: %w", err)
 	}
 
-	_ = msg.RespondJSON(mapDocumentToResponse(res))
+	return mapDocumentToResponse(res), nil
 }

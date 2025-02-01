@@ -120,7 +120,7 @@ func InitNatsMicroAPI(
 
 		InitFulltextHandler,
 
-		wire.Bind(new(servermicro.FileindexHandler), new(*fulltextindexmicro.Handler)),
+		wire.Bind(new(servermicro.Handler), new(*fulltextindexmicro.Handler)),
 		servermicro.NewServer,
 	))
 }
