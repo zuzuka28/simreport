@@ -1,4 +1,4 @@
-package analyze
+package similarity
 
 import (
 	"context"
@@ -10,8 +10,8 @@ type (
 	Service interface {
 		SearchSimilar(
 			ctx context.Context,
-			query model.DocumentSimilarQuery,
-		) ([]*model.DocumentSimilarMatch, error)
+			query model.SimilarityQuery,
+		) ([]*model.SimilarityMatch, error)
 		SearchHistory(
 			ctx context.Context,
 			query model.SimilarityHistoryQuery,

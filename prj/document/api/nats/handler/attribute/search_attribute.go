@@ -16,7 +16,7 @@ func (h *Handler) SearchAttribute(
 		return nil, fmt.Errorf("map request to model: %w", err)
 	}
 
-	res, err := h.s.Fetch(ctx, q)
+	res, err := h.s.Search(ctx, q)
 	if err != nil {
 		return nil, fmt.Errorf("search attribute: %w", err)
 	}

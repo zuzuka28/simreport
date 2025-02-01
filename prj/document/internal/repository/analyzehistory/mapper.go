@@ -46,7 +46,7 @@ func mapHistoryToModel(in *history) *model.SimilarityHistory {
 		return nil
 	}
 
-	matches := make([]*model.DocumentSimilarMatch, 0, len(in.Matches))
+	matches := make([]*model.SimilarityMatch, 0, len(in.Matches))
 	for _, v := range in.Matches {
 		matches = append(matches, mapMatchToModel(v))
 	}
@@ -59,12 +59,12 @@ func mapHistoryToModel(in *history) *model.SimilarityHistory {
 	}
 }
 
-func mapMatchToModel(in *documentSimilarMatch) *model.DocumentSimilarMatch {
+func mapMatchToModel(in *documentSimilarMatch) *model.SimilarityMatch {
 	if in == nil {
 		return nil
 	}
 
-	return &model.DocumentSimilarMatch{
+	return &model.SimilarityMatch{
 		ID:            in.ID,
 		Rate:          in.Rate,
 		Highlights:    in.Highlights,
@@ -86,7 +86,7 @@ func mapHistoryToInternal(in model.SimilarityHistory) history {
 	}
 }
 
-func mapMatchToInternal(in *model.DocumentSimilarMatch) *documentSimilarMatch {
+func mapMatchToInternal(in *model.SimilarityMatch) *documentSimilarMatch {
 	if in == nil {
 		return nil
 	}

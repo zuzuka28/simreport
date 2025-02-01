@@ -8,7 +8,7 @@ import (
 
 type (
 	Repository interface {
-		Fetch(
+		Search(
 			ctx context.Context,
 			query model.AttributeQuery,
 		) ([]model.Attribute, error)

@@ -16,14 +16,14 @@ import (
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/minioutil"
 	"github.com/zuzuka28/simreport/lib/tikaclient"
-	analyze3 "github.com/zuzuka28/simreport/prj/document/api/nats/handler/analyze"
 	attribute4 "github.com/zuzuka28/simreport/prj/document/api/nats/handler/attribute"
 	document4 "github.com/zuzuka28/simreport/prj/document/api/nats/handler/document"
+	similarity3 "github.com/zuzuka28/simreport/prj/document/api/nats/handler/similarity"
 	server2 "github.com/zuzuka28/simreport/prj/document/api/nats/server"
 	"github.com/zuzuka28/simreport/prj/document/api/rest/server"
-	analyze2 "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/analyze"
 	attribute3 "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/attribute"
 	document3 "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/document"
+	similarity2 "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/similarity"
 	"github.com/zuzuka28/simreport/prj/document/internal/config"
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/analyzehistory"
@@ -34,7 +34,6 @@ import (
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/fulltextindexclient"
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/semanticindexclient"
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/shingleindexclient"
-	"github.com/zuzuka28/simreport/prj/document/internal/service/analyze"
 	attribute2 "github.com/zuzuka28/simreport/prj/document/internal/service/attribute"
 	document2 "github.com/zuzuka28/simreport/prj/document/internal/service/document"
 	"github.com/zuzuka28/simreport/prj/document/internal/service/documentparser"
@@ -44,6 +43,7 @@ import (
 	"github.com/zuzuka28/simreport/prj/document/internal/service/fulltextindex"
 	"github.com/zuzuka28/simreport/prj/document/internal/service/semanticindex"
 	"github.com/zuzuka28/simreport/prj/document/internal/service/shingleindex"
+	"github.com/zuzuka28/simreport/prj/document/internal/service/similarity"
 	"io"
 	"net/http"
 	"os"
@@ -165,10 +165,10 @@ func InitDocumentStatusService(repository *documentstatus.Repository) (*document
 	return service, nil
 }
 
-func InitAnalyzeService(configConfig *config.Config, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document2.Service, semanticindexService *semanticindex.Service, repository *analyzehistory.Repository) (*analyze.Service, error) {
+func InitAnalyzeService(configConfig *config.Config, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document2.Service, semanticindexService *semanticindex.Service, repository *analyzehistory.Repository) (*similarity.Service, error) {
 	opts := ProvideAnalyzeServiceOpts()
-	analyzeService := analyze.NewService(opts, documentService, service, fulltextindexService, semanticindexService, repository)
-	return analyzeService, nil
+	similarityService := similarity.NewService(opts, documentService, service, fulltextindexService, semanticindexService, repository)
+	return similarityService, nil
 }
 
 func InitDocumentParserService(client *tikaclient.Client) (*documentparser.Service, error) {
@@ -191,8 +191,8 @@ func InitDocumentHandler(service *document2.Service, documentstatusService *docu
 	return handler
 }
 
-func InitAnalyzeHandler(service *analyze.Service) *analyze2.Handler {
-	handler := analyze2.NewHandler(service)
+func InitAnalyzeHandler(service *similarity.Service) *similarity2.Handler {
+	handler := similarity2.NewHandler(service)
 	return handler
 }
 
@@ -276,11 +276,11 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, service, semanticindexService, analyzehistoryRepository)
+	similarityService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, service, semanticindexService, analyzehistoryRepository)
 	if err != nil {
 		return nil, err
 	}
-	analyzeHandler := InitAnalyzeHandler(analyzeService)
+	similarityHandler := InitAnalyzeHandler(similarityService)
 	attributeRepository, err := InitAttributeRepository(elasticsearchClient, configConfig)
 	if err != nil {
 		return nil, err
@@ -294,7 +294,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 		Port:             int2,
 		Spec:             v,
 		DocumentHandler:  handler,
-		AnalyzeHandler:   analyzeHandler,
+		AnalyzeHandler:   similarityHandler,
 		AttributeHandler: attributeHandler,
 	}
 	serverServer, err := server.New(opts)
@@ -309,8 +309,8 @@ func InitDocumentNatsHandler(service *document2.Service, documentstatusService *
 	return handler
 }
 
-func InitAnalyzeNatsHandler(service *analyze.Service) *analyze3.Handler {
-	handler := analyze3.NewHandler(service)
+func InitAnalyzeNatsHandler(service *similarity.Service) *similarity3.Handler {
+	handler := similarity3.NewHandler(service)
 	return handler
 }
 
@@ -398,12 +398,12 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, service, semanticindexService, analyzehistoryRepository)
+	similarityService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, service, semanticindexService, analyzehistoryRepository)
 	if err != nil {
 		return nil, err
 	}
-	analyzeHandler := InitAnalyzeNatsHandler(analyzeService)
-	serverServer, err := server2.NewServer(conn, handler, attributeHandler, analyzeHandler)
+	similarityHandler := InitAnalyzeNatsHandler(similarityService)
+	serverServer, err := server2.NewServer(conn, handler, attributeHandler, similarityHandler)
 	if err != nil {
 		return nil, err
 	}
@@ -574,8 +574,8 @@ func ProvideDocumentStatusJetstreamStream(
 	return s, nil
 }
 
-func ProvideAnalyzeServiceOpts() analyze.Opts {
-	return analyze.Opts{}
+func ProvideAnalyzeServiceOpts() similarity.Opts {
+	return similarity.Opts{}
 }
 
 func ProvideDocumentServiceOpts() document2.Opts {

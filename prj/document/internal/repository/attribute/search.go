@@ -10,7 +10,7 @@ import (
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 )
 
-func (r *Repository) Fetch(
+func (r *Repository) Search(
 	ctx context.Context,
 	query model.AttributeQuery,
 ) ([]model.Attribute, error) {

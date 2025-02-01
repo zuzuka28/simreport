@@ -16,9 +16,9 @@ func (h *Handler) PostAttribute(
 		return openapi.PostAttribute400JSONResponse{}, nil
 	}
 
-	res, err := h.s.Fetch(ctx, query)
+	res, err := h.s.Search(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("fetch attribute: %w", err)
+		return nil, fmt.Errorf("search attribute: %w", err)
 	}
 
 	return mapDocumentsToSearchResponse(res), nil

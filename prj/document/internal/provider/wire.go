@@ -10,12 +10,12 @@ import (
 	"os"
 	"sync"
 
-	analyzenatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/analyze"
+	analyzenatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/similarity"
 	attributenatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/attribute"
 	documentnatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/document"
 	servernats "github.com/zuzuka28/simreport/prj/document/api/nats/server"
 	serverhttp "github.com/zuzuka28/simreport/prj/document/api/rest/server"
-	analyzeapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/analyze"
+	analyzeapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/similarity"
 	attributeapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/attribute"
 	documentapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/document"
 	"github.com/zuzuka28/simreport/prj/document/internal/config"
@@ -28,7 +28,7 @@ import (
 	fulltextindexrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/fulltextindexclient"
 	semanticindexrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/semanticindexclient"
 	shingleindexrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/shingleindexclient"
-	analyzesrv "github.com/zuzuka28/simreport/prj/document/internal/service/analyze"
+	analyzesrv "github.com/zuzuka28/simreport/prj/document/internal/service/similarity"
 	attributesrv "github.com/zuzuka28/simreport/prj/document/internal/service/attribute"
 	documentsrv "github.com/zuzuka28/simreport/prj/document/internal/service/document"
 	documentparsersrv "github.com/zuzuka28/simreport/prj/document/internal/service/documentparser"
@@ -414,7 +414,7 @@ func InitRestAPI(
 		InitAnalyzeHandler,
 		InitAttributeHandler,
 		wire.Bind(new(serverhttp.DocumentHandler), new(*documentapi.Handler)),
-		wire.Bind(new(serverhttp.AnalyzeHandler), new(*analyzeapi.Handler)),
+		wire.Bind(new(serverhttp.SimilarityHandler), new(*analyzeapi.Handler)),
 		wire.Bind(new(serverhttp.AttributeHandler), new(*attributeapi.Handler)),
 		wire.FieldsOf(new(*config.Config), "Port"),
 		wire.Struct(new(serverhttp.Opts), "*"),
@@ -492,7 +492,7 @@ func InitNatsAPI(
 		InitAttributeNatsHandler,
 
 		wire.Bind(new(servernats.DocumentHandler), new(*documentnatsapi.Handler)),
-		wire.Bind(new(servernats.AnalyzeHandler), new(*analyzenatsapi.Handler)),
+		wire.Bind(new(servernats.SimilarityHandler), new(*analyzenatsapi.Handler)),
 		wire.Bind(new(servernats.AttributeHandler), new(*attributenatsapi.Handler)),
 		servernats.NewServer,
 	))

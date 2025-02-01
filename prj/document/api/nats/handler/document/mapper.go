@@ -46,7 +46,7 @@ func mapDocumentsToSearchResponse(
 }
 
 func mapUploadRequestToCommand(
-	in *pb.UploadRequest,
+	in *pb.UploadDocumentRequest,
 ) model.DocumentSaveCommand {
 	return model.DocumentSaveCommand{
 		Item: model.Document{

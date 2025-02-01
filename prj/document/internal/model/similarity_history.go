@@ -6,7 +6,7 @@ type SimilarityHistory struct {
 	Date       time.Time
 	DocumentID string
 	ID         string
-	Matches    []*DocumentSimilarMatch
+	Matches    []*SimilarityMatch
 }
 
 type SimilarityHistoryList = List[*SimilarityHistory]

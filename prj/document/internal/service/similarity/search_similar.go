@@ -1,4 +1,4 @@
-package analyze
+package similarity
 
 import (
 	"context"
@@ -13,8 +13,8 @@ import (
 
 func (s *Service) SearchSimilar(
 	ctx context.Context,
-	query model.DocumentSimilarQuery,
-) ([]*model.DocumentSimilarMatch, error) {
+	query model.SimilarityQuery,
+) ([]*model.SimilarityMatch, error) {
 	doc, err := s.ds.Fetch(ctx, model.DocumentQuery{
 		ID:          query.ID,
 		WithContent: true,
@@ -33,7 +33,7 @@ func (s *Service) SearchSimilar(
 	eg, egCtx := errgroup.WithContext(ctx)
 
 	var (
-		res   []*model.DocumentSimilarMatch
+		res   []*model.SimilarityMatch
 		resMu sync.Mutex
 	)
 

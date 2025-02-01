@@ -22,7 +22,7 @@ type (
 		) (openapi.GetDocumentIdDownloadResponseObject, error)
 	}
 
-	AnalyzeHandler interface {
+	SimilarityHandler interface {
 		GetAnalyzeDocumentIdSimilar(
 			ctx context.Context,
 			request openapi.GetAnalyzeDocumentIdSimilarRequestObject,

@@ -1,4 +1,4 @@
-package analyze
+package similarity
 
 import (
 	"context"
@@ -7,11 +7,11 @@ import (
 	pb "github.com/zuzuka28/simreport/prj/document/pkg/pb/v1"
 )
 
-func (h *Handler) SearchSimilaritySearchHistory(
+func (h *Handler) SearchSimilarityHistory(
 	ctx context.Context,
-	params *pb.SearchSimilaritySearchHistoryRequest,
-) (*pb.SearchSimilaritySearchHistoryResponse, error) {
-	q, err := mapSearchSimilaritySearchHistoryRequestToModel(params)
+	params *pb.SearchSimilarityHistoryRequest,
+) (*pb.SearchSimilarityHistoryResponse, error) {
+	q, err := mapSearchSimilarityHistoryRequestToModel(params)
 	if err != nil {
 		return nil, fmt.Errorf("map request to model: %w", err)
 	}
@@ -21,5 +21,5 @@ func (h *Handler) SearchSimilaritySearchHistory(
 		return nil, fmt.Errorf("search history: %w", err)
 	}
 
-	return mapSearchSimilaritySearchHistoryResponseToPb(res), nil
+	return mapSearchSimilarityHistoryResponseToPb(res), nil
 }

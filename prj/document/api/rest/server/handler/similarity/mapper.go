@@ -1,4 +1,4 @@
-package analyze
+package similarity
 
 import (
 	openapi "github.com/zuzuka28/simreport/prj/document/api/rest/gen"
@@ -7,14 +7,14 @@ import (
 
 func mapSearchSimilarRequestToQuery(
 	in openapi.GetAnalyzeDocumentIdSimilarRequestObject,
-) model.DocumentSimilarQuery {
-	return model.DocumentSimilarQuery{ //nolint:exhaustruct
+) model.SimilarityQuery {
+	return model.SimilarityQuery{ //nolint:exhaustruct
 		ID: in.DocumentId,
 	}
 }
 
 func mapMatchesToSearchSimilarResponse(
-	in []*model.DocumentSimilarMatch,
+	in []*model.SimilarityMatch,
 ) openapi.GetAnalyzeDocumentIdSimilarResponseObject {
 	docs := make([]openapi.AnalyzedDocumentMatch, 0, len(in))
 

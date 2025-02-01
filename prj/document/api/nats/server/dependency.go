@@ -18,7 +18,7 @@ type (
 		) (*pb.SearchDocumentResponse, error)
 		UploadDocument(
 			ctx context.Context,
-			params *pb.UploadRequest,
+			params *pb.UploadDocumentRequest,
 		) (*pb.UploadDocumentResponse, error)
 	}
 
@@ -29,14 +29,14 @@ type (
 		) (*pb.SearchAttributeResponse, error)
 	}
 
-	AnalyzeHandler interface {
-		SearchSimilarDocuments(
+	SimilarityHandler interface {
+		SearchSimilar(
 			ctx context.Context,
 			params *pb.DocumentId,
-		) (*pb.SearchSimilarDocumentsResponse, error)
-		SearchSimilaritySearchHistory(
+		) (*pb.SearchSimilarResponse, error)
+		SearchSimilarityHistory(
 			ctx context.Context,
-			params *pb.SearchSimilaritySearchHistoryRequest,
-		) (*pb.SearchSimilaritySearchHistoryResponse, error)
+			params *pb.SearchSimilarityHistoryRequest,
+		) (*pb.SearchSimilarityHistoryResponse, error)
 	}
 )

@@ -1,4 +1,4 @@
-package analyze
+package similarity
 
 import (
 	"fmt"
@@ -8,21 +8,21 @@ import (
 	pb "github.com/zuzuka28/simreport/prj/document/pkg/pb/v1"
 )
 
-func mapSearchSimilarDocumentsRequestToModel(
+func mapSearchSimilarRequestToModel(
 	in *pb.DocumentId,
-) (model.DocumentSimilarQuery, error) {
+) (model.SimilarityQuery, error) {
 	if in.GetDocumentId() == "" {
-		return model.DocumentSimilarQuery{}, fmt.Errorf("%w: empty id", model.ErrInvalid)
+		return model.SimilarityQuery{}, fmt.Errorf("%w: empty id", model.ErrInvalid)
 	}
 
-	return model.DocumentSimilarQuery{
+	return model.SimilarityQuery{
 		ID:   in.GetDocumentId(),
 		Item: model.Document{}, //nolint:exhaustruct
 	}, nil
 }
 
 func mapDocumentSimilarMatchToPb(
-	in *model.DocumentSimilarMatch,
+	in *model.SimilarityMatch,
 ) *pb.SimilarityDocumentMatch {
 	if in == nil {
 		return nil
@@ -36,23 +36,23 @@ func mapDocumentSimilarMatchToPb(
 	}
 }
 
-func mapSearchSimilarDocumentsResponseToPb(
-	in []*model.DocumentSimilarMatch,
-) *pb.SearchSimilarDocumentsResponse {
+func mapSearchSimilarResponseToPb(
+	in []*model.SimilarityMatch,
+) *pb.SearchSimilarResponse {
 	docs := make([]*pb.SimilarityDocumentMatch, 0, len(in))
 
 	for _, v := range in {
 		docs = append(docs, mapDocumentSimilarMatchToPb(v))
 	}
 
-	return &pb.SearchSimilarDocumentsResponse{
+	return &pb.SearchSimilarResponse{
 		Error:     nil,
 		Documents: docs,
 	}
 }
 
-func mapSearchSimilaritySearchHistoryRequestToModel(
-	in *pb.SearchSimilaritySearchHistoryRequest,
+func mapSearchSimilarityHistoryRequestToModel(
+	in *pb.SearchSimilarityHistoryRequest,
 ) (model.SimilarityHistoryQuery, error) {
 	tFrom, err := time.Parse(time.RFC3339, in.GetDateFrom())
 	if err != nil {
@@ -73,16 +73,16 @@ func mapSearchSimilaritySearchHistoryRequestToModel(
 	}, nil
 }
 
-func mapSearchSimilaritySearchHistoryResponseToPb(
+func mapSearchSimilarityHistoryResponseToPb(
 	in *model.SimilarityHistoryList,
-) *pb.SearchSimilaritySearchHistoryResponse {
+) *pb.SearchSimilarityHistoryResponse {
 	items := make([]*pb.SimilaritySearchHistory, 0, len(in.Items))
 
 	for _, v := range in.Items {
 		items = append(items, mapSimilaritySearchHistoryToPb(v))
 	}
 
-	return &pb.SearchSimilaritySearchHistoryResponse{
+	return &pb.SearchSimilarityHistoryResponse{
 		Error:     nil,
 		Documents: items,
 		Count:     int64(in.Count),

@@ -1,6 +1,6 @@
 package model
 
-type DocumentSimilarQuery struct {
+type SimilarityQuery struct {
 	ID   string
 	Item Document
 }

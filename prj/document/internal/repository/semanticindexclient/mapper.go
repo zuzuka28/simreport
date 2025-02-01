@@ -13,7 +13,7 @@ import (
 
 var errInternal = errors.New("internal error")
 
-func parseSearchSimilarResponse(in []byte) ([]*model.DocumentSimilarMatch, error) {
+func parseSearchSimilarResponse(in []byte) ([]*model.SimilarityMatch, error) {
 	if len(in) == 0 {
 		return nil, nil
 	}
@@ -24,7 +24,7 @@ func parseSearchSimilarResponse(in []byte) ([]*model.DocumentSimilarMatch, error
 		return nil, fmt.Errorf("unmarshal raw: %w", err)
 	}
 
-	items := make([]*model.DocumentSimilarMatch, 0, len(raw))
+	items := make([]*model.SimilarityMatch, 0, len(raw))
 	for _, v := range raw {
 		items = append(items, mapDocumentSimilarMatchToModel(v))
 	}
@@ -32,12 +32,12 @@ func parseSearchSimilarResponse(in []byte) ([]*model.DocumentSimilarMatch, error
 	return items, nil
 }
 
-func mapDocumentSimilarMatchToModel(in *documentSimilarMatch) *model.DocumentSimilarMatch {
+func mapDocumentSimilarMatchToModel(in *documentSimilarMatch) *model.SimilarityMatch {
 	if in == nil {
 		return nil
 	}
 
-	return &model.DocumentSimilarMatch{
+	return &model.SimilarityMatch{
 		ID:            in.ID,
 		Rate:          in.Rate,
 		Highlights:    in.Highlights,

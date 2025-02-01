@@ -10,7 +10,7 @@ import (
 
 func (h *Handler) UploadDocument(
 	ctx context.Context,
-	params *pb.UploadRequest,
+	params *pb.UploadDocumentRequest,
 ) (*pb.UploadDocumentResponse, error) {
 	cmd := mapUploadRequestToCommand(params)
 

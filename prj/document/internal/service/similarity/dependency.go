@@ -1,4 +1,4 @@
-package analyze
+package similarity
 
 import (
 	"context"
@@ -17,22 +17,22 @@ type (
 	ShingleIndexService interface {
 		SearchSimilar(
 			ctx context.Context,
-			query model.DocumentSimilarQuery,
-		) ([]*model.DocumentSimilarMatch, error)
+			query model.SimilarityQuery,
+		) ([]*model.SimilarityMatch, error)
 	}
 
 	FulltextIndexService interface {
 		SearchSimilar(
 			ctx context.Context,
-			query model.DocumentSimilarQuery,
-		) ([]*model.DocumentSimilarMatch, error)
+			query model.SimilarityQuery,
+		) ([]*model.SimilarityMatch, error)
 	}
 
 	SemanticIndexService interface {
 		SearchSimilar(
 			ctx context.Context,
-			query model.DocumentSimilarQuery,
-		) ([]*model.DocumentSimilarMatch, error)
+			query model.SimilarityQuery,
+		) ([]*model.SimilarityMatch, error)
 	}
 
 	HistoryRepository interface {

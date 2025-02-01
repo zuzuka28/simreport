@@ -1,4 +1,4 @@
-package analyze
+package similarity
 
 import (
 	"context"
@@ -7,11 +7,11 @@ import (
 	pb "github.com/zuzuka28/simreport/prj/document/pkg/pb/v1"
 )
 
-func (h *Handler) SearchSimilarDocuments(
+func (h *Handler) SearchSimilar(
 	ctx context.Context,
 	params *pb.DocumentId,
-) (*pb.SearchSimilarDocumentsResponse, error) {
-	q, err := mapSearchSimilarDocumentsRequestToModel(params)
+) (*pb.SearchSimilarResponse, error) {
+	q, err := mapSearchSimilarRequestToModel(params)
 	if err != nil {
 		return nil, fmt.Errorf("map request to model: %w", err)
 	}
@@ -21,5 +21,5 @@ func (h *Handler) SearchSimilarDocuments(
 		return nil, fmt.Errorf("search similar: %w", err)
 	}
 
-	return mapSearchSimilarDocumentsResponseToPb(res), nil
+	return mapSearchSimilarResponseToPb(res), nil
 }

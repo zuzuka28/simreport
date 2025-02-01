@@ -1,12 +1,10 @@
-package analyze
+package similarity
 
 type Handler struct {
 	s Service
 }
 
-func NewHandler(
-	s Service,
-) *Handler {
+func NewHandler(s Service) *Handler {
 	return &Handler{
 		s: s,
 	}

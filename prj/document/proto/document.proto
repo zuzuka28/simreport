@@ -8,14 +8,14 @@ import "google/protobuf/timestamp.proto";
 
 service DocumentService {
   rpc FetchDocument(FetchDocumentRequest) returns (FetchDocumentResponse) {}
-  rpc UploadDocument(UploadRequest) returns (UploadDocumentResponse) {}
+  rpc UploadDocument(UploadDocumentRequest) returns (UploadDocumentResponse) {}
   rpc SearchAttribute(SearchAttributeRequest)
       returns (SearchAttributeResponse) {}
   rpc SearchDocument(SearchRequest) returns (SearchDocumentResponse) {}
-  rpc SearchSimilarDocuments(DocumentId)
-      returns (SearchSimilarDocumentsResponse) {}
-  rpc SearchSimilaritySearchHistory(SearchSimilaritySearchHistoryRequest)
-      returns (SearchSimilaritySearchHistoryResponse) {}
+  rpc SearchSimilar(DocumentId)
+      returns (SearchSimilarResponse) {}
+  rpc SearchSimilarityHistory(SearchSimilarityHistoryRequest)
+      returns (SearchSimilarityHistoryResponse) {}
 }
 
 message Error {
@@ -63,7 +63,7 @@ message File {
   string filename = 2;
 }
 
-message UploadRequest {
+message UploadDocumentRequest {
   bytes document = 1;
   string document_name = 2;
   repeated string group_ids = 3;
@@ -109,7 +109,7 @@ message DocumentSummary {
   string last_updated = 6;
 }
 
-message SearchSimilarDocumentsResponse {
+message SearchSimilarResponse {
   Error error = 1;
   repeated SimilarityDocumentMatch documents = 2;
 }
@@ -121,7 +121,7 @@ message SimilarityDocumentMatch {
   repeated string similar_images = 4;
 }
 
-message SearchSimilaritySearchHistoryRequest {
+message SearchSimilarityHistoryRequest {
   string document_id = 1;
   int64 limit = 2;
   int64 offset = 3;
@@ -129,7 +129,7 @@ message SearchSimilaritySearchHistoryRequest {
   string date_to = 5;
 }
 
-message SearchSimilaritySearchHistoryResponse {
+message SearchSimilarityHistoryResponse {
   Error error = 1;
   repeated SimilaritySearchHistory documents = 2;
   int64 count = 3;

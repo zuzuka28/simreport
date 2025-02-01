@@ -20,16 +20,16 @@ func NewServer(
 	conn *nats.Conn,
 	doch DocumentHandler,
 	attrh AttributeHandler,
-	anh AnalyzeHandler,
+	anh SimilarityHandler,
 ) (*Server, error) {
 	compose := struct {
 		DocumentHandler
 		AttributeHandler
-		AnalyzeHandler
+		SimilarityHandler
 	}{
-		DocumentHandler:  doch,
-		AttributeHandler: attrh,
-		AnalyzeHandler:   anh,
+		DocumentHandler:   doch,
+		AttributeHandler:  attrh,
+		SimilarityHandler: anh,
 	}
 
 	srv, err := pb.NewDocumentServiceNatsServer(

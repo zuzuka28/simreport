@@ -9,8 +9,8 @@ import (
 
 func (s *Repository) SearchSimilar(
 	ctx context.Context,
-	query model.DocumentSimilarQuery,
-) ([]*model.DocumentSimilarMatch, error) {
+	query model.SimilarityQuery,
+) ([]*model.SimilarityMatch, error) {
 	reqbody := []byte(query.ID)
 
 	resp, err := s.conn.RequestWithContext(ctx, s.endpoint(s.endpointSearch), reqbody)
