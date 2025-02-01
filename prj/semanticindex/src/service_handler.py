@@ -99,10 +99,10 @@ async def main():
         srv_handler = ServiceHandler(nc, srv)
 
         ncs = await stack.enter_async_context(
-            await nats.micro.add_service(nc, name="semanticindex", version="0.0.1")
+            await nats.micro.add_service(nc, name="similarity_semantic", version="0.0.1")
         )
 
-        group = ncs.add_group(name="similarity.semanticindex")
+        group = ncs.add_group(name="similarity_semantic")
 
         await group.add_endpoint(
             name="search",

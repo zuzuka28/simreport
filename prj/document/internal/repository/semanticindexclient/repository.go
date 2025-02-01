@@ -13,7 +13,7 @@ type Repository struct {
 func NewRepository(conn *nats.Conn) *Repository {
 	return &Repository{
 		conn:           conn,
-		group:          "similarity.semanticindex",
+		group:          "similarity_semantic",
 		endpointSearch: "search",
 	}
 }
