@@ -34,18 +34,18 @@ type {{ .Name }}ServerConfig struct {
 	OnError         func(ctx context.Context, err error)
 }
 
-type {{ lower .Name }}Server struct {
+type {{ .Name }}NatsServer struct {
     srv    micro.Service
     impl   {{ .Name }}Server
     cfg    {{ .Name }}ServerConfig
 }
 
-// New{{ .Name }}Server creates a new NATS microservice server.
-func New{{ .Name }}Server(
+// New{{ .Name }}NatsServer  creates a new NATS microservice server.
+func New{{ .Name }}NatsServer(
     cfg {{ .Name }}ServerConfig,
     nc *nats.Conn,
     impl {{ .Name }}Server,
-) (*{{ lower .Name }}Server, error) {
+) (*{{ .Name }}NatsServer, error) {
     srv, err := micro.AddService(nc, cfg.Config)
     if err != nil {
         return nil, fmt.Errorf("failed to create microservice: %w", err)
@@ -55,15 +55,17 @@ func New{{ .Name }}Server(
         cfg.RequestTimeout = time.Second * 60
     }
 
-    s := &{{ lower .Name }}Server{
+    s := &{{ .Name }}NatsServer{
         srv:    srv,
         impl:   impl,
-        cfg: cfg,
+        cfg:    cfg,
     }
+
+    group := srv.AddGroup(cfg.Name)
 
     // Register handlers
     {{- range .Methods }}
-    if err := srv.AddEndpoint(cfg.Name+".{{ snakecase .Name }}", s.toMicroHandler(s.handle{{ .Name }})); err != nil {
+    if err := group.AddEndpoint("{{ snakecase .Name }}", s.toMicroHandler(s.handle{{ .Name }})); err != nil {
         return nil, fmt.Errorf("failed to add endpoint {{ .Name }}: %w", err)
     }
     {{- end }}
@@ -72,11 +74,11 @@ func New{{ .Name }}Server(
 }
 
 // Stop stops the microservice.
-func (s *{{ lower .Name }}Server) Stop() error {
+func (s *{{ .Name }}NatsServer) Stop() error {
     return s.srv.Stop()
 }
 
-func (s *{{ lower .Name }}Server) toMicroHandler(h Handler) micro.HandlerFunc {
+func (s *{{ .Name }}NatsServer) toMicroHandler(h Handler) micro.HandlerFunc {
 	return func(req micro.Request) {
 	    ctx, cancel := context.WithTimeout(context.Background(), s.cfg.RequestTimeout)
 	    defer cancel()
@@ -90,7 +92,7 @@ func (s *{{ lower .Name }}Server) toMicroHandler(h Handler) micro.HandlerFunc {
 }
 
 {{ range .Methods }}
-func (s *{{ lower .Reciever }}Server) handle{{ .Name }}(
+func (s *{{ .Reciever }}NatsServer) handle{{ .Name }}(
     ctx context.Context,
     req micro.Request,
 ) {
