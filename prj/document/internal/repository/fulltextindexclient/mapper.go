@@ -1,64 +1,58 @@
 package fulltextindexclient
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
 
-	"github.com/nats-io/nats.go"
-	"github.com/nats-io/nats.go/micro"
+	pb "github.com/zuzuka28/simreport/prj/fulltextindex/pkg/pb/v1"
 )
 
 var errInternal = errors.New("internal error")
 
-func parseSearchSimilarResponse(in []byte) ([]*model.SimilarityMatch, error) {
-	if len(in) == 0 {
-		return nil, nil
+func parseSearchSimilarResponse(
+	in *pb.SearchSimilarResponse,
+) []*model.SimilarityMatch {
+	if in == nil || in.GetMatches() == nil {
+		return nil
 	}
 
-	var raw []*documentSimilarMatch
-
-	if err := json.Unmarshal(in, &raw); err != nil {
-		return nil, fmt.Errorf("unmarshal raw: %w", err)
-	}
-
-	items := make([]*model.SimilarityMatch, 0, len(raw))
-	for _, v := range raw {
+	items := make([]*model.SimilarityMatch, 0, len(in.GetMatches()))
+	for _, v := range in.GetMatches() {
 		items = append(items, mapDocumentSimilarMatchToModel(v))
 	}
 
-	return items, nil
+	return items
 }
 
-func mapDocumentSimilarMatchToModel(in *documentSimilarMatch) *model.SimilarityMatch {
+func mapDocumentSimilarMatchToModel(in *pb.SimilarityDocumentMatch) *model.SimilarityMatch {
 	if in == nil {
 		return nil
 	}
 
 	return &model.SimilarityMatch{
-		ID:            in.ID,
-		Rate:          in.Rate,
-		Highlights:    in.Highlights,
-		SimilarImages: in.SimilarImages,
+		ID:            in.GetId(),
+		Rate:          in.GetRate(),
+		Highlights:    in.GetHighlights(),
+		SimilarImages: in.GetSimilarImages(),
 	}
 }
 
-func isErr(in *nats.Msg) error {
-	status := in.Header.Get(micro.ErrorCodeHeader)
-	if status == "" {
+func isErr(in *pb.Error) error {
+	if in == nil {
 		return nil
 	}
 
+	status := in.GetStatus()
 	switch status {
-	case "404":
-		return model.ErrNotFound
+	case 404: //nolint:gomnd,mnd
+		return fmt.Errorf("%w: %s", model.ErrNotFound, in.GetDescription())
 
-	case "400":
-		return model.ErrInvalid
+	case 400: //nolint:gomnd,mnd
+		return fmt.Errorf("%w: %s", model.ErrInvalid, in.GetDescription())
 
 	default:
-		return errInternal
+		return fmt.Errorf("%w: %s", errInternal, in.GetDescription())
 	}
 }

@@ -2,18 +2,16 @@ package shingleindexclient
 
 import (
 	"github.com/nats-io/nats.go"
+
+	pb "github.com/zuzuka28/simreport/prj/shingleindex/pkg/pb/v1"
 )
 
 type Repository struct {
-	conn           *nats.Conn
-	group          string
-	endpointSearch string
+	cli *pb.FullTextIndexServiceClient
 }
 
 func NewRepository(conn *nats.Conn) *Repository {
 	return &Repository{
-		conn:           conn,
-		group:          "similarity.shingleindex",
-		endpointSearch: "search",
+		cli: pb.NewFullTextIndexServiceClient(conn),
 	}
 }

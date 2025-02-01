@@ -5,33 +5,24 @@ import (
 	"fmt"
 
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
+
+	pb "github.com/zuzuka28/simreport/prj/fulltextindex/pkg/pb/v1"
 )
 
 func (s *Repository) SearchSimilar(
 	ctx context.Context,
 	query model.SimilarityQuery,
 ) ([]*model.SimilarityMatch, error) {
-	reqbody := []byte(query.ID)
-
-	resp, err := s.conn.RequestWithContext(ctx, s.endpoint(s.endpointSearch), reqbody)
+	resp, err := s.cli.SearchSimilar(ctx, &pb.SearchSimilarRequest{
+		Id: query.ID,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("do request: %w", err)
 	}
 
-	if err := isErr(resp); err != nil {
+	if err := isErr(resp.GetError()); err != nil {
 		return nil, err
 	}
 
-	res, err := parseSearchSimilarResponse(resp.Data)
-	if err != nil {
-		return nil, fmt.Errorf("parse search similar: %w", err)
-	}
-
-	return res, nil
-}
-
-func (s *Repository) endpoint(
-	method string,
-) string {
-	return s.group + "." + method
+	return parseSearchSimilarResponse(resp), nil
 }

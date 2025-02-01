@@ -2,18 +2,16 @@ package fulltextindexclient
 
 import (
 	"github.com/nats-io/nats.go"
+
+	pb "github.com/zuzuka28/simreport/prj/fulltextindex/pkg/pb/v1"
 )
 
 type Repository struct {
-	conn           *nats.Conn
-	group          string
-	endpointSearch string
+	cli *pb.FullTextIndexServiceClient
 }
 
 func NewRepository(conn *nats.Conn) *Repository {
 	return &Repository{
-		conn:           conn,
-		group:          "similarity.fulltextindex",
-		endpointSearch: "search",
+		cli: pb.NewFullTextIndexServiceClient(conn),
 	}
 }
