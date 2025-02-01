@@ -10,7 +10,9 @@ import (
 	"os"
 	"sync"
 
-	documentnats "github.com/zuzuka28/simreport/prj/document/api/nats/handler/document"
+	analyzenatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/analyze"
+	attributenatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/attribute"
+	documentnatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/document"
 	servernats "github.com/zuzuka28/simreport/prj/document/api/nats/server"
 	serverhttp "github.com/zuzuka28/simreport/prj/document/api/rest/server"
 	analyzeapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/analyze"
@@ -162,9 +164,8 @@ func ProvideDocumentStatusJetstreamStream(
 	js jetstream.JetStream,
 ) (jetstream.Stream, error) {
 	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{ //nolint:exhaustruct
-		Name:      "documentstatus",
-		Subjects:  []string{"documentstatus.>"},
-		Retention: jetstream.InterestPolicy,
+		Name:     "documentstatus",
+		Subjects: []string{"documentstatus.>"},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new steream: %w", err)
@@ -421,21 +422,32 @@ func InitRestAPI(
 	))
 }
 
-func InitFileSavedHandler(
+func InitDocumentNatsHandler(
 	_ *documentsrv.Service,
-) (*filesavedhandler.Handler, error) {
+	_ *documentstatussrv.Service,
+) *documentnatsapi.Handler {
 	panic(wire.Build(
-		wire.Bind(new(filesavedhandler.DocumentService), new(*documentsrv.Service)),
-		filesavedhandler.NewHandler,
+		wire.Bind(new(documentnatsapi.Service), new(*documentsrv.Service)),
+		wire.Bind(new(documentnatsapi.StatusService), new(*documentstatussrv.Service)),
+		documentnatsapi.NewHandler,
 	))
 }
 
-func InitDocumentNatsHandler(
-	_ *documentsrv.Service,
-) *documentnats.Handler {
+func InitAnalyzeNatsHandler(
+	_ *analyzesrv.Service,
+) *analyzenatsapi.Handler {
 	panic(wire.Build(
-		wire.Bind(new(documentnats.Service), new(*documentsrv.Service)),
-		documentnats.NewHandler,
+		wire.Bind(new(analyzenatsapi.Service), new(*analyzesrv.Service)),
+		analyzenatsapi.NewHandler,
+	))
+}
+
+func InitAttributeNatsHandler(
+	_ *attributesrv.Service,
+) *attributenatsapi.Handler {
+	panic(wire.Build(
+		wire.Bind(new(attributenatsapi.Service), new(*attributesrv.Service)),
+		attributenatsapi.NewHandler,
 	))
 }
 
@@ -447,17 +459,51 @@ func InitNatsAPI(
 		ProvideS3,
 		ProvideElastic,
 		ProvideNats,
+		InitNatsJetstream,
 		InitTika,
+
+		InitDocumentStatusRepository,
+		InitDocumentStatusService,
+
+		InitShingleIndexRepository,
+		InitShingleIndexService,
+
+		InitFulltextIndexRepository,
+		InitFulltextIndexService,
+
+		InitSemanticIndexRepository,
+		InitSemanticIndexService,
 
 		InitFilestorageRepository,
 
+		InitAttributeRepository,
+
 		InitDocumentRepository,
+		InitAnalyzeHistoryRepository,
+
+		InitAttributeService,
 
 		InitDocumentService,
 
+		InitAnalyzeService,
+
 		InitDocumentNatsHandler,
-		wire.Bind(new(servernats.DocumentHandler), new(*documentnats.Handler)),
+		InitAnalyzeNatsHandler,
+		InitAttributeNatsHandler,
+
+		wire.Bind(new(servernats.DocumentHandler), new(*documentnatsapi.Handler)),
+		wire.Bind(new(servernats.AnalyzeHandler), new(*analyzenatsapi.Handler)),
+		wire.Bind(new(servernats.AttributeHandler), new(*attributenatsapi.Handler)),
 		servernats.NewServer,
+	))
+}
+
+func InitFileSavedHandler(
+	_ *documentsrv.Service,
+) (*filesavedhandler.Handler, error) {
+	panic(wire.Build(
+		wire.Bind(new(filesavedhandler.DocumentService), new(*documentsrv.Service)),
+		filesavedhandler.NewHandler,
 	))
 }
 
@@ -470,11 +516,6 @@ func ProvideDocumentPipelineStages(
 			Action:  fsh,
 			Next:    model.DocumentProcessingStatusDocumentSaved,
 		},
-		// {
-		// 	Trigger: model.DocumentProcessingStatusDocumentSaved,
-		// 	Action:  dsh,
-		// 	Next:    model.DocumentProcessingStatusDocumentAnalyzed,
-		// },
 	}
 }
 

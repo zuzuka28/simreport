@@ -17,6 +17,7 @@ require (
 	github.com/urfave/cli/v2 v2.27.4
 	github.com/zuzuka28/simreport/lib v0.0.0-20250111110310-c2b67e053f97
 	golang.org/x/sync v0.10.0
+	google.golang.org/protobuf v1.31.0
 )
 
 require (

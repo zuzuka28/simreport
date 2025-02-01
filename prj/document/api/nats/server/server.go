@@ -1,46 +1,66 @@
 package server
 
 import (
-	"context"
 	"fmt"
+	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/micro"
+
+	pb "github.com/zuzuka28/simreport/prj/document/pkg/pb/v1"
 )
 
+const requestTimeout = 60 * time.Second
+
 type Server struct {
-	conn *nats.Conn
-	dh   DocumentHandler
+	s *pb.DocumentServiceNatsServer
 }
 
 func NewServer(
 	conn *nats.Conn,
-	dh DocumentHandler,
-) *Server {
-	return &Server{
-		conn: conn,
-		dh:   dh,
+	doch DocumentHandler,
+	attrh AttributeHandler,
+	anh AnalyzeHandler,
+) (*Server, error) {
+	compose := struct {
+		DocumentHandler
+		AttributeHandler
+		AnalyzeHandler
+	}{
+		DocumentHandler:  doch,
+		AttributeHandler: attrh,
+		AnalyzeHandler:   anh,
 	}
+
+	srv, err := pb.NewDocumentServiceNatsServer(
+		pb.DocumentServiceServerConfig{
+			Config: micro.Config{
+				Name:         "document",
+				Endpoint:     nil,
+				Version:      "0.0.1",
+				Description:  "",
+				Metadata:     nil,
+				QueueGroup:   "",
+				StatsHandler: nil,
+				DoneHandler:  nil,
+				ErrorHandler: nil,
+			},
+			RequestTimeout: requestTimeout,
+			Middleware:     nil,
+			OnError:        nil,
+		},
+		conn,
+		compose,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("create server: %w", err)
+	}
+
+	return &Server{
+		s: srv,
+	}, nil
 }
 
-func (s *Server) Start(ctx context.Context) error {
-	docsrv, err := micro.AddService(s.conn, micro.Config{ //nolint:exhaustruct
-		Name:    "document",
-		Version: "0.0.1",
-	})
-	if err != nil {
-		return fmt.Errorf("create document service: %w", err)
-	}
-
-	docsrvg := docsrv.AddGroup("document")
-
-	defer func() { _ = docsrv.Stop() }()
-
-	if err := docsrvg.AddEndpoint("byid", micro.HandlerFunc(s.dh.Fetch)); err != nil {
-		return fmt.Errorf("create document by id handler: %w", err)
-	}
-
-	<-ctx.Done()
-
-	return nil
+func (s *Server) Stop() error {
+	return s.s.Stop() //nolint:wrapcheck
 }

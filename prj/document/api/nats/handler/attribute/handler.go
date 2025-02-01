@@ -1,16 +1,13 @@
-package document
+package attribute
 
 type Handler struct {
-	s  Service
-	ss StatusService
+	s Service
 }
 
 func NewHandler(
 	s Service,
-	ss StatusService,
 ) *Handler {
 	return &Handler{
-		s:  s,
-		ss: ss,
+		s: s,
 	}
 }

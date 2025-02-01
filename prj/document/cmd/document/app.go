@@ -24,7 +24,7 @@ func runApp(c *cli.Context) error {
 		return fmt.Errorf("init rest api: %w", err)
 	}
 
-	natsapi, err := provider.InitNatsAPI(c.Context, cfg)
+	_, err = provider.InitNatsAPI(c.Context, cfg)
 	if err != nil {
 		return fmt.Errorf("init nats api: %w", err)
 	}
@@ -45,10 +45,6 @@ func runApp(c *cli.Context) error {
 
 		eg.Go(func() error {
 			return processing.Start(egCtx)
-		})
-
-		eg.Go(func() error {
-			return natsapi.Start(egCtx)
 		})
 
 		if err := eg.Wait(); err != nil {

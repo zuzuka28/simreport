@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package document;
+
+option go_package = "pkg/pb/v1;document";
+
+import "google/protobuf/timestamp.proto";
+
+service DocumentService {
+  rpc FetchDocument(FetchDocumentRequest) returns (FetchDocumentResponse) {}
+  rpc UploadDocument(UploadRequest) returns (UploadDocumentResponse) {}
+  rpc SearchAttribute(SearchAttributeRequest)
+      returns (SearchAttributeResponse) {}
+  rpc SearchDocument(SearchRequest) returns (SearchDocumentResponse) {}
+  rpc SearchSimilarDocuments(DocumentId)
+      returns (SearchSimilarDocumentsResponse) {}
+  rpc SearchSimilaritySearchHistory(SearchSimilaritySearchHistoryRequest)
+      returns (SearchSimilaritySearchHistoryResponse) {}
+}
+
+message Error {
+  int64 status = 1;
+  string description = 2;
+}
+
+message DocumentId { string document_id = 1; }
+
+message FetchDocumentRequest {
+  string id = 1;
+  bool with_content = 2;
+  repeated DocumentQueryInclude include = 3;
+}
+
+enum DocumentQueryInclude {
+  DOCUMENT_QUERY_INCLUDE_UNSPECIFIED = 0;
+  DOCUMENT_QUERY_INCLUDE_SOURCE = 1;
+  DOCUMENT_QUERY_INCLUDE_TEXT = 2;
+  DOCUMENT_QUERY_INCLUDE_IMAGES = 3;
+}
+
+message FetchDocumentResponse {
+  Error error = 1;
+  Document document = 2;
+}
+
+message Document {
+  string parent_id = 1;
+  string name = 2;
+  google.protobuf.Timestamp last_updated = 3;
+  int64 version = 4;
+  repeated string group_ids = 5;
+  string source_id = 6;
+  string text_id = 7;
+  repeated string image_ids = 8;
+  bool with_content = 9;
+  File source = 10;
+  File text = 11;
+  repeated File images = 12;
+}
+
+message File {
+  bytes content = 1;
+  string filename = 2;
+}
+
+message UploadRequest {
+  bytes document = 1;
+  string document_name = 2;
+  repeated string group_ids = 3;
+  string parent_id = 4;
+  int64 version = 5;
+}
+
+message UploadDocumentResponse {
+  Error error = 1;
+  string document_id = 2;
+}
+
+message SearchAttributeRequest { string attribute = 1; }
+
+message SearchAttributeResponse {
+  Error error = 1;
+  repeated Attribute items = 2;
+}
+
+message Attribute {
+  string label = 1;
+  string value = 2;
+}
+
+message SearchRequest {
+  string parent_id = 1;
+  string name = 2;
+  string version = 3;
+  repeated string group_ids = 4;
+}
+
+message SearchDocumentResponse {
+  Error error = 1;
+  repeated DocumentSummary documents = 2;
+}
+
+message DocumentSummary {
+  repeated string group_ids = 1;
+  string parent_id = 2;
+  int64 version = 3;
+  string id = 4;
+  string name = 5;
+  string last_updated = 6;
+}
+
+message SearchSimilarDocumentsResponse {
+  Error error = 1;
+  repeated SimilarityDocumentMatch documents = 2;
+}
+
+message SimilarityDocumentMatch {
+  string id = 1;
+  float rate = 2;
+  repeated string highlights = 3;
+  repeated string similar_images = 4;
+}
+
+message SearchSimilaritySearchHistoryRequest {
+  string document_id = 1;
+  int64 limit = 2;
+  int64 offset = 3;
+  string date_from = 4;
+  string date_to = 5;
+}
+
+message SearchSimilaritySearchHistoryResponse {
+  Error error = 1;
+  repeated SimilaritySearchHistory documents = 2;
+  int64 count = 3;
+}
+
+message SimilaritySearchHistory {
+  string date = 1;
+  string document_id = 2;
+  string id = 3;
+  repeated SimilarityDocumentMatch matches = 4;
+}

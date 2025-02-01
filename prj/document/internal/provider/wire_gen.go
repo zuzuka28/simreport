@@ -16,6 +16,8 @@ import (
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/minioutil"
 	"github.com/zuzuka28/simreport/lib/tikaclient"
+	analyze3 "github.com/zuzuka28/simreport/prj/document/api/nats/handler/analyze"
+	attribute4 "github.com/zuzuka28/simreport/prj/document/api/nats/handler/attribute"
 	document4 "github.com/zuzuka28/simreport/prj/document/api/nats/handler/document"
 	server2 "github.com/zuzuka28/simreport/prj/document/api/nats/server"
 	"github.com/zuzuka28/simreport/prj/document/api/rest/server"
@@ -302,13 +304,18 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	return serverServer, nil
 }
 
-func InitFileSavedHandler(service *document2.Service) (*filesaved.Handler, error) {
-	handler := filesaved.NewHandler(service)
-	return handler, nil
+func InitDocumentNatsHandler(service *document2.Service, documentstatusService *documentstatus2.Service) *document4.Handler {
+	handler := document4.NewHandler(service, documentstatusService)
+	return handler
 }
 
-func InitDocumentNatsHandler(service *document2.Service) *document4.Handler {
-	handler := document4.NewHandler(service)
+func InitAnalyzeNatsHandler(service *analyze.Service) *analyze3.Handler {
+	handler := analyze3.NewHandler(service)
+	return handler
+}
+
+func InitAttributeNatsHandler(service *attribute2.Service) *attribute4.Handler {
+	handler := attribute4.NewHandler(service)
 	return handler
 }
 
@@ -341,9 +348,71 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	handler := InitDocumentNatsHandler(service)
-	serverServer := server2.NewServer(conn, handler)
+	jetStream, err := InitNatsJetstream(conn)
+	if err != nil {
+		return nil, err
+	}
+	documentstatusRepository, err := InitDocumentStatusRepository(contextContext, jetStream)
+	if err != nil {
+		return nil, err
+	}
+	documentstatusService, err := InitDocumentStatusService(documentstatusRepository)
+	if err != nil {
+		return nil, err
+	}
+	handler := InitDocumentNatsHandler(service, documentstatusService)
+	attributeRepository, err := InitAttributeRepository(elasticsearchClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	attributeService, err := InitAttributeService(attributeRepository)
+	if err != nil {
+		return nil, err
+	}
+	attributeHandler := InitAttributeNatsHandler(attributeService)
+	shingleindexclientRepository, err := InitShingleIndexRepository(conn)
+	if err != nil {
+		return nil, err
+	}
+	shingleindexService, err := InitShingleIndexService(shingleindexclientRepository)
+	if err != nil {
+		return nil, err
+	}
+	fulltextindexclientRepository, err := InitFulltextIndexRepository(conn)
+	if err != nil {
+		return nil, err
+	}
+	fulltextindexService, err := InitFulltextIndexService(fulltextindexclientRepository)
+	if err != nil {
+		return nil, err
+	}
+	semanticindexclientRepository, err := InitSemanticIndexRepository(conn)
+	if err != nil {
+		return nil, err
+	}
+	semanticindexService, err := InitSemanticIndexService(semanticindexclientRepository)
+	if err != nil {
+		return nil, err
+	}
+	analyzehistoryRepository, err := InitAnalyzeHistoryRepository(elasticsearchClient, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	analyzeService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, service, semanticindexService, analyzehistoryRepository)
+	if err != nil {
+		return nil, err
+	}
+	analyzeHandler := InitAnalyzeNatsHandler(analyzeService)
+	serverServer, err := server2.NewServer(conn, handler, attributeHandler, analyzeHandler)
+	if err != nil {
+		return nil, err
+	}
 	return serverServer, nil
+}
+
+func InitFileSavedHandler(service *document2.Service) (*filesaved.Handler, error) {
+	handler := filesaved.NewHandler(service)
+	return handler, nil
 }
 
 func InitDocumentPipeline(contextContext context.Context, configConfig *config.Config) (*documentpipeline.Service, error) {
@@ -495,9 +564,8 @@ func ProvideDocumentStatusJetstreamStream(
 	js jetstream.JetStream,
 ) (jetstream.Stream, error) {
 	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
-		Name:      "documentstatus",
-		Subjects:  []string{"documentstatus.>"},
-		Retention: jetstream.InterestPolicy,
+		Name:     "documentstatus",
+		Subjects: []string{"documentstatus.>"},
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new steream: %w", err)
