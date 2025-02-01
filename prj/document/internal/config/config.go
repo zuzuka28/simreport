@@ -33,7 +33,7 @@ type Config struct {
 	Nats               string              `yaml:"nats"`
 	Tika               string              `yaml:"tika"`
 	Elastic            elasticutil.Config  `yaml:"elastic"`
-	DocumentRepo       document.Opts       `yaml:"github.com/zuzuka28/simreport/prj/documentRepo"`
+	DocumentRepo       document.Opts       `yaml:"documentRepo"`
 	AttributeRepo      attribute.Opts      `yaml:"attributeRepo"`
 	AnalyzeHistoryRepo analyzehistory.Opts `yaml:"analyzeHistoryRepo"`
 }

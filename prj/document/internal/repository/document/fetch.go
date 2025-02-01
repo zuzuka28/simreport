@@ -21,7 +21,7 @@ func (r *Repository) Fetch(ctx context.Context, query model.DocumentQuery) (mode
 	defer esRes.Body.Close()
 
 	if err := elasticutil.IsErr(esRes); err != nil {
-		return model.Document{}, fmt.Errorf("github.com/zuzuka28/simreport/prj/document %s not found: %w", query.ID, mapErrorToModel(err))
+		return model.Document{}, fmt.Errorf("document %s not found: %w", query.ID, mapErrorToModel(err))
 	}
 
 	raw, err := elasticutil.ParseDocResponse(esRes.Body)

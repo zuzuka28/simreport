@@ -30,7 +30,7 @@ import (
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/documentstatus"
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/filestorage"
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/fulltextindexclient"
-	fulltextindexclient2 "github.com/zuzuka28/simreport/prj/document/internal/repository/semanticindexclient"
+	"github.com/zuzuka28/simreport/prj/document/internal/repository/semanticindexclient"
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/shingleindexclient"
 	"github.com/zuzuka28/simreport/prj/document/internal/service/analyze"
 	attribute2 "github.com/zuzuka28/simreport/prj/document/internal/service/attribute"
@@ -40,7 +40,7 @@ import (
 	"github.com/zuzuka28/simreport/prj/document/internal/service/documentpipeline/handler/filesaved"
 	documentstatus2 "github.com/zuzuka28/simreport/prj/document/internal/service/documentstatus"
 	"github.com/zuzuka28/simreport/prj/document/internal/service/fulltextindex"
-	fulltextindex2 "github.com/zuzuka28/simreport/prj/document/internal/service/semanticindex"
+	"github.com/zuzuka28/simreport/prj/document/internal/service/semanticindex"
 	"github.com/zuzuka28/simreport/prj/document/internal/service/shingleindex"
 	"io"
 	"net/http"
@@ -107,13 +107,13 @@ func InitFulltextIndexService(repository *fulltextindexclient.Repository) (*full
 	return service, nil
 }
 
-func InitSemanticIndexRepository(conn *nats.Conn) (*fulltextindexclient2.Repository, error) {
-	repository := fulltextindexclient2.NewRepository(conn)
+func InitSemanticIndexRepository(conn *nats.Conn) (*semanticindexclient.Repository, error) {
+	repository := semanticindexclient.NewRepository(conn)
 	return repository, nil
 }
 
-func InitSemanticIndexService(repository *fulltextindexclient2.Repository) (*fulltextindex2.Service, error) {
-	service := fulltextindex2.NewService(repository)
+func InitSemanticIndexService(repository *semanticindexclient.Repository) (*semanticindex.Service, error) {
+	service := semanticindex.NewService(repository)
 	return service, nil
 }
 
@@ -163,9 +163,9 @@ func InitDocumentStatusService(repository *documentstatus.Repository) (*document
 	return service, nil
 }
 
-func InitAnalyzeService(configConfig *config.Config, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document2.Service, service2 *fulltextindex2.Service, repository *analyzehistory.Repository) (*analyze.Service, error) {
+func InitAnalyzeService(configConfig *config.Config, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document2.Service, semanticindexService *semanticindex.Service, repository *analyzehistory.Repository) (*analyze.Service, error) {
 	opts := ProvideAnalyzeServiceOpts()
-	analyzeService := analyze.NewService(opts, documentService, service, fulltextindexService, service2, repository)
+	analyzeService := analyze.NewService(opts, documentService, service, fulltextindexService, semanticindexService, repository)
 	return analyzeService, nil
 }
 
@@ -262,11 +262,11 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	repository2, err := InitSemanticIndexRepository(conn)
+	semanticindexclientRepository, err := InitSemanticIndexRepository(conn)
 	if err != nil {
 		return nil, err
 	}
-	service2, err := InitSemanticIndexService(repository2)
+	semanticindexService, err := InitSemanticIndexService(semanticindexclientRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +274,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzeService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, service, service2, analyzehistoryRepository)
+	analyzeService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, service, semanticindexService, analyzehistoryRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -481,7 +481,7 @@ func ProvideDocumentStatusJetstreamKV(
 	js jetstream.JetStream,
 ) (jetstream.KeyValue, error) {
 	kv, err := js.CreateOrUpdateKeyValue(ctx, jetstream.KeyValueConfig{
-		Bucket: "github.com/zuzuka28/simreport/prj/documentstatus",
+		Bucket: "documentstatus",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new kv: %w", err)
@@ -495,8 +495,8 @@ func ProvideDocumentStatusJetstreamStream(
 	js jetstream.JetStream,
 ) (jetstream.Stream, error) {
 	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{
-		Name:      "github.com/zuzuka28/simreport/prj/documentstatus",
-		Subjects:  []string{"github.com/zuzuka28/simreport/prj/documentstatus.>"},
+		Name:      "documentstatus",
+		Subjects:  []string{"documentstatus.>"},
 		Retention: jetstream.InterestPolicy,
 	})
 	if err != nil {

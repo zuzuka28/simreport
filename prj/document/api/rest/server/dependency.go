@@ -16,6 +16,10 @@ type (
 			ctx context.Context,
 			request openapi.PostDocumentUploadRequestObject,
 		) (openapi.PostDocumentUploadResponseObject, error)
+		GetDocumentIdDownload(
+			ctx context.Context,
+			params openapi.GetDocumentIdDownloadRequestObject,
+		) (openapi.GetDocumentIdDownloadResponseObject, error)
 	}
 
 	AnalyzeHandler interface {

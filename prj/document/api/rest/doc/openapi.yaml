@@ -4,12 +4,34 @@ info:
   version: 0.0.1
 
 paths:
+  /{document_id}/download:
+    get:
+      summary: Download document
+      description: Allows downloading an uploaded document by its identifier.
+      parameters:
+        - $ref: "#/components/parameters/DocumentId"
+      responses:
+        "200":
+          description: Document downloaded successfully
+          headers:
+            Content-Disposition:
+              schema:
+                type: string
+                example: attachment; filename="example.docx"
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          $ref: "#/components/responses/DocumentNotFound"
+
   /document/upload:
     post:
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
               $ref: "#/components/schemas/UploadRequest"
       responses:
@@ -83,8 +105,10 @@ components:
     UploadRequest:
       type: object
       properties:
-        fileID:
+        document:
           type: string
+          format: binary
+          description: Document to upload
         groupID:
           type: array
           items:
@@ -94,7 +118,7 @@ components:
         version:
           type: integer
       required:
-        - fileID
+        - document
 
     AttributeRequest:
       type: object

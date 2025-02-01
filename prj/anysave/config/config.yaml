@@ -1,8 +1,0 @@
-port: 8000
-s3:
-  endpoint: "localhost:9000"
-  accessKeyID: "minio"
-  secletAccessKey: "minio123"
-  buckets:
-    - anysave
-nats: nats://localhost:4222

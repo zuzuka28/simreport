@@ -7,12 +7,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/oapi-codegen/runtime"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
+	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
 // AnalyzedDocumentMatch defines model for AnalyzedDocumentMatch.
@@ -55,7 +58,7 @@ type SearchRequest struct {
 // SimilaritySearchHistory defines model for SimilaritySearchHistory.
 type SimilaritySearchHistory struct {
 	Date       *time.Time               `json:"date,omitempty"`
-	DocumentID *string                  `json:"github.com/zuzuka28/simreport/prj/documentID,omitempty"`
+	DocumentID *string                  `json:"documentID,omitempty"`
 	Id         *string                  `json:"id,omitempty"`
 	Matches    *[]AnalyzedDocumentMatch `json:"matches,omitempty"`
 }
@@ -64,17 +67,18 @@ type SimilaritySearchHistory struct {
 type SimilaritySearchHistoryRequest struct {
 	DateFrom   *time.Time `json:"dateFrom,omitempty"`
 	DateTo     *time.Time `json:"dateTo,omitempty"`
-	DocumentID *string    `json:"github.com/zuzuka28/simreport/prj/documentID,omitempty"`
+	DocumentID *string    `json:"documentID,omitempty"`
 	Limit      *int       `json:"limit,omitempty"`
 	Offset     *int       `json:"offset,omitempty"`
 }
 
 // UploadRequest defines model for UploadRequest.
 type UploadRequest struct {
-	FileID   string    `json:"fileID"`
-	GroupID  *[]string `json:"groupID,omitempty"`
-	ParentID *string   `json:"parentID,omitempty"`
-	Version  *int      `json:"version,omitempty"`
+	// Document Document to upload
+	Document openapi_types.File `json:"document"`
+	GroupID  *[]string          `json:"groupID,omitempty"`
+	ParentID *string            `json:"parentID,omitempty"`
+	Version  *int               `json:"version,omitempty"`
 }
 
 // DocumentId defines model for DocumentId.
@@ -90,9 +94,14 @@ type BadRequest struct {
 	Error *string `json:"error,omitempty"`
 }
 
+// DocumentNotFound defines model for DocumentNotFound.
+type DocumentNotFound struct {
+	Error *string `json:"error,omitempty"`
+}
+
 // SearchResult defines model for SearchResult.
 type SearchResult struct {
-	Documents *[]DocumentSummary `json:"github.com/zuzuka28/simreport/prj/documents,omitempty"`
+	Documents *[]DocumentSummary `json:"documents,omitempty"`
 }
 
 // ServerError defines model for ServerError.
@@ -103,17 +112,17 @@ type ServerError struct {
 // SimilaritySearchHistoryResult defines model for SimilaritySearchHistoryResult.
 type SimilaritySearchHistoryResult struct {
 	Count     *int                       `json:"count,omitempty"`
-	Documents *[]SimilaritySearchHistory `json:"github.com/zuzuka28/simreport/prj/documents,omitempty"`
+	Documents *[]SimilaritySearchHistory `json:"documents,omitempty"`
 }
 
 // SimilaritySearchResult defines model for SimilaritySearchResult.
 type SimilaritySearchResult struct {
-	Documents *[]AnalyzedDocumentMatch `json:"github.com/zuzuka28/simreport/prj/documents,omitempty"`
+	Documents *[]AnalyzedDocumentMatch `json:"documents,omitempty"`
 }
 
 // UploadSuccess defines model for UploadSuccess.
 type UploadSuccess struct {
-	DocumentID *string `json:"github.com/zuzuka28/simreport/prj/documentID,omitempty"`
+	DocumentID *string `json:"documentID,omitempty"`
 }
 
 // PostAnalyzeHistoryJSONRequestBody defines body for PostAnalyzeHistory for application/json ContentType.
@@ -125,8 +134,8 @@ type PostAttributeJSONRequestBody = AttributeRequest
 // PostDocumentSearchJSONRequestBody defines body for PostDocumentSearch for application/json ContentType.
 type PostDocumentSearchJSONRequestBody = SearchRequest
 
-// PostDocumentUploadJSONRequestBody defines body for PostDocumentUpload for application/json ContentType.
-type PostDocumentUploadJSONRequestBody = UploadRequest
+// PostDocumentUploadMultipartRequestBody defines body for PostDocumentUpload for multipart/form-data ContentType.
+type PostDocumentUploadMultipartRequestBody = UploadRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -145,6 +154,9 @@ type ServerInterface interface {
 
 	// (POST /document/upload)
 	PostDocumentUpload(w http.ResponseWriter, r *http.Request)
+	// Download document
+	// (GET /{document_id}/download)
+	GetDocumentIdDownload(w http.ResponseWriter, r *http.Request, documentId DocumentId)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -175,12 +187,12 @@ func (siw *ServerInterfaceWrapper) GetAnalyzeDocumentIdSimilar(w http.ResponseWr
 
 	var err error
 
-	// ------------- Path parameter "github.com/zuzuka28/simreport/prj/document_id" -------------
+	// ------------- Path parameter "document_id" -------------
 	var documentId DocumentId
 
-	err = runtime.BindStyledParameterWithOptions("simple", "github.com/zuzuka28/simreport/prj/document_id", mux.Vars(r)["github.com/zuzuka28/simreport/prj/document_id"], &documentId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	err = runtime.BindStyledParameterWithOptions("simple", "document_id", mux.Vars(r)["document_id"], &documentId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
 	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "github.com/zuzuka28/simreport/prj/document_id", Err: err})
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "document_id", Err: err})
 		return
 	}
 
@@ -228,6 +240,31 @@ func (siw *ServerInterfaceWrapper) PostDocumentUpload(w http.ResponseWriter, r *
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PostDocumentUpload(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetDocumentIdDownload operation middleware
+func (siw *ServerInterfaceWrapper) GetDocumentIdDownload(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "document_id" -------------
+	var documentId DocumentId
+
+	err = runtime.BindStyledParameterWithOptions("simple", "document_id", mux.Vars(r)["document_id"], &documentId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "document_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetDocumentIdDownload(w, r, documentId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -360,6 +397,8 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/document/upload", wrapper.PostDocumentUpload).Methods("POST")
 
+	r.HandleFunc(options.BaseURL+"/{document_id}/download", wrapper.GetDocumentIdDownload).Methods("GET")
+
 	return r
 }
 
@@ -371,8 +410,12 @@ type BadRequestJSONResponse struct {
 	Error *string `json:"error,omitempty"`
 }
 
+type DocumentNotFoundJSONResponse struct {
+	Error *string `json:"error,omitempty"`
+}
+
 type SearchResultJSONResponse struct {
-	Documents *[]DocumentSummary `json:"github.com/zuzuka28/simreport/prj/documents,omitempty"`
+	Documents *[]DocumentSummary `json:"documents,omitempty"`
 }
 
 type ServerErrorJSONResponse struct {
@@ -381,15 +424,15 @@ type ServerErrorJSONResponse struct {
 
 type SimilaritySearchHistoryResultJSONResponse struct {
 	Count     *int                       `json:"count,omitempty"`
-	Documents *[]SimilaritySearchHistory `json:"github.com/zuzuka28/simreport/prj/documents,omitempty"`
+	Documents *[]SimilaritySearchHistory `json:"documents,omitempty"`
 }
 
 type SimilaritySearchResultJSONResponse struct {
-	Documents *[]AnalyzedDocumentMatch `json:"github.com/zuzuka28/simreport/prj/documents,omitempty"`
+	Documents *[]AnalyzedDocumentMatch `json:"documents,omitempty"`
 }
 
 type UploadSuccessJSONResponse struct {
-	DocumentID *string `json:"github.com/zuzuka28/simreport/prj/documentID,omitempty"`
+	DocumentID *string `json:"documentID,omitempty"`
 }
 
 type PostAnalyzeHistoryRequestObject struct {
@@ -430,7 +473,7 @@ func (response PostAnalyzeHistory500JSONResponse) VisitPostAnalyzeHistoryRespons
 }
 
 type GetAnalyzeDocumentIdSimilarRequestObject struct {
-	DocumentId DocumentId `json:"github.com/zuzuka28/simreport/prj/document_id"`
+	DocumentId DocumentId `json:"document_id"`
 }
 
 type GetAnalyzeDocumentIdSimilarResponseObject interface {
@@ -537,7 +580,7 @@ func (response PostDocumentSearch500JSONResponse) VisitPostDocumentSearchRespons
 }
 
 type PostDocumentUploadRequestObject struct {
-	Body *PostDocumentUploadJSONRequestBody
+	Body *multipart.Reader
 }
 
 type PostDocumentUploadResponseObject interface {
@@ -562,6 +605,48 @@ func (response PostDocumentUpload400JSONResponse) VisitPostDocumentUploadRespons
 	return json.NewEncoder(w).Encode(response)
 }
 
+type GetDocumentIdDownloadRequestObject struct {
+	DocumentId DocumentId `json:"document_id"`
+}
+
+type GetDocumentIdDownloadResponseObject interface {
+	VisitGetDocumentIdDownloadResponse(w http.ResponseWriter) error
+}
+
+type GetDocumentIdDownload200ResponseHeaders struct {
+	ContentDisposition string
+}
+
+type GetDocumentIdDownload200ApplicationoctetStreamResponse struct {
+	Body          io.Reader
+	Headers       GetDocumentIdDownload200ResponseHeaders
+	ContentLength int64
+}
+
+func (response GetDocumentIdDownload200ApplicationoctetStreamResponse) VisitGetDocumentIdDownloadResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/octet-stream")
+	if response.ContentLength != 0 {
+		w.Header().Set("Content-Length", fmt.Sprint(response.ContentLength))
+	}
+	w.Header().Set("Content-Disposition", fmt.Sprint(response.Headers.ContentDisposition))
+	w.WriteHeader(200)
+
+	if closer, ok := response.Body.(io.ReadCloser); ok {
+		defer closer.Close()
+	}
+	_, err := io.Copy(w, response.Body)
+	return err
+}
+
+type GetDocumentIdDownload404JSONResponse struct{ DocumentNotFoundJSONResponse }
+
+func (response GetDocumentIdDownload404JSONResponse) VisitGetDocumentIdDownloadResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
@@ -579,6 +664,9 @@ type StrictServerInterface interface {
 
 	// (POST /document/upload)
 	PostDocumentUpload(ctx context.Context, request PostDocumentUploadRequestObject) (PostDocumentUploadResponseObject, error)
+	// Download document
+	// (GET /{document_id}/download)
+	GetDocumentIdDownload(ctx context.Context, request GetDocumentIdDownloadRequestObject) (GetDocumentIdDownloadResponseObject, error)
 }
 
 type StrictHandlerFunc = strictnethttp.StrictHTTPHandlerFunc
@@ -733,12 +821,12 @@ func (sh *strictHandler) PostDocumentSearch(w http.ResponseWriter, r *http.Reque
 func (sh *strictHandler) PostDocumentUpload(w http.ResponseWriter, r *http.Request) {
 	var request PostDocumentUploadRequestObject
 
-	var body PostDocumentUploadJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+	if reader, err := r.MultipartReader(); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
 		return
+	} else {
+		request.Body = reader
 	}
-	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
 		return sh.ssi.PostDocumentUpload(ctx, request.(PostDocumentUploadRequestObject))
@@ -753,6 +841,32 @@ func (sh *strictHandler) PostDocumentUpload(w http.ResponseWriter, r *http.Reque
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
 	} else if validResponse, ok := response.(PostDocumentUploadResponseObject); ok {
 		if err := validResponse.VisitPostDocumentUploadResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetDocumentIdDownload operation middleware
+func (sh *strictHandler) GetDocumentIdDownload(w http.ResponseWriter, r *http.Request, documentId DocumentId) {
+	var request GetDocumentIdDownloadRequestObject
+
+	request.DocumentId = documentId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.GetDocumentIdDownload(ctx, request.(GetDocumentIdDownloadRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetDocumentIdDownload")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetDocumentIdDownloadResponseObject); ok {
+		if err := validResponse.VisitGetDocumentIdDownloadResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {

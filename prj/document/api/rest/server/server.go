@@ -78,14 +78,12 @@ func New(
 	}).Handler(router)
 
 	return &Server{
-		addr:   fmt.Sprintf(":%d", opts.Port),
+		addr:   fmt.Sprintf("0.0.0.0:%d", opts.Port),
 		router: handler,
 	}, nil
 }
 
 func (s *Server) Start(ctx context.Context) error {
-	slog.Info("starting server", "addr", s.addr)
-
 	httpServer := http.Server{ //nolint:exhaustruct
 		Addr:              s.addr,
 		Handler:           s.router,
@@ -97,10 +95,15 @@ func (s *Server) Start(ctx context.Context) error {
 
 	errg, ctx := errgroup.WithContext(ctx)
 
-	errg.Go(httpServer.ListenAndServe)
+	errg.Go(func() error {
+		slog.Info("starting server", "addr", s.addr)
+		return httpServer.ListenAndServe()
+	})
 
 	errg.Go(func() error {
 		<-ctx.Done()
+		slog.Info("shutdown server", "addr", s.addr)
+
 		return httpServer.Shutdown(ctx)
 	})
 

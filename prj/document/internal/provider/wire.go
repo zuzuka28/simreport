@@ -148,7 +148,7 @@ func ProvideDocumentStatusJetstreamKV(
 	js jetstream.JetStream,
 ) (jetstream.KeyValue, error) {
 	kv, err := js.CreateOrUpdateKeyValue(ctx, jetstream.KeyValueConfig{ //nolint:exhaustruct
-		Bucket: "github.com/zuzuka28/simreport/prj/documentstatus",
+		Bucket: "documentstatus",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new kv: %w", err)
@@ -162,8 +162,8 @@ func ProvideDocumentStatusJetstreamStream(
 	js jetstream.JetStream,
 ) (jetstream.Stream, error) {
 	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{ //nolint:exhaustruct
-		Name:      "github.com/zuzuka28/simreport/prj/documentstatus",
-		Subjects:  []string{"github.com/zuzuka28/simreport/prj/documentstatus.>"},
+		Name:      "documentstatus",
+		Subjects:  []string{"documentstatus.>"},
 		Retention: jetstream.InterestPolicy,
 	})
 	if err != nil {

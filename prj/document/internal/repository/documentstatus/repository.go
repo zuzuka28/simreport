@@ -4,7 +4,7 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-const subject = "github.com/zuzuka28/simreport/prj/documentstatus"
+const subject = "documentstatus"
 
 type Repository struct {
 	kv jetstream.KeyValue

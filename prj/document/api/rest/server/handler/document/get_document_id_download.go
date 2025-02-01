@@ -1,10 +1,10 @@
-package anysave
+package document
 
 import (
 	"context"
 	"fmt"
 
-	openapi "github.com/zuzuka28/simreport/prj/anysave/api/rest/gen"
+	openapi "github.com/zuzuka28/simreport/prj/document/api/rest/gen"
 )
 
 //nolint:revive,stylecheck
@@ -19,5 +19,5 @@ func (h *Handler) GetDocumentIdDownload(
 		return nil, fmt.Errorf("fetch file: %w", err)
 	}
 
-	return mapFileToDownloadResponse(documentFile), nil
+	return mapFileToDownloadResponse(documentFile.Source), nil
 }
