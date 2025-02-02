@@ -3,18 +3,18 @@ package fulltextindexclient
 import (
 	"github.com/nats-io/nats.go"
 
-	pb "github.com/zuzuka28/simreport/prj/fulltextindex/pkg/pb/v1"
+	pb "github.com/zuzuka28/simreport/prj/similarityindex/pkg/pb/v1"
 )
 
 type Repository struct {
-	cli *pb.FullTextIndexServiceNatsClient
+	cli *pb.SimilarityIndexClient
 }
 
 func NewRepository(conn *nats.Conn) *Repository {
 	return &Repository{
-		cli: pb.NewFullTextIndexServiceClient(
-			pb.FullTextIndexServiceNatsClientConfig{
-				ServerName: "similarity_fulltext",
+		cli: pb.NewSimilarityIndexClient(
+			pb.SimilarityIndexClientConfig{
+				MicroSubject: "similarity_fulltext",
 			},
 			conn,
 		),

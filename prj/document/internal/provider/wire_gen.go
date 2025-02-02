@@ -403,10 +403,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 		return nil, err
 	}
 	similarityHandler := InitAnalyzeNatsHandler(similarityService)
-	serverServer, err := server2.NewServer(conn, handler, attributeHandler, similarityHandler)
-	if err != nil {
-		return nil, err
-	}
+	serverServer := server2.NewServer(conn, handler, attributeHandler, similarityHandler)
 	return serverServer, nil
 }
 

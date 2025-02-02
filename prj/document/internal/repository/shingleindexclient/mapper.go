@@ -6,7 +6,7 @@ import (
 
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
 
-	pb "github.com/zuzuka28/simreport/prj/shingleindex/pkg/pb/v1"
+	pb "github.com/zuzuka28/simreport/prj/similarityindex/pkg/pb/v1"
 )
 
 var errInternal = errors.New("internal error")

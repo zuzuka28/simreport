@@ -1,7 +1,7 @@
 package server
 
 import (
-	"fmt"
+	"context"
 	"time"
 
 	"github.com/nats-io/nats.go"
@@ -13,7 +13,7 @@ import (
 const requestTimeout = 60 * time.Second
 
 type Server struct {
-	s *pb.DocumentServiceNatsServer
+	s *pb.DocumentServiceServer
 }
 
 func NewServer(
@@ -21,44 +21,46 @@ func NewServer(
 	doch DocumentHandler,
 	attrh AttributeHandler,
 	anh SimilarityHandler,
-) (*Server, error) {
+) *Server {
 	compose := struct {
+		pb.UnsafeDocumentServiceServer
 		DocumentHandler
 		AttributeHandler
 		SimilarityHandler
 	}{
-		DocumentHandler:   doch,
-		AttributeHandler:  attrh,
-		SimilarityHandler: anh,
-	}
-
-	srv, err := pb.NewDocumentServiceNatsServer(
-		pb.DocumentServiceNatsServerConfig{
-			Config: micro.Config{
-				Name:         "document",
-				Endpoint:     nil,
-				Version:      "0.0.1",
-				Description:  "",
-				Metadata:     nil,
-				QueueGroup:   "",
-				StatsHandler: nil,
-				DoneHandler:  nil,
-				ErrorHandler: nil,
-			},
-			RequestTimeout: requestTimeout,
-			Middleware:     nil,
-			OnError:        nil,
-		},
-		conn,
-		compose,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("create server: %w", err)
+		UnsafeDocumentServiceServer: nil,
+		DocumentHandler:             doch,
+		AttributeHandler:            attrh,
+		SimilarityHandler:           anh,
 	}
 
 	return &Server{
-		s: srv,
-	}, nil
+		s: pb.NewDocumentServiceServer(
+			pb.DocumentServiceServerConfig{
+				Config: micro.Config{
+					Name:         "document",
+					Endpoint:     nil,
+					Version:      "0.0.1",
+					Description:  "",
+					Metadata:     nil,
+					QueueGroup:   "",
+					StatsHandler: nil,
+					DoneHandler:  nil,
+					ErrorHandler: nil,
+				},
+				RequestTimeout:       requestTimeout,
+				Middleware:           nil,
+				RequestErrorHandler:  nil,
+				ResponseErrorHandler: nil,
+			},
+			conn,
+			compose,
+		),
+	}
+}
+
+func (s *Server) Start(ctx context.Context) error {
+	return s.s.Start(ctx) //nolint:wrapcheck
 }
 
 func (s *Server) Stop() error {

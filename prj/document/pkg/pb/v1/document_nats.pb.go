@@ -4,6 +4,7 @@ package document
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -18,81 +19,145 @@ type ErrorHandler func(ctx context.Context, msg micro.Request, err error)
 
 type Middleware func(Handler) Handler
 
-// DocumentServiceServer is the server API for DocumentService service.
-type DocumentServiceServer interface {
+// DocumentServiceServerInterface is the server API for DocumentService service.
+type DocumentServiceServerInterface interface {
 	FetchDocument(context.Context, *FetchDocumentRequest) (*FetchDocumentResponse, error)
 	UploadDocument(context.Context, *UploadDocumentRequest) (*UploadDocumentResponse, error)
 	SearchAttribute(context.Context, *SearchAttributeRequest) (*SearchAttributeResponse, error)
 	SearchDocument(context.Context, *SearchRequest) (*SearchDocumentResponse, error)
 	SearchSimilar(context.Context, *DocumentId) (*SearchSimilarResponse, error)
 	SearchSimilarityHistory(context.Context, *SearchSimilarityHistoryRequest) (*SearchSimilarityHistoryResponse, error)
+	mustEmbedUnimplementedGreeterServer()
 }
 
-type DocumentServiceNatsServerConfig struct {
+type UnimplementedDocumentServiceServer struct{}
+
+func (UnimplementedDocumentServiceServer) FetchDocument(context.Context, *FetchDocumentRequest) (*FetchDocumentResponse, error) {
+	return nil, errors.New("method FetchDocument not implemented")
+}
+func (UnimplementedDocumentServiceServer) UploadDocument(context.Context, *UploadDocumentRequest) (*UploadDocumentResponse, error) {
+	return nil, errors.New("method UploadDocument not implemented")
+}
+func (UnimplementedDocumentServiceServer) SearchAttribute(context.Context, *SearchAttributeRequest) (*SearchAttributeResponse, error) {
+	return nil, errors.New("method SearchAttribute not implemented")
+}
+func (UnimplementedDocumentServiceServer) SearchDocument(context.Context, *SearchRequest) (*SearchDocumentResponse, error) {
+	return nil, errors.New("method SearchDocument not implemented")
+}
+func (UnimplementedDocumentServiceServer) SearchSimilar(context.Context, *DocumentId) (*SearchSimilarResponse, error) {
+	return nil, errors.New("method SearchSimilar not implemented")
+}
+func (UnimplementedDocumentServiceServer) SearchSimilarityHistory(context.Context, *SearchSimilarityHistoryRequest) (*SearchSimilarityHistoryResponse, error) {
+	return nil, errors.New("method SearchSimilarityHistory not implemented")
+}
+
+func (UnimplementedDocumentServiceServer) mustEmbedUnimplementedDocumentServiceServer() {}
+
+func (UnimplementedDocumentServiceServer) testEmbeddedByValue() {}
+
+type UnsafeDocumentServiceServer interface {
+	mustEmbedUnimplementedGreeterServer()
+}
+
+type DocumentServiceServerConfig struct {
 	micro.Config
-	RequestTimeout time.Duration
-	Middleware     Middleware
-	OnError        ErrorHandler
+	RequestTimeout       time.Duration
+	Middleware           Middleware
+	RequestErrorHandler  ErrorHandler
+	ResponseErrorHandler ErrorHandler
 }
 
-type DocumentServiceNatsServer struct {
-	srv  micro.Service
-	impl DocumentServiceServer
-	cfg  DocumentServiceNatsServerConfig
+type DocumentServiceServer struct {
+	nc   *nats.Conn
+	impl DocumentServiceServerInterface
+	cfg  DocumentServiceServerConfig
+	done chan struct{}
+
+	requestErrorHandlerFunc  ErrorHandler
+	responseErrorHandlerFunc ErrorHandler
 }
 
-// NewDocumentServiceNatsServer  creates a new NATS microservice server.
-func NewDocumentServiceNatsServer(
-	cfg DocumentServiceNatsServerConfig,
+// NewDocumentServiceServer  creates a new NATS microservice server.
+func NewDocumentServiceServer(
+	cfg DocumentServiceServerConfig,
 	nc *nats.Conn,
-	impl DocumentServiceServer,
-) (*DocumentServiceNatsServer, error) {
-	srv, err := micro.AddService(nc, cfg.Config)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create microservice: %w", err)
+	impl DocumentServiceServerInterface,
+) *DocumentServiceServer {
+	if t, ok := impl.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
 	}
 
 	if cfg.RequestTimeout == 0 {
 		cfg.RequestTimeout = time.Second * 60
 	}
 
-	s := &DocumentServiceNatsServer{
-		srv:  srv,
-		impl: impl,
-		cfg:  cfg,
+	if cfg.RequestErrorHandler == nil {
+		cfg.RequestErrorHandler = func(_ context.Context, req micro.Request, _ error) {
+			req.Error("500", "unproccessable request", nil, nil)
+		}
 	}
 
-	group := srv.AddGroup(cfg.Name)
+	if cfg.ResponseErrorHandler == nil {
+		cfg.ResponseErrorHandler = func(_ context.Context, req micro.Request, _ error) {
+			req.Error("500", "internal server error", nil, nil)
+		}
+	}
+
+	return &DocumentServiceServer{
+		nc:                       nc,
+		impl:                     impl,
+		cfg:                      cfg,
+		done:                     make(chan struct{}),
+		requestErrorHandlerFunc:  cfg.RequestErrorHandler,
+		responseErrorHandlerFunc: cfg.ResponseErrorHandler,
+	}
+}
+
+// Start starts the microservice and blocking until application context done.
+func (s *DocumentServiceServer) Start(ctx context.Context) error {
+	srv, err := micro.AddService(s.nc, s.cfg.Config)
+	if err != nil {
+		return fmt.Errorf("failed to start microservice: %w", err)
+	}
+
+	defer srv.Stop()
+
+	group := srv.AddGroup(s.cfg.Config.Name)
 
 	// Register handlers
 	if err := group.AddEndpoint("fetch_document", s.toMicroHandler(s.handleFetchDocument)); err != nil {
-		return nil, fmt.Errorf("failed to add endpoint FetchDocument: %w", err)
+		return fmt.Errorf("failed to add endpoint FetchDocument: %w", err)
 	}
 	if err := group.AddEndpoint("upload_document", s.toMicroHandler(s.handleUploadDocument)); err != nil {
-		return nil, fmt.Errorf("failed to add endpoint UploadDocument: %w", err)
+		return fmt.Errorf("failed to add endpoint UploadDocument: %w", err)
 	}
 	if err := group.AddEndpoint("search_attribute", s.toMicroHandler(s.handleSearchAttribute)); err != nil {
-		return nil, fmt.Errorf("failed to add endpoint SearchAttribute: %w", err)
+		return fmt.Errorf("failed to add endpoint SearchAttribute: %w", err)
 	}
 	if err := group.AddEndpoint("search_document", s.toMicroHandler(s.handleSearchDocument)); err != nil {
-		return nil, fmt.Errorf("failed to add endpoint SearchDocument: %w", err)
+		return fmt.Errorf("failed to add endpoint SearchDocument: %w", err)
 	}
 	if err := group.AddEndpoint("search_similar", s.toMicroHandler(s.handleSearchSimilar)); err != nil {
-		return nil, fmt.Errorf("failed to add endpoint SearchSimilar: %w", err)
+		return fmt.Errorf("failed to add endpoint SearchSimilar: %w", err)
 	}
 	if err := group.AddEndpoint("search_similarity_history", s.toMicroHandler(s.handleSearchSimilarityHistory)); err != nil {
-		return nil, fmt.Errorf("failed to add endpoint SearchSimilarityHistory: %w", err)
+		return fmt.Errorf("failed to add endpoint SearchSimilarityHistory: %w", err)
 	}
 
-	return s, nil
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-s.done:
+		return nil
+	}
 }
 
-// Stop stops the microservice.
-func (s *DocumentServiceNatsServer) Stop() error {
-	return s.srv.Stop()
+func (s *DocumentServiceServer) Stop() error {
+	s.done <- struct{}{}
+	return nil
 }
 
-func (s *DocumentServiceNatsServer) toMicroHandler(h Handler) micro.HandlerFunc {
+func (s *DocumentServiceServer) toMicroHandler(h Handler) micro.HandlerFunc {
 	return func(req micro.Request) {
 		ctx, cancel := context.WithTimeout(context.Background(), s.cfg.RequestTimeout)
 		defer cancel()
@@ -105,211 +170,181 @@ func (s *DocumentServiceNatsServer) toMicroHandler(h Handler) micro.HandlerFunc 
 	}
 }
 
-func (s *DocumentServiceNatsServer) handleFetchDocument(
+func (s *DocumentServiceServer) handleFetchDocument(
 	ctx context.Context,
 	req micro.Request,
 ) {
 	msg := new(FetchDocumentRequest)
 
 	if err := proto.Unmarshal(req.Data(), msg); err != nil {
-		req.Error("500", "unproccessable request", nil, nil)
+		s.requestErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	res, err := s.impl.FetchDocument(ctx, msg)
 	if err != nil {
-		if s.cfg.OnError != nil {
-			s.cfg.OnError(ctx, req, err)
-		} else {
-			req.Error("500", "server error", nil, nil)
-		}
-
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	req.Respond(resp)
 }
 
-func (s *DocumentServiceNatsServer) handleUploadDocument(
+func (s *DocumentServiceServer) handleUploadDocument(
 	ctx context.Context,
 	req micro.Request,
 ) {
 	msg := new(UploadDocumentRequest)
 
 	if err := proto.Unmarshal(req.Data(), msg); err != nil {
-		req.Error("500", "unproccessable request", nil, nil)
+		s.requestErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	res, err := s.impl.UploadDocument(ctx, msg)
 	if err != nil {
-		if s.cfg.OnError != nil {
-			s.cfg.OnError(ctx, req, err)
-		} else {
-			req.Error("500", "server error", nil, nil)
-		}
-
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	req.Respond(resp)
 }
 
-func (s *DocumentServiceNatsServer) handleSearchAttribute(
+func (s *DocumentServiceServer) handleSearchAttribute(
 	ctx context.Context,
 	req micro.Request,
 ) {
 	msg := new(SearchAttributeRequest)
 
 	if err := proto.Unmarshal(req.Data(), msg); err != nil {
-		req.Error("500", "unproccessable request", nil, nil)
+		s.requestErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	res, err := s.impl.SearchAttribute(ctx, msg)
 	if err != nil {
-		if s.cfg.OnError != nil {
-			s.cfg.OnError(ctx, req, err)
-		} else {
-			req.Error("500", "server error", nil, nil)
-		}
-
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	req.Respond(resp)
 }
 
-func (s *DocumentServiceNatsServer) handleSearchDocument(
+func (s *DocumentServiceServer) handleSearchDocument(
 	ctx context.Context,
 	req micro.Request,
 ) {
 	msg := new(SearchRequest)
 
 	if err := proto.Unmarshal(req.Data(), msg); err != nil {
-		req.Error("500", "unproccessable request", nil, nil)
+		s.requestErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	res, err := s.impl.SearchDocument(ctx, msg)
 	if err != nil {
-		if s.cfg.OnError != nil {
-			s.cfg.OnError(ctx, req, err)
-		} else {
-			req.Error("500", "server error", nil, nil)
-		}
-
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	req.Respond(resp)
 }
 
-func (s *DocumentServiceNatsServer) handleSearchSimilar(
+func (s *DocumentServiceServer) handleSearchSimilar(
 	ctx context.Context,
 	req micro.Request,
 ) {
 	msg := new(DocumentId)
 
 	if err := proto.Unmarshal(req.Data(), msg); err != nil {
-		req.Error("500", "unproccessable request", nil, nil)
+		s.requestErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	res, err := s.impl.SearchSimilar(ctx, msg)
 	if err != nil {
-		if s.cfg.OnError != nil {
-			s.cfg.OnError(ctx, req, err)
-		} else {
-			req.Error("500", "server error", nil, nil)
-		}
-
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	req.Respond(resp)
 }
 
-func (s *DocumentServiceNatsServer) handleSearchSimilarityHistory(
+func (s *DocumentServiceServer) handleSearchSimilarityHistory(
 	ctx context.Context,
 	req micro.Request,
 ) {
 	msg := new(SearchSimilarityHistoryRequest)
 
 	if err := proto.Unmarshal(req.Data(), msg); err != nil {
-		req.Error("500", "unproccessable request", nil, nil)
+		s.requestErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	res, err := s.impl.SearchSimilarityHistory(ctx, msg)
 	if err != nil {
-		if s.cfg.OnError != nil {
-			s.cfg.OnError(ctx, req, err)
-		} else {
-			req.Error("500", "server error", nil, nil)
-		}
-
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	req.Respond(resp)
 }
 
-type DocumentServiceNatsClientConfig struct {
-	ServerName string
+type DocumentServiceClientConfig struct {
+	MicroSubject string
 }
 
 // DocumentServiceClient is the client API for DocumentService service.
-type DocumentServiceNatsClient struct {
+type DocumentServiceClient struct {
 	nc  *nats.Conn
-	cfg DocumentServiceNatsClientConfig
+	cfg DocumentServiceClientConfig
 }
 
 // NewDocumentServiceClient creates a new NATS microservice client.
 func NewDocumentServiceClient(
-	cfg DocumentServiceNatsClientConfig,
+	cfg DocumentServiceClientConfig,
 	nc *nats.Conn,
-) *DocumentServiceNatsClient {
-	return &DocumentServiceNatsClient{nc: nc, cfg: cfg}
+) *DocumentServiceClient {
+	return &DocumentServiceClient{nc: nc, cfg: cfg}
 }
 
-func (c *DocumentServiceNatsClient) FetchDocument(
+func (c *DocumentServiceClient) FetchDocument(
 	ctx context.Context,
 	req *FetchDocumentRequest,
 ) (*FetchDocumentResponse, error) {
@@ -320,7 +355,7 @@ func (c *DocumentServiceNatsClient) FetchDocument(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".fetch_document", data)
+	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".fetch_document", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -332,7 +367,7 @@ func (c *DocumentServiceNatsClient) FetchDocument(
 	return resp, nil
 }
 
-func (c *DocumentServiceNatsClient) UploadDocument(
+func (c *DocumentServiceClient) UploadDocument(
 	ctx context.Context,
 	req *UploadDocumentRequest,
 ) (*UploadDocumentResponse, error) {
@@ -343,7 +378,7 @@ func (c *DocumentServiceNatsClient) UploadDocument(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".upload_document", data)
+	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".upload_document", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -355,7 +390,7 @@ func (c *DocumentServiceNatsClient) UploadDocument(
 	return resp, nil
 }
 
-func (c *DocumentServiceNatsClient) SearchAttribute(
+func (c *DocumentServiceClient) SearchAttribute(
 	ctx context.Context,
 	req *SearchAttributeRequest,
 ) (*SearchAttributeResponse, error) {
@@ -366,7 +401,7 @@ func (c *DocumentServiceNatsClient) SearchAttribute(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".search_attribute", data)
+	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".search_attribute", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -378,7 +413,7 @@ func (c *DocumentServiceNatsClient) SearchAttribute(
 	return resp, nil
 }
 
-func (c *DocumentServiceNatsClient) SearchDocument(
+func (c *DocumentServiceClient) SearchDocument(
 	ctx context.Context,
 	req *SearchRequest,
 ) (*SearchDocumentResponse, error) {
@@ -389,7 +424,7 @@ func (c *DocumentServiceNatsClient) SearchDocument(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".search_document", data)
+	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".search_document", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -401,7 +436,7 @@ func (c *DocumentServiceNatsClient) SearchDocument(
 	return resp, nil
 }
 
-func (c *DocumentServiceNatsClient) SearchSimilar(
+func (c *DocumentServiceClient) SearchSimilar(
 	ctx context.Context,
 	req *DocumentId,
 ) (*SearchSimilarResponse, error) {
@@ -412,7 +447,7 @@ func (c *DocumentServiceNatsClient) SearchSimilar(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".search_similar", data)
+	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".search_similar", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
@@ -424,7 +459,7 @@ func (c *DocumentServiceNatsClient) SearchSimilar(
 	return resp, nil
 }
 
-func (c *DocumentServiceNatsClient) SearchSimilarityHistory(
+func (c *DocumentServiceClient) SearchSimilarityHistory(
 	ctx context.Context,
 	req *SearchSimilarityHistoryRequest,
 ) (*SearchSimilarityHistoryResponse, error) {
@@ -435,7 +470,7 @@ func (c *DocumentServiceNatsClient) SearchSimilarityHistory(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".search_similarity_history", data)
+	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".search_similarity_history", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
