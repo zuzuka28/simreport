@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package similarityindex;
+
+option go_package = "pkg/pb/v1;shingleindex";
+
+service SimilarityIndex {
+  rpc SearchSimilar(SearchSimilarRequest) returns (SearchSimilarResponse);
+}
+
+message SearchSimilarRequest { string id = 1; }
+
+message SearchSimilarResponse {
+  Error error = 1;
+  repeated SimilarityDocumentMatch matches = 2;
+}
+
+message SimilarityDocumentMatch {
+  string id = 1;
+  double rate = 2;
+  repeated string highlights = 3;
+  repeated string similar_images = 4;
+}
+
+message Error {
+  int32 status = 1;
+  string description = 2;
+}
