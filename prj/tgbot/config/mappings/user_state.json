@@ -1,0 +1,15 @@
+{
+    "mappings": {
+        "properties": {
+            "userID": {
+                "type": "keyword"
+            },
+            "state": {
+                "type": "keyword"
+            },
+            "lastUpdated": {
+                "type": "date"
+            }
+        }
+    }
+}

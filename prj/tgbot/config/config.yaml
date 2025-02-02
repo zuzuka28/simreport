@@ -1,0 +1,15 @@
+bot:
+  token: 7421876547:AAGABuiljd-x9-CHUrO5iOnCGNdoS4RCALI
+elastic:
+  hosts:
+    - http://localhost:9200/
+  indexopts:
+    - index: "user_state"
+      updateMapping: true
+      createMapping: true
+      mappingPath: "config/mappings/user_state.json"
+      alias: ""
+      shards: 1
+      replics: 1
+userStateRepo:
+  index: "user_state"
