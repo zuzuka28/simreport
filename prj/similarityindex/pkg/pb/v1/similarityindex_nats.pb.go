@@ -71,17 +71,25 @@ func NewSimilarityIndexServer(
 		cfg.RequestTimeout = time.Second * 60
 	}
 
-	return &SimilarityIndexServer{
-		nc:   nc,
-		impl: impl,
-		cfg:  cfg,
-		done: make(chan struct{}),
-		requestErrorHandlerFunc: func(_ context.Context, req micro.Request, _ error) {
+	if cfg.RequestErrorHandler == nil {
+		cfg.RequestErrorHandler = func(_ context.Context, req micro.Request, _ error) {
 			req.Error("500", "unproccessable request", nil, nil)
-		},
-		responseErrorHandlerFunc: func(_ context.Context, req micro.Request, _ error) {
+		}
+	}
+
+	if cfg.ResponseErrorHandler == nil {
+		cfg.ResponseErrorHandler = func(_ context.Context, req micro.Request, _ error) {
 			req.Error("500", "internal server error", nil, nil)
-		},
+		}
+	}
+
+	return &SimilarityIndexServer{
+		nc:                       nc,
+		impl:                     impl,
+		cfg:                      cfg,
+		done:                     make(chan struct{}),
+		requestErrorHandlerFunc:  cfg.RequestErrorHandler,
+		responseErrorHandlerFunc: cfg.ResponseErrorHandler,
 	}
 }
 

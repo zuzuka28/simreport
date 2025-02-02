@@ -79,17 +79,25 @@ func New{{ .GoName }}Server(
         cfg.RequestTimeout = time.Second * 60
     }
 
+    if cfg.RequestErrorHandler == nil {
+        cfg.RequestErrorHandler = func(_ context.Context, req micro.Request, _ error) {
+            req.Error("500", "unproccessable request", nil, nil)
+        }
+    }
+
+    if cfg.ResponseErrorHandler == nil {
+        cfg.ResponseErrorHandler = func(_ context.Context, req micro.Request, _ error) {
+            req.Error("500", "internal server error", nil, nil)
+        }
+    }
+
     return &{{ .GoName }}Server{
         nc: nc,
         impl:   impl,
         cfg:    cfg,
         done:   make(chan struct{}),
-        requestErrorHandlerFunc: func(_ context.Context, req micro.Request, _ error) {
-            req.Error("500", "unproccessable request", nil, nil)
-        },
-        responseErrorHandlerFunc: func(_ context.Context, req micro.Request, _ error) {
-            req.Error("500", "internal server error", nil, nil)
-        },
+        requestErrorHandlerFunc: cfg.RequestErrorHandler,
+        responseErrorHandlerFunc: cfg.ResponseErrorHandler,
     }
 }
 
