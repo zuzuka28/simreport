@@ -13,20 +13,6 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
-type StartupIndexOpts struct {
-	Index         string `yaml:"index"`
-	UpdateMapping bool   `yaml:"updateMapping"`
-	CreateMapping bool   `yaml:"createMapping"`
-	MappingPath   string `yaml:"mappingPath"`
-	Alias         string `yaml:"alias"`
-	Shards        int    `yaml:"shards"`
-	Replics       int    `yaml:"replics"`
-}
-
-type Elastic struct {
-	Hosts []string `json:"hosts"`
-}
-
 type Config struct {
 	Port               int                 `yaml:"port"`
 	S3                 minioutil.Config    `yaml:"s3"`
