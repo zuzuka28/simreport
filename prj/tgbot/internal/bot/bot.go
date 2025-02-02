@@ -27,6 +27,7 @@ type Bot struct {
 func New(
 	cfg Config,
 	uss UserStateService,
+	ds DocumentService,
 ) (*Bot, error) {
 	pref := tele.Settings{ //nolint:exhaustruct
 		Token:  cfg.Token,
@@ -38,14 +39,15 @@ func New(
 		return nil, fmt.Errorf("new telebot: %w", err)
 	}
 
-	stateManager := newStateManager(uss)
-	menu := newMenu(stateManager)
+	sm := newStateManager(uss)
+
+	menu := newMenu(sm, ds)
 
 	bot := &Bot{
 		tg:   b,
 		done: make(chan struct{}),
 		uss:  uss,
-		sm:   stateManager,
+		sm:   sm,
 		menu: menu,
 	}
 
@@ -59,7 +61,7 @@ func New(
 	b.Handle("/start", func(c tele.Context) error {
 		ctx := context.Background()
 
-		_ = stateManager.SwitchState(ctx, int(c.Sender().ID), string(menuStateEnter))
+		_ = sm.SwitchState(ctx, int(c.Sender().ID), string(menuStateEnter))
 
 		return bot.menu.Handle(ctx, c)
 	})
@@ -67,7 +69,7 @@ func New(
 	b.Handle("/menu", func(c tele.Context) error {
 		ctx := context.Background()
 
-		_ = stateManager.SwitchState(ctx, int(c.Sender().ID), string(menuStateEnter))
+		_ = sm.SwitchState(ctx, int(c.Sender().ID), string(menuStateEnter))
 
 		return bot.menu.Handle(ctx, c)
 	})

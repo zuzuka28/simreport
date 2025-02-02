@@ -1,9 +1,15 @@
 package bot
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io"
+	"time"
 
+	"github.com/zuzuka28/simreport/prj/tgbot/internal/model"
 	tele "gopkg.in/telebot.v4"
 )
 
@@ -20,7 +26,10 @@ type menu struct {
 	handlers map[menuState]func(context.Context, tele.Context) error
 }
 
-func newMenu(stateManager *stateManager) *menu {
+func newMenu(
+	sm *stateManager,
+	ds DocumentService,
+) *menu {
 	btnAddFile := menuButton{
 		nextState: menuStateAddFile,
 		btn: &tele.Btn{ //nolint:exhaustruct
@@ -49,7 +58,7 @@ func newMenu(stateManager *stateManager) *menu {
 			&btnSearchFile,
 		},
 		markup:   markup,
-		sm:       stateManager,
+		sm:       sm,
 		handlers: make(map[menuState]func(context.Context, tele.Context) error),
 	}
 
@@ -58,7 +67,7 @@ func newMenu(stateManager *stateManager) *menu {
 	}
 
 	menu.handlers[menuStateAddFile] = func(ctx context.Context, c tele.Context) error {
-		_ = stateManager.SwitchState(ctx, int(c.Sender().ID), string(menuStateAddFileAwaitingDocument))
+		_ = sm.SwitchState(ctx, int(c.Sender().ID), string(menuStateAddFileAwaitingDocument))
 		return c.Send("send file to upload")
 	}
 
@@ -66,15 +75,43 @@ func newMenu(stateManager *stateManager) *menu {
 		userID := int(c.Sender().ID)
 		file := c.Message().Document
 
-		fmt.Println(file.FileName)
+		r, err := c.Bot().File(file.MediaFile())
+		if err != nil {
+			return c.Send("Failed to retrieve the file.")
+		}
 
-		_ = stateManager.SwitchState(ctx, userID, string(menuStateEnter))
+		hasher := sha256.New()
+		data := &bytes.Buffer{}
+
+		_, err = io.Copy(io.MultiWriter(hasher, data), r)
+		if err != nil {
+			return fmt.Errorf("load file: %w", err)
+		}
+
+		if _, err := ds.Save(ctx, model.DocumentSaveCommand{
+			Item: model.Document{
+				ParentID: "",
+				Name:     "",
+				Version:  0,
+				GroupID:  []string{},
+				Source: model.File{
+					Name:        file.FileName,
+					Content:     data.Bytes(),
+					Sha256:      hex.EncodeToString((hasher.Sum(nil))),
+					LastUpdated: time.Time{},
+				},
+			},
+		}); err != nil {
+			return fmt.Errorf("upload file: %w", err)
+		}
+
+		_ = sm.SwitchState(ctx, userID, string(menuStateEnter))
 
 		return c.Send("document uploaded")
 	}
 
 	menu.handlers[menuStateSearchFile] = func(ctx context.Context, c tele.Context) error {
-		_ = stateManager.SwitchState(ctx, int(c.Sender().ID), string(menuStateSearchFileAwaitingDocument))
+		_ = sm.SwitchState(ctx, int(c.Sender().ID), string(menuStateSearchFileAwaitingDocument))
 		return c.Send("Please send the file to search for similar ones.")
 	}
 
@@ -84,13 +121,13 @@ func newMenu(stateManager *stateManager) *menu {
 
 		fmt.Println(file.FileName)
 
-		_ = stateManager.SwitchState(ctx, userID, string(menuStateExit))
+		_ = sm.SwitchState(ctx, userID, string(menuStateExit))
 
 		return c.Send("searching by sample...")
 	}
 
 	menu.handlers[menuStateExit] = func(ctx context.Context, c tele.Context) error {
-		_ = stateManager.SwitchState(ctx, int(c.Sender().ID), string(botStateStart))
+		_ = sm.SwitchState(ctx, int(c.Sender().ID), string(botStateStart))
 		return c.Send("Exiting menu.")
 	}
 

@@ -13,7 +13,9 @@ import (
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/bot"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/config"
+	"github.com/zuzuka28/simreport/prj/tgbot/internal/repository/document"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/repository/userstate"
+	document2 "github.com/zuzuka28/simreport/prj/tgbot/internal/service/document"
 	userstate2 "github.com/zuzuka28/simreport/prj/tgbot/internal/service/userstate"
 	"sync"
 )
@@ -34,8 +36,18 @@ func ProvideUserStateRepository(configConfig *config.Config, client *elasticsear
 	return repository
 }
 
+func ProvideDocumentRepository(conn *nats.Conn) *document.Repository {
+	repository := document.NewRepository(conn)
+	return repository
+}
+
 func ProvideUserStateService(repository *userstate.Repository) *userstate2.Service {
 	service := userstate2.NewService(repository)
+	return service
+}
+
+func ProvideDocumentService(repository *document.Repository) *document2.Service {
+	service := document2.NewService(repository)
 	return service
 }
 
@@ -47,7 +59,13 @@ func InitBot(contextContext context.Context, configConfig *config.Config) (*bot.
 	}
 	repository := ProvideUserStateRepository(configConfig, client)
 	service := ProvideUserStateService(repository)
-	botBot, err := bot.New(botConfig, service)
+	conn, err := ProvideNats(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	documentRepository := ProvideDocumentRepository(conn)
+	documentService := ProvideDocumentService(documentRepository)
+	botBot, err := bot.New(botConfig, service, documentService)
 	if err != nil {
 		return nil, err
 	}

@@ -12,6 +12,9 @@ import (
 	userstaterepo "github.com/zuzuka28/simreport/prj/tgbot/internal/repository/userstate"
 	userstatesrv "github.com/zuzuka28/simreport/prj/tgbot/internal/service/userstate"
 
+	documentrepo "github.com/zuzuka28/simreport/prj/tgbot/internal/repository/document"
+	documentsrv "github.com/zuzuka28/simreport/prj/tgbot/internal/service/document"
+
 	"github.com/google/wire"
 	"github.com/nats-io/nats.go"
 )
@@ -68,6 +71,14 @@ func ProvideUserStateRepository(
 	))
 }
 
+func ProvideDocumentRepository(
+	*nats.Conn,
+) *documentrepo.Repository {
+	panic(wire.Build(
+		documentrepo.NewRepository,
+	))
+}
+
 func ProvideUserStateService(
 	*userstaterepo.Repository,
 ) *userstatesrv.Service {
@@ -77,16 +88,28 @@ func ProvideUserStateService(
 	))
 }
 
+func ProvideDocumentService(
+	*documentrepo.Repository,
+) *documentsrv.Service {
+	panic(wire.Build(
+		wire.Bind(new(documentsrv.Repository), new(*documentrepo.Repository)),
+		documentsrv.NewService,
+	))
+}
+
 func InitBot(
 	context.Context,
 	*config.Config,
 ) (*bot.Bot, error) {
 	panic(wire.Build(
 		ProvideElastic,
-		// ProvideNats,
+		ProvideNats,
 		ProvideUserStateRepository,
 		ProvideUserStateService,
+		ProvideDocumentRepository,
+		ProvideDocumentService,
 		wire.Bind(new(bot.UserStateService), new(*userstatesrv.Service)),
+		wire.Bind(new(bot.DocumentService), new(*documentsrv.Service)),
 		wire.FieldsOf(new(*config.Config), "Bot"),
 		bot.New,
 	))

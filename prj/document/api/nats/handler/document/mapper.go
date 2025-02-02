@@ -51,7 +51,7 @@ func mapUploadRequestToCommand(
 	return model.DocumentSaveCommand{
 		Item: model.Document{
 			ParentID:    in.GetParentId(),
-			Name:        in.GetDocumentName(),
+			Name:        in.GetFile().GetFilename(),
 			LastUpdated: time.Time{},
 			Version:     int(in.GetVersion()),
 			GroupID:     in.GetGroupIds(),
@@ -59,9 +59,14 @@ func mapUploadRequestToCommand(
 			TextID:      "",
 			ImageIDs:    nil,
 			WithContent: false,
-			Source:      model.File{}, //nolint:exhaustruct
-			Text:        model.File{}, //nolint:exhaustruct
-			Images:      nil,
+			Source: model.File{
+				Name:        in.GetFile().GetFilename(),
+				Content:     in.GetFile().GetContent(),
+				Sha256:      in.GetFile().GetId(),
+				LastUpdated: time.Time{},
+			},
+			Text:   model.File{}, //nolint:exhaustruct
+			Images: nil,
 		},
 	}
 }

@@ -1,5 +1,5 @@
 bot:
-  token: 7421876547:AAGABuiljd-x9-CHUrO5iOnCGNdoS4RCALI
+  token:
 elastic:
   hosts:
     - http://localhost:9200/

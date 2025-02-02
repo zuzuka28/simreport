@@ -12,8 +12,7 @@ service DocumentService {
   rpc SearchAttribute(SearchAttributeRequest)
       returns (SearchAttributeResponse) {}
   rpc SearchDocument(SearchRequest) returns (SearchDocumentResponse) {}
-  rpc SearchSimilar(DocumentId)
-      returns (SearchSimilarResponse) {}
+  rpc SearchSimilar(DocumentId) returns (SearchSimilarResponse) {}
   rpc SearchSimilarityHistory(SearchSimilarityHistoryRequest)
       returns (SearchSimilarityHistoryResponse) {}
 }
@@ -61,11 +60,10 @@ message File {
 }
 
 message UploadDocumentRequest {
-  bytes document = 1;
-  string document_name = 2;
-  repeated string group_ids = 3;
-  string parent_id = 4;
-  int64 version = 5;
+  File file = 1;
+  repeated string group_ids = 2;
+  string parent_id = 3;
+  int64 version = 4;
 }
 
 message UploadDocumentResponse {
