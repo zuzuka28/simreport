@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package similarityindex;
 
-option go_package = "pkg/pb/v1;shingleindex";
+option go_package = "pkg/pb/v1;similarityindex";
 
 service SimilarityIndex {
   rpc SearchSimilar(SearchSimilarRequest) returns (SearchSimilarResponse);
