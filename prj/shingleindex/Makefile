@@ -1,9 +1,6 @@
 wire:
 	wire ./...
 
-generate_proto:
-	protoc proto/shingleindex.proto --go_out=. --natsmicro_out=.
-
 run_api:
 	go run cmd/shingleindex/*.go --config config/config.yaml run-api
 

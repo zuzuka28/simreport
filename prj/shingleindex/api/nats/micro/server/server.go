@@ -1,58 +1,58 @@
 package server
 
 import (
-	"fmt"
+	"context"
 	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/micro"
 
-	pb "github.com/zuzuka28/simreport/prj/shingleindex/pkg/pb/v1"
+	pb "github.com/zuzuka28/simreport/prj/similarityindex/pkg/pb/v1"
 )
 
 const requestTimeout = 60 * time.Second
 
 type Server struct {
-	s *pb.ShingleIndexServiceNatsServer
+	s *pb.SimilarityIndexServer
 }
 
 func NewServer(
 	conn *nats.Conn,
 	h Handler,
-) (*Server, error) {
+) *Server {
 	compose := struct {
+		pb.UnsafeSimilarityIndexServer
 		Handler
 	}{
-		Handler: h,
-	}
-
-	srv, err := pb.NewShingleIndexServiceNatsServer(
-		pb.ShingleIndexServiceNatsServerConfig{
-			Config: micro.Config{
-				Name:         "similarity_shingle",
-				Endpoint:     nil,
-				Version:      "0.0.1",
-				Description:  "",
-				Metadata:     nil,
-				QueueGroup:   "",
-				StatsHandler: nil,
-				DoneHandler:  nil,
-				ErrorHandler: nil,
-			},
-			RequestTimeout: requestTimeout,
-			Middleware:     nil,
-			OnError:        nil,
-		},
-		conn,
-		compose,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("create server: %w", err)
+		UnsafeSimilarityIndexServer: nil,
+		Handler:                     h,
 	}
 
 	return &Server{
-		s: srv,
-	}, nil
+		s: pb.NewSimilarityIndexServer(
+			pb.SimilarityIndexServerConfig{
+				Config: micro.Config{
+					Name:         "similarity_shingle",
+					Endpoint:     nil,
+					Version:      "0.0.1",
+					Description:  "",
+					Metadata:     nil,
+					QueueGroup:   "",
+					StatsHandler: nil,
+					DoneHandler:  nil,
+					ErrorHandler: nil,
+				},
+				RequestTimeout: requestTimeout,
+				Middleware:     nil,
+			},
+			conn,
+			compose,
+		),
+	}
+}
+
+func (s *Server) Start(ctx context.Context) error {
+	return s.s.Start(ctx) //nolint:wrapcheck
 }
 
 func (s *Server) Stop() error {

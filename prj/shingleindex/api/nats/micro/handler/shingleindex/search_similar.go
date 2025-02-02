@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/model"
-	pb "github.com/zuzuka28/simreport/prj/shingleindex/pkg/pb/v1"
+	pb "github.com/zuzuka28/simreport/prj/similarityindex/pkg/pb/v1"
 )
 
 func (h *Handler) SearchSimilar(
