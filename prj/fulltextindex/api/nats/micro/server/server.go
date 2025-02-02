@@ -24,7 +24,8 @@ func NewServer(
 		pb.UnsafeSimilarityIndexServer
 		Handler
 	}{
-		Handler: h,
+		UnsafeSimilarityIndexServer: nil,
+		Handler:                     h,
 	}
 
 	return &Server{
@@ -41,8 +42,10 @@ func NewServer(
 					DoneHandler:  nil,
 					ErrorHandler: nil,
 				},
-				RequestTimeout: requestTimeout,
-				Middleware:     nil,
+				RequestTimeout:       requestTimeout,
+				Middleware:           nil,
+				RequestErrorHandler:  nil,
+				ResponseErrorHandler: nil,
 			},
 			conn,
 			compose,
