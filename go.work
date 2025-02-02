@@ -6,5 +6,6 @@ use (
 	./prj/similarityindex
 	./prj/fulltextindex
 	./prj/shingleindex
+	./prj/tgbot
 	./util/protonatsmicrogen
 )
