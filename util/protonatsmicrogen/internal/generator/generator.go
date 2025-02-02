@@ -42,33 +42,8 @@ func GenerateFile(gen *protogen.Plugin, file *protogen.File) error {
 		return err
 	}
 
-	data := TemplateData{
-		Package:      string(file.GoPackageName),
-		PackageAlias: string(file.GoPackageName),
-		PackagePath:  string(file.GoImportPath),
-		Services:     make([]ServiceData, 0, len(file.Services)),
-	}
-
-	for _, service := range file.Services {
-		svcData := ServiceData{
-			Name:    service.GoName,
-			Methods: make([]MethodData, 0, len(service.Methods)),
-		}
-
-		for _, method := range service.Methods {
-			svcData.Methods = append(svcData.Methods, MethodData{
-				Name:       method.GoName,
-				Reciever:   svcData.Name,
-				InputType:  method.Input.GoIdent.GoName,
-				OutputType: method.Output.GoIdent.GoName,
-			})
-		}
-
-		data.Services = append(data.Services, svcData)
-	}
-
 	var buf bytes.Buffer
-	if err := tmpl.Execute(&buf, data); err != nil {
+	if err := tmpl.Execute(&buf, file); err != nil {
 		return err
 	}
 
