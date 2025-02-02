@@ -7,6 +7,7 @@ package {{ .Package }}
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -22,65 +23,108 @@ type ErrorHandler func(ctx context.Context, msg micro.Request, err error)
 type Middleware func(Handler) Handler
 
 {{ range .Services }}
-// {{ .Name }}Server is the server API for {{ .Name }} service.
-type {{ .Name }}Server interface {
+// {{ .Name }}ServerInterface is the server API for {{ .Name }} service.
+type {{ .Name }}ServerInterface interface {
     {{- range .Methods }}
     {{ .Name }}(context.Context, *{{ .InputType }}) (*{{ .OutputType }}, error)
     {{- end }}
+    mustEmbedUnimplementedGreeterServer()
 }
 
-type {{ .Name }}NatsServerConfig struct {
+type Unimplemented{{ .Name }}Server struct{}
+
+{{- range .Methods }}
+func (Unimplemented{{ .Reciever }}Server) {{ .Name }}(context.Context, *{{ .InputType }}) (*{{ .OutputType }}, error) {
+	return nil, errors.New("method {{ .Name }} not implemented")
+}
+{{- end }}
+
+func (Unimplemented{{ .Name }}Server) mustEmbedUnimplemented{{ .Name }}Server() {}
+
+func (Unimplemented{{ .Name }}Server) testEmbeddedByValue() {}
+
+type Unsafe{{ .Name }}Server interface {
+	mustEmbedUnimplementedGreeterServer()
+}
+
+type {{ .Name }}ServerConfig struct {
 	micro.Config
-	RequestTimeout  time.Duration
-	Middleware      Middleware
-	OnError         ErrorHandler
+	RequestTimeout              time.Duration
+	Middleware                  Middleware
+	RequestErrorHandler         ErrorHandler
+	ResponseErrorHandler        ErrorHandler
 }
 
-type {{ .Name }}NatsServer struct {
-    srv    micro.Service
-    impl   {{ .Name }}Server
-    cfg    {{ .Name }}NatsServerConfig
+type {{ .Name }}Server struct {
+    nc     *nats.Conn
+    impl   {{ .Name }}ServerInterface
+    cfg    {{ .Name }}ServerConfig
+    done   chan struct{}
+
+    requestErrorHandlerFunc     ErrorHandler
+    responseErrorHandlerFunc    ErrorHandler
 }
 
-// New{{ .Name }}NatsServer  creates a new NATS microservice server.
-func New{{ .Name }}NatsServer(
-    cfg {{ .Name }}NatsServerConfig,
+// New{{ .Name }}Server  creates a new NATS microservice server.
+func New{{ .Name }}Server(
+    cfg {{ .Name }}ServerConfig,
     nc *nats.Conn,
-    impl {{ .Name }}Server,
-) (*{{ .Name }}NatsServer, error) {
-    srv, err := micro.AddService(nc, cfg.Config)
-    if err != nil {
-        return nil, fmt.Errorf("failed to create microservice: %w", err)
-    }
+    impl {{ .Name }}ServerInterface,
+) (*{{ .Name }}Server) {
+	if t, ok := impl.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
 
     if cfg.RequestTimeout == 0 {
         cfg.RequestTimeout = time.Second * 60
     }
 
-    s := &{{ .Name }}NatsServer{
-        srv:    srv,
+    return &{{ .Name }}Server{
+        nc: nc,
         impl:   impl,
         cfg:    cfg,
+        done:   make(chan struct{}),
+        requestErrorHandlerFunc: func(_ context.Context, req micro.Request, _ error) {
+            req.Error("500", "unproccessable request", nil, nil)
+        },
+        responseErrorHandlerFunc: func(_ context.Context, req micro.Request, _ error) {
+            req.Error("500", "internal server error", nil, nil)
+        },
+    }
+}
+
+// Start starts the microservice and blocking until application context done.
+func (s *{{ .Name }}Server) Start(ctx context.Context) error {
+    srv, err := micro.AddService(s.nc, s.cfg.Config)
+    if err != nil {
+        return fmt.Errorf("failed to start microservice: %w", err)
     }
 
-    group := srv.AddGroup(cfg.Name)
+    defer srv.Stop()
+
+    group := srv.AddGroup(s.cfg.Config.Name)
 
     // Register handlers
     {{- range .Methods }}
     if err := group.AddEndpoint("{{ snakecase .Name }}", s.toMicroHandler(s.handle{{ .Name }})); err != nil {
-        return nil, fmt.Errorf("failed to add endpoint {{ .Name }}: %w", err)
+        return fmt.Errorf("failed to add endpoint {{ .Name }}: %w", err)
     }
     {{- end }}
 
-    return s, nil
+    select {
+    case <-ctx.Done():
+        return ctx.Err()
+    case <-s.done:
+        return nil
+    }
 }
 
-// Stop stops the microservice.
-func (s *{{ .Name }}NatsServer) Stop() error {
-    return s.srv.Stop()
+func (s *{{ .Name }}Server) Stop() error {
+    s.done<-struct{}{}
+    return nil
 }
 
-func (s *{{ .Name }}NatsServer) toMicroHandler(h Handler) micro.HandlerFunc {
+func (s *{{ .Name }}Server) toMicroHandler(h Handler) micro.HandlerFunc {
 	return func(req micro.Request) {
 	    ctx, cancel := context.WithTimeout(context.Background(), s.cfg.RequestTimeout)
 	    defer cancel()
@@ -94,31 +138,26 @@ func (s *{{ .Name }}NatsServer) toMicroHandler(h Handler) micro.HandlerFunc {
 }
 
 {{ range .Methods }}
-func (s *{{ .Reciever }}NatsServer) handle{{ .Name }}(
+func (s *{{ .Reciever }}Server) handle{{ .Name }}(
     ctx context.Context,
     req micro.Request,
 ) {
 	msg := new({{ .InputType }})
 
 	if err := proto.Unmarshal(req.Data(), msg); err != nil {
-		req.Error("500", "unproccessable request", nil, nil)
+		s.requestErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	res, err := s.impl.{{ .Name }}(ctx, msg)
 	if err != nil {
-	    if s.cfg.OnError != nil {
-	        s.cfg.OnError(ctx, req, err)
-	    } else {
-		    req.Error("500", "server error", nil, nil)
-	    }
-
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
 	resp, err := proto.Marshal(res)
 	if err != nil {
-		req.Error("500", "server error", nil, nil)
+		s.responseErrorHandlerFunc(ctx, req, err)
 		return
 	}
 
@@ -126,26 +165,26 @@ func (s *{{ .Reciever }}NatsServer) handle{{ .Name }}(
 }
 {{ end }}
 
-type {{ .Name }}NatsClientConfig struct {
-	ServerName string
+type {{ .Name }}ClientConfig struct {
+	MicroSubject string
 }
 
 // {{ .Name }}Client is the client API for {{ .Name }} service.
-type {{ .Name }}NatsClient struct {
+type {{ .Name }}Client struct {
     nc     *nats.Conn
-    cfg    {{ .Name }}NatsClientConfig
+    cfg    {{ .Name }}ClientConfig
 }
 
 // New{{ .Name }}Client creates a new NATS microservice client.
 func New{{ .Name }}Client(
-    cfg {{ .Name }}NatsClientConfig,
+    cfg {{ .Name }}ClientConfig,
     nc *nats.Conn,
-) *{{ .Name }}NatsClient {
-    return &{{ .Name }}NatsClient{nc: nc, cfg: cfg}
+) *{{ .Name }}Client {
+    return &{{ .Name }}Client{nc: nc, cfg: cfg}
 }
 
 {{ range .Methods }}
-func (c *{{ .Reciever }}NatsClient) {{ .Name }}(
+func (c *{{ .Reciever }}Client) {{ .Name }}(
     ctx context.Context,
     req *{{ .InputType }},
 ) (*{{ .OutputType }}, error) {
@@ -156,7 +195,7 @@ func (c *{{ .Reciever }}NatsClient) {{ .Name }}(
         return nil, fmt.Errorf("failed to marshal request: %w", err)
     }
 
-    msg, err := c.nc.RequestWithContext(ctx, c.cfg.ServerName+".{{ snakecase .Name }}", data)
+    msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".{{ snakecase .Name }}", data)
     if err != nil {
         return nil, fmt.Errorf("failed to send request: %w", err)
     }

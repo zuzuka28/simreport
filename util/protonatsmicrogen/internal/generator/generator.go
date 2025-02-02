@@ -31,18 +31,21 @@ func GenerateFile(gen *protogen.Plugin, file *protogen.File) error {
 	filename := file.GeneratedFilenamePrefix + "_nats.pb.go"
 	g := gen.NewGeneratedFile(filename, file.GoImportPath)
 
-	tmpl, err := template.New(".").Funcs(sprig.FuncMap()).Parse(serviceTmpl)
+	funcMap := template.FuncMap{}
+
+	for k, v := range sprig.FuncMap() {
+		funcMap[k] = v
+	}
+
+	tmpl, err := template.New(".").Funcs(funcMap).Parse(serviceTmpl)
 	if err != nil {
 		return err
 	}
 
-	packageAlias := string(file.GoPackageName)
-	packagePath := string(file.GoImportPath)
-
 	data := TemplateData{
-		Package:      packageAlias,
-		PackageAlias: packageAlias,
-		PackagePath:  packagePath,
+		Package:      string(file.GoPackageName),
+		PackageAlias: string(file.GoPackageName),
+		PackagePath:  string(file.GoImportPath),
 		Services:     make([]ServiceData, 0, len(file.Services)),
 	}
 
