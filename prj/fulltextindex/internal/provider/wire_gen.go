@@ -118,10 +118,7 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	serverServer, err := server.NewServer(conn, handler)
-	if err != nil {
-		return nil, err
-	}
+	serverServer := server.NewServer(conn, handler)
 	return serverServer, nil
 }
 

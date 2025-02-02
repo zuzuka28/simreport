@@ -2,7 +2,7 @@ package fulltextindex
 
 import (
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/model"
-	pb "github.com/zuzuka28/simreport/prj/fulltextindex/pkg/pb/v1"
+	pb "github.com/zuzuka28/simreport/prj/similarityindex/pkg/pb/v1"
 )
 
 func mapDocumentToResponse(

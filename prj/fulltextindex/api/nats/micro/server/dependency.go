@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 
-	pb "github.com/zuzuka28/simreport/prj/fulltextindex/pkg/pb/v1"
+	pb "github.com/zuzuka28/simreport/prj/similarityindex/pkg/pb/v1"
 )
 
 type (
