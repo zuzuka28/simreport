@@ -7,6 +7,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"maps"
+	"slices"
 	"time"
 
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/model"
@@ -14,65 +16,107 @@ import (
 )
 
 type menuButton struct {
-	nextState menuState
-	btn       *tele.Btn
+	event Event
+	btn   *tele.Btn
 }
 
 type menu struct {
-	btns   []*menuButton
-	markup *tele.ReplyMarkup
-
-	sm       *stateManager
-	handlers map[menuState]func(context.Context, tele.Context) error
+	btns        map[string]*menuButton
+	markup      *tele.ReplyMarkup
+	transitions []Transition
 }
 
-func newMenu(
-	sm *stateManager,
-	ds DocumentService,
-) *menu {
-	btnAddFile := menuButton{
-		nextState: menuStateAddFile,
-		btn: &tele.Btn{ //nolint:exhaustruct
-			Unique: "uploadFileBtn",
-			Text:   "Add new file",
+func newMenu(ds DocumentService) *menu {
+	buttons := map[string]*menuButton{
+		"uploadFileBtn": {
+			event: eventAddFile,
+			btn: &tele.Btn{ //nolint:exhaustruct
+				Unique: "uploadFileBtn",
+				Text:   "Add new file",
+			},
 		},
-	}
-	btnSearchFile := menuButton{
-		nextState: menuStateSearchFile,
-		btn: &tele.Btn{ //nolint:exhaustruct
-			Unique: "searchSimilarBtn",
-			Text:   "Search similar file",
+		"searchSimilarBtn": {
+			event: eventSearchFile,
+			btn: &tele.Btn{ //nolint:exhaustruct
+				Unique: "searchSimilarBtn",
+				Text:   "Search similar file",
+			},
 		},
 	}
 
 	markup := &tele.ReplyMarkup{ResizeKeyboard: true} //nolint:exhaustruct
 
-	markup.Inline(
-		markup.Row(*btnAddFile.btn),
-		markup.Row(*btnSearchFile.btn),
-	)
+	rows := make([]tele.Row, 0, len(buttons))
+	for _, btn := range buttons {
+		rows = append(rows, markup.Row(*btn.btn))
+	}
 
-	menu := &menu{
-		btns: []*menuButton{
-			&btnAddFile,
-			&btnSearchFile,
+	markup.Inline(rows...)
+
+	return &menu{
+		btns:   buttons,
+		markup: markup,
+		transitions: []Transition{
+			{
+				From:   menuStateEnter,
+				Event:  eventAddFile,
+				To:     menuStateAddFile,
+				Action: sendMessage("send file to upload"),
+			},
+			{
+				From:   menuStateAddFile,
+				Event:  eventFileUploaded,
+				To:     menuStateEnter,
+				Action: handleFileUpload(ds),
+			},
+			{
+				From:   menuStateAddFile,
+				Event:  eventEnterMenu,
+				To:     menuStateEnter,
+				Action: sendMenuChoice(markup),
+			},
+			{
+				From:   menuStateEnter,
+				Event:  eventSearchFile,
+				To:     menuStateSearchFile,
+				Action: sendMessage("send the file to search for similar ones"),
+			},
+			{
+				From:   menuStateSearchFile,
+				Event:  eventFileUploaded,
+				To:     menuStateEnter,
+				Action: handleFileSearch(),
+			},
+			{
+				From:   menuStateSearchFile,
+				Event:  eventEnterMenu,
+				To:     menuStateEnter,
+				Action: sendMenuChoice(markup),
+			},
+			{
+				From:   menuStateEnter,
+				Event:  eventEnterMenu,
+				To:     menuStateEnter,
+				Action: sendMenuChoice(markup),
+			},
 		},
-		markup:   markup,
-		sm:       sm,
-		handlers: make(map[menuState]func(context.Context, tele.Context) error),
 	}
+}
 
-	menu.handlers[menuStateEnter] = func(_ context.Context, c tele.Context) error {
-		return c.Send("Choose an action:", menu.markup)
-	}
+func (m *menu) Buttons() []*menuButton {
+	return slices.Collect(maps.Values(m.btns))
+}
 
-	menu.handlers[menuStateAddFile] = func(ctx context.Context, c tele.Context) error {
-		_ = sm.SwitchState(ctx, int(c.Sender().ID), string(menuStateAddFileAwaitingDocument))
-		return c.Send("send file to upload")
-	}
+func (m *menu) Markup() *tele.ReplyMarkup {
+	return m.markup
+}
 
-	menu.handlers[menuStateAddFileAwaitingDocument] = func(ctx context.Context, c tele.Context) error {
-		userID := int(c.Sender().ID)
+func (m *menu) Transitions() []Transition {
+	return m.transitions
+}
+
+func handleFileUpload(ds DocumentService) func(context.Context, tele.Context) error {
+	return func(ctx context.Context, c tele.Context) error {
 		file := c.Message().Document
 
 		r, err := c.Bot().File(file.MediaFile())
@@ -83,8 +127,7 @@ func newMenu(
 		hasher := sha256.New()
 		data := &bytes.Buffer{}
 
-		_, err = io.Copy(io.MultiWriter(hasher, data), r)
-		if err != nil {
+		if _, err := io.Copy(io.MultiWriter(hasher, data), r); err != nil {
 			return fmt.Errorf("load file: %w", err)
 		}
 
@@ -97,80 +140,36 @@ func newMenu(
 				Source: model.File{
 					Name:        file.FileName,
 					Content:     data.Bytes(),
-					Sha256:      hex.EncodeToString((hasher.Sum(nil))),
-					LastUpdated: time.Time{},
+					Sha256:      hex.EncodeToString(hasher.Sum(nil)),
+					LastUpdated: time.Now(),
 				},
 			},
 		}); err != nil {
 			return fmt.Errorf("upload file: %w", err)
 		}
 
-		_ = sm.SwitchState(ctx, userID, string(menuStateEnter))
-
 		return c.Send("document uploaded")
 	}
+}
 
-	menu.handlers[menuStateSearchFile] = func(ctx context.Context, c tele.Context) error {
-		_ = sm.SwitchState(ctx, int(c.Sender().ID), string(menuStateSearchFileAwaitingDocument))
-		return c.Send("Please send the file to search for similar ones.")
-	}
-
-	menu.handlers[menuStateSearchFileAwaitingDocument] = func(ctx context.Context, c tele.Context) error {
-		userID := int(c.Sender().ID)
+func handleFileSearch() func(context.Context, tele.Context) error {
+	return func(_ context.Context, c tele.Context) error {
 		file := c.Message().Document
 
-		fmt.Println(file.FileName)
-
-		_ = sm.SwitchState(ctx, userID, string(menuStateExit))
+		_, _ = fmt.Println(file.FileName)
 
 		return c.Send("searching by sample...")
 	}
-
-	menu.handlers[menuStateExit] = func(ctx context.Context, c tele.Context) error {
-		_ = sm.SwitchState(ctx, int(c.Sender().ID), string(botStateStart))
-		return c.Send("Exiting menu.")
-	}
-
-	return menu
 }
 
-func (m *menu) Buttons() []*tele.Btn {
-	res := make([]*tele.Btn, 0, len(m.btns))
-	for _, v := range m.btns {
-		res = append(res, v.btn)
-	}
-
-	return res
-}
-
-func (m *menu) ButtonCallback(btn *tele.Btn) func(ctx context.Context, c tele.Context) error {
-	btnuniq := make(map[string]*menuButton)
-
-	for _, v := range m.btns {
-		btnuniq[v.btn.Unique] = v
-	}
-
-	return func(ctx context.Context, c tele.Context) error {
-		_ = m.sm.SwitchState(ctx, int(c.Sender().ID), string(btnuniq[btn.Unique].nextState))
-		return m.Handle(ctx, c)
+func sendMessage(msg string) func(context.Context, tele.Context) error {
+	return func(_ context.Context, c tele.Context) error {
+		return c.Send(msg)
 	}
 }
 
-func (m *menu) Handle(ctx context.Context, c tele.Context) error {
-	currentState, err := m.sm.CurrentState(ctx, int(c.Sender().ID))
-	if err != nil {
-		return fmt.Errorf("retrieve state: %w", err)
+func sendMenuChoice(markup *tele.ReplyMarkup) func(context.Context, tele.Context) error {
+	return func(_ context.Context, c tele.Context) error {
+		return c.Send("Choose an action:", markup)
 	}
-
-	if action, exists := m.handlers[menuState(currentState)]; exists {
-		return action(ctx, c)
-	}
-
-	_ = c.Send("Unknown menu option.")
-
-	return nil
-}
-
-func (m *menu) Markup() *tele.ReplyMarkup {
-	return m.markup
 }

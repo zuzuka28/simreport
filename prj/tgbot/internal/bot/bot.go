@@ -17,11 +17,11 @@ type Bot struct {
 	tg *tele.Bot
 
 	uss UserStateService
-	sm  *stateManager
 
 	menu *menu
 
 	done chan struct{}
+	fsm  *StateMachine
 }
 
 func New(
@@ -41,43 +41,43 @@ func New(
 
 	sm := newStateManager(uss)
 
-	menu := newMenu(sm, ds)
+	menu := newMenu(ds)
 
 	bot := &Bot{
 		tg:   b,
 		done: make(chan struct{}),
 		uss:  uss,
-		sm:   sm,
 		menu: menu,
+		fsm:  NewStateMachine(sm),
 	}
 
-	for _, btn := range menu.Buttons() {
-		b.Handle(btn, func(c tele.Context) error {
-			ctx := context.Background()
-			return bot.menu.ButtonCallback(btn)(ctx, c)
-		})
-	}
+	bot.fsm.AddTransitions([]Transition{
+		{
+			From:   botStateStart,
+			Event:  eventEnterMenu,
+			To:     menuStateEnter,
+			Action: sendMenuChoice(menu.markup),
+		},
+	})
+
+	bot.fsm.AddTransitions(menu.Transitions())
 
 	b.Handle("/start", func(c tele.Context) error {
 		ctx := context.Background()
-
-		_ = sm.SwitchState(ctx, int(c.Sender().ID), string(menuStateEnter))
-
-		return bot.menu.Handle(ctx, c)
-	})
-
-	b.Handle("/menu", func(c tele.Context) error {
-		ctx := context.Background()
-
-		_ = sm.SwitchState(ctx, int(c.Sender().ID), string(menuStateEnter))
-
-		return bot.menu.Handle(ctx, c)
+		return bot.fsm.Trigger(ctx, c, string(eventEnterMenu))
 	})
 
 	b.Handle(tele.OnDocument, func(c tele.Context) error {
 		ctx := context.Background()
-		return bot.menu.Handle(ctx, c)
+		return bot.fsm.Trigger(ctx, c, string(eventFileUploaded))
 	})
+
+	for _, v := range menu.Buttons() {
+		b.Handle(v.btn, func(c tele.Context) error {
+			ctx := context.Background()
+			return bot.fsm.Trigger(ctx, c, string(v.event))
+		})
+	}
 
 	return bot, nil
 }
