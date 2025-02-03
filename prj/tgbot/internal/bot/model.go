@@ -13,3 +13,9 @@ name: "Document"
 version: 1
 group_id: ["123", "456"]
 `
+
+type similarityMatch struct {
+	ID         string   `yaml:"id"`
+	Rate       float64  `yaml:"rate"`
+	Highlights []string `yaml:"highlights"`
+}

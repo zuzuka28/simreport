@@ -1,4 +1,5 @@
 //go:build wireinject
+
 package provider
 
 import (
@@ -13,7 +14,9 @@ import (
 	userstatesrv "github.com/zuzuka28/simreport/prj/tgbot/internal/service/userstate"
 
 	documentrepo "github.com/zuzuka28/simreport/prj/tgbot/internal/repository/document"
+	similarityrepo "github.com/zuzuka28/simreport/prj/tgbot/internal/repository/similarity"
 	documentsrv "github.com/zuzuka28/simreport/prj/tgbot/internal/service/document"
+	similaritysrv "github.com/zuzuka28/simreport/prj/tgbot/internal/service/similarity"
 
 	"github.com/google/wire"
 	"github.com/nats-io/nats.go"
@@ -79,6 +82,14 @@ func ProvideDocumentRepository(
 	))
 }
 
+func ProvideSimilarityRepository(
+	*nats.Conn,
+) *similarityrepo.Repository {
+	panic(wire.Build(
+		similarityrepo.NewRepository,
+	))
+}
+
 func ProvideUserStateService(
 	*userstaterepo.Repository,
 ) *userstatesrv.Service {
@@ -97,6 +108,15 @@ func ProvideDocumentService(
 	))
 }
 
+func ProvideSimilarityService(
+	*similarityrepo.Repository,
+) *similaritysrv.Service {
+	panic(wire.Build(
+		wire.Bind(new(similaritysrv.Repository), new(*similarityrepo.Repository)),
+		similaritysrv.NewService,
+	))
+}
+
 func InitBot(
 	context.Context,
 	*config.Config,
@@ -108,8 +128,11 @@ func InitBot(
 		ProvideUserStateService,
 		ProvideDocumentRepository,
 		ProvideDocumentService,
+		ProvideSimilarityRepository,
+		ProvideSimilarityService,
 		wire.Bind(new(bot.UserStateService), new(*userstatesrv.Service)),
 		wire.Bind(new(bot.DocumentService), new(*documentsrv.Service)),
+		wire.Bind(new(bot.SimilarityService), new(*similaritysrv.Service)),
 		wire.FieldsOf(new(*config.Config), "Bot"),
 		bot.New,
 	))

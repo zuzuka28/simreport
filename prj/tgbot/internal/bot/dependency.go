@@ -24,4 +24,11 @@ type (
 			cmd model.DocumentSaveCommand,
 		) (*model.DocumentSaveResult, error)
 	}
+
+	SimilarityService interface {
+		Search(
+			ctx context.Context,
+			query model.SimilarityQuery,
+		) ([]*model.SimilarityMatch, error)
+	}
 )

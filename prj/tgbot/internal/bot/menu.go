@@ -27,7 +27,10 @@ type menu struct {
 	transitions []Transition
 }
 
-func newMenu(ds DocumentService) *menu {
+func newMenu(
+	ds DocumentService,
+	ss SimilarityService,
+) *menu {
 	buttons := map[string]*menuButton{
 		"uploadFileBtn": {
 			event: eventAddFile,
@@ -66,7 +69,7 @@ func newMenu(ds DocumentService) *menu {
 			},
 			{
 				From:   menuStateAddFile,
-				Event:  eventFileUploaded,
+				Event:  eventFileRecieved,
 				To:     menuStateEnter,
 				Action: handleFileUpload(ds),
 			},
@@ -84,9 +87,9 @@ func newMenu(ds DocumentService) *menu {
 			},
 			{
 				From:   menuStateSearchFile,
-				Event:  eventFileUploaded,
+				Event:  eventTextRecieved,
 				To:     menuStateEnter,
-				Action: handleFileSearch(),
+				Action: handleSimilaritySearch(ss),
 			},
 			{
 				From:   menuStateSearchFile,
@@ -140,7 +143,7 @@ func handleFileUpload(ds DocumentService) func(context.Context, tele.Context) er
 			}
 		}
 
-		if _, err := ds.Save(ctx, model.DocumentSaveCommand{
+		res, err := ds.Save(ctx, model.DocumentSaveCommand{
 			Item: model.Document{
 				ParentID: desc.ParentID,
 				Name:     desc.Name,
@@ -153,21 +156,32 @@ func handleFileUpload(ds DocumentService) func(context.Context, tele.Context) er
 					LastUpdated: time.Now(),
 				},
 			},
-		}); err != nil {
+		})
+		if err != nil {
 			return fmt.Errorf("upload file: %w", err)
 		}
 
-		return c.Send("document uploaded")
+		return c.Send("document uploaded: " + res.ID)
 	}
 }
 
-func handleFileSearch() func(context.Context, tele.Context) error {
-	return func(_ context.Context, c tele.Context) error {
-		file := c.Message().Document
+func handleSimilaritySearch(ss SimilarityService) func(context.Context, tele.Context) error {
+	return func(ctx context.Context, c tele.Context) error {
+		id := c.Message().Text
 
-		_, _ = fmt.Println(file.FileName)
+		res, err := ss.Search(ctx, model.SimilarityQuery{
+			ID: id,
+		})
+		if err != nil {
+			return fmt.Errorf("search similar: %w", err)
+		}
 
-		return c.Send("searching by sample...")
+		resp, err := yaml.Marshal(mapSimilarityMatchesToResponse(res))
+		if err != nil {
+			return fmt.Errorf("marshal response: %w", err)
+		}
+
+		return c.Send(string(resp))
 	}
 }
 

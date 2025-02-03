@@ -73,13 +73,13 @@ func NewSimilarityIndexServer(
 
 	if cfg.RequestErrorHandler == nil {
 		cfg.RequestErrorHandler = func(_ context.Context, req micro.Request, _ error) {
-			req.Error("500", "unproccessable request", nil, nil)
+			req.Error("500", "unproccessable request", nil)
 		}
 	}
 
 	if cfg.ResponseErrorHandler == nil {
 		cfg.ResponseErrorHandler = func(_ context.Context, req micro.Request, _ error) {
-			req.Error("500", "internal server error", nil, nil)
+			req.Error("500", "internal server error", nil)
 		}
 	}
 
@@ -161,6 +161,15 @@ func (s *SimilarityIndexServer) handleSearchSimilar(
 	req.Respond(resp)
 }
 
+type ClientError struct {
+	Status      string
+	Description string
+}
+
+func (ce *ClientError) Error() string {
+	return fmt.Sprintf("[%s] %s", ce.Status, ce.Description)
+}
+
 type SimilarityIndexClientConfig struct {
 	MicroSubject string
 }
@@ -193,6 +202,13 @@ func (c *SimilarityIndexClient) SearchSimilar(
 	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".search_similar", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+
+	if msg.Header.Get(micro.ErrorHeader) != "" {
+		return nil, &ClientError{
+			Status:      msg.Header.Get(micro.ErrorCodeHeader),
+			Description: msg.Header.Get(micro.ErrorHeader),
+		}
 	}
 
 	if err := proto.Unmarshal(msg.Data, resp); err != nil {

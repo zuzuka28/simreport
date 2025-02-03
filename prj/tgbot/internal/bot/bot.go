@@ -28,6 +28,7 @@ func New(
 	cfg Config,
 	uss UserStateService,
 	ds DocumentService,
+	ss SimilarityService,
 ) (*Bot, error) {
 	pref := tele.Settings{ //nolint:exhaustruct
 		Token:  cfg.Token,
@@ -41,7 +42,7 @@ func New(
 
 	sm := newStateManager(uss)
 
-	menu := newMenu(ds)
+	menu := newMenu(ds, ss)
 
 	bot := &Bot{
 		tg:   b,
@@ -69,7 +70,12 @@ func New(
 
 	b.Handle(tele.OnDocument, func(c tele.Context) error {
 		ctx := context.Background()
-		return bot.fsm.Trigger(ctx, c, string(eventFileUploaded))
+		return bot.fsm.Trigger(ctx, c, string(eventFileRecieved))
+	})
+
+	b.Handle(tele.OnText, func(c tele.Context) error {
+		ctx := context.Background()
+		return bot.fsm.Trigger(ctx, c, string(eventTextRecieved))
 	})
 
 	for _, v := range menu.Buttons() {

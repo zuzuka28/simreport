@@ -14,8 +14,10 @@ import (
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/bot"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/config"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/repository/document"
+	"github.com/zuzuka28/simreport/prj/tgbot/internal/repository/similarity"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/repository/userstate"
 	document2 "github.com/zuzuka28/simreport/prj/tgbot/internal/service/document"
+	similarity2 "github.com/zuzuka28/simreport/prj/tgbot/internal/service/similarity"
 	userstate2 "github.com/zuzuka28/simreport/prj/tgbot/internal/service/userstate"
 	"sync"
 )
@@ -41,6 +43,11 @@ func ProvideDocumentRepository(conn *nats.Conn) *document.Repository {
 	return repository
 }
 
+func ProvideSimilarityRepository(conn *nats.Conn) *similarity.Repository {
+	repository := similarity.NewRepository(conn)
+	return repository
+}
+
 func ProvideUserStateService(repository *userstate.Repository) *userstate2.Service {
 	service := userstate2.NewService(repository)
 	return service
@@ -48,6 +55,11 @@ func ProvideUserStateService(repository *userstate.Repository) *userstate2.Servi
 
 func ProvideDocumentService(repository *document.Repository) *document2.Service {
 	service := document2.NewService(repository)
+	return service
+}
+
+func ProvideSimilarityService(repository *similarity.Repository) *similarity2.Service {
+	service := similarity2.NewService(repository)
 	return service
 }
 
@@ -65,7 +77,9 @@ func InitBot(contextContext context.Context, configConfig *config.Config) (*bot.
 	}
 	documentRepository := ProvideDocumentRepository(conn)
 	documentService := ProvideDocumentService(documentRepository)
-	botBot, err := bot.New(botConfig, service, documentService)
+	similarityRepository := ProvideSimilarityRepository(conn)
+	similarityService := ProvideSimilarityService(similarityRepository)
+	botBot, err := bot.New(botConfig, service, documentService, similarityService)
 	if err != nil {
 		return nil, err
 	}

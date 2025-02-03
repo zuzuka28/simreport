@@ -25,10 +25,10 @@ const (
 const (
 	eventAddFile      Event = "AddFile"
 	eventSearchFile   Event = "SearchFile"
-	eventFileUploaded Event = "FileUploaded"
+	eventFileRecieved Event = "FileRecieved"
+	eventTextRecieved Event = "TextRecieved"
 	eventEnterMenu    Event = "EnterMenu"
 	eventExitMenu     Event = "ExitMenu"
-	eventFileSearched Event = "FileSearched"
 )
 
 var errInvalidTransition = errors.New("invalid transition")

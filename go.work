@@ -3,9 +3,9 @@ go 1.23.2
 use (
 	./lib
 	./prj/document
-	./prj/similarityindex
 	./prj/fulltextindex
 	./prj/shingleindex
+	./prj/similarityindex
 	./prj/tgbot
 	./util/protonatsmicrogen
 )
