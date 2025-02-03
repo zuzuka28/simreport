@@ -13,6 +13,7 @@ import (
 
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/model"
 	tele "gopkg.in/telebot.v4"
+	"gopkg.in/yaml.v2"
 )
 
 type menuButton struct {
@@ -131,12 +132,20 @@ func handleFileUpload(ds DocumentService) func(context.Context, tele.Context) er
 			return fmt.Errorf("load file: %w", err)
 		}
 
+		var desc docDetails
+
+		if text := c.Message().Caption; text != "" {
+			if err := yaml.Unmarshal([]byte(text), &desc); err != nil {
+				return c.Send("failed to parse document details. Example:\n" + docDetailsExample)
+			}
+		}
+
 		if _, err := ds.Save(ctx, model.DocumentSaveCommand{
 			Item: model.Document{
-				ParentID: "",
-				Name:     "",
-				Version:  0,
-				GroupID:  []string{},
+				ParentID: desc.ParentID,
+				Name:     desc.Name,
+				Version:  desc.Version,
+				GroupID:  desc.GroupID,
 				Source: model.File{
 					Name:        file.FileName,
 					Content:     data.Bytes(),
