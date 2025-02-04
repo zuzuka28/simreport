@@ -14,8 +14,10 @@ func (s *Repository) Fetch(
 ) (model.Document, error) {
 	resp, err := s.cli.FetchDocument(ctx, &pb.FetchDocumentRequest{
 		Id:          query.ID,
-		WithContent: false,
-		Include:     nil,
+		WithContent: true,
+		Include: []pb.DocumentQueryInclude{
+			pb.DocumentQueryInclude_DOCUMENT_QUERY_INCLUDE_TEXT,
+		},
 	})
 	if err != nil {
 		return model.Document{}, fmt.Errorf("do request: %w", err)

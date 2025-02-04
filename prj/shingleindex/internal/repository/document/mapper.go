@@ -15,11 +15,11 @@ func parseFetchDocumentResponse(in *pb.FetchDocumentResponse) (model.Document, e
 	raw := in.GetDocument()
 
 	if in == nil || raw.GetText() == nil {
-		return model.Document{}, nil
+		return model.Document{}, nil //nolint:exhaustruct
 	}
 
 	return model.Document{
-		ID:   raw.GetText().GetId(),
+		ID:   raw.GetId(),
 		Text: raw.GetText().GetContent(),
 	}, nil
 }

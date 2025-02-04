@@ -4,20 +4,20 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 
+	"github.com/sergi/go-diff/diffmatchpatch"
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/model"
 
 	"github.com/zuzuka28/simreport/lib/minhash"
-	"github.com/zuzuka28/simreport/lib/sequencematcher"
 
 	"golang.org/x/sync/errgroup"
 )
 
 type searchService struct {
-	r  Repository
-	tr DocumentService
+	r   Repository
+	tr  DocumentService
+	dmp *diffmatchpatch.DiffMatchPatch
 }
 
 func newSearchService(
@@ -25,8 +25,9 @@ func newSearchService(
 	tr DocumentService,
 ) *searchService {
 	return &searchService{
-		r:  r,
-		tr: tr,
+		r:   r,
+		tr:  tr,
+		dmp: diffmatchpatch.New(),
 	}
 }
 
@@ -97,29 +98,21 @@ func (*searchService) rerank(
 	return items
 }
 
-func (*searchService) highlight(
+func (s *searchService) highlight(
 	query model.DocumentSimilarQuery,
 	items map[string]*documentMatch,
 ) map[string]*documentMatch {
-	matcher := sequencematcher.NewMatcher[string]()
-
 	text := string(query.Item.Text)
-	textwords := strings.Fields(text)
-
-	matcher.SetSeq2(textwords)
 
 	for _, v := range items {
-		matcher.SetSeq1(strings.Fields(v.text))
-
 		var highlights []string
 
-		for _, match := range matcher.GetMatchingBlocks() {
-			highlight := strings.Join(textwords[match.A:match.A+match.Size], " ")
-			if highlight == "" {
-				continue
-			}
+		diffs := s.dmp.DiffMain(text, v.text, false)
 
-			highlights = append(highlights, highlight)
+		for _, v := range diffs {
+			if v.Type == diffmatchpatch.DiffEqual {
+				highlights = append(highlights, v.Text)
+			}
 		}
 
 		v.Highlights = highlights

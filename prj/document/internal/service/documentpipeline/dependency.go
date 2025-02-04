@@ -11,12 +11,6 @@ type (
 		Serve(ctx context.Context, documentID string) error
 	}
 
-	Stage struct {
-		Trigger model.DocumentProcessingStatus
-		Action  Handler
-		Next    model.DocumentProcessingStatus
-	}
-
 	StatusService interface {
 		Update(ctx context.Context, cmd model.DocumentStatusUpdateCommand) error
 	}

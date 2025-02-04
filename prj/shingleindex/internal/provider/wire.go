@@ -4,6 +4,7 @@ package provider
 
 import (
 	"context"
+	"sync"
 
 	serverevent "github.com/zuzuka28/simreport/prj/shingleindex/api/nats/event"
 	indexerevent "github.com/zuzuka28/simreport/prj/shingleindex/api/nats/event/handler/indexer"
@@ -24,15 +25,23 @@ func InitConfig(path string) (*config.Config, error) {
 	panic(wire.Build(config.New))
 }
 
-func InitNats(
+//nolint:gochecknoglobals
+var (
+	natsCli     *nats.Conn
+	natsCliOnce sync.Once
+)
+
+func ProvideNats(
 	_ context.Context,
-	_ *config.Config,
+	cfg *config.Config,
 ) (*nats.Conn, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "Nats"),
-		wire.Value([]nats.Option(nil)),
-		nats.Connect,
-	))
+	var err error
+
+	natsCliOnce.Do(func() {
+		natsCli, err = nats.Connect(cfg.Nats)
+	})
+
+	return natsCli, err //nolint:wrapcheck
 }
 
 func ProvideRedis(
@@ -112,7 +121,7 @@ func InitNatsMicroAPI(
 ) (*servermicro.Server, error) {
 	panic(wire.Build(
 		ProvideRedis,
-		InitNats,
+		ProvideNats,
 
 		InitDocumentRepository,
 		InitDocumentService,
@@ -133,7 +142,7 @@ func InitNatsEventAPI(
 ) (*serverevent.Server, error) {
 	panic(wire.Build(
 		ProvideRedis,
-		InitNats,
+		ProvideNats,
 
 		InitDocumentRepository,
 		InitDocumentService,

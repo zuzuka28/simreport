@@ -176,12 +176,23 @@ func handleSimilaritySearch(ss SimilarityService) func(context.Context, tele.Con
 			return fmt.Errorf("search similar: %w", err)
 		}
 
-		resp, err := yaml.Marshal(mapSimilarityMatchesToResponse(res))
+		buf := &bytes.Buffer{}
+
+		err = yaml.NewEncoder(buf).Encode(mapSimilarityMatchesToResponse(res))
 		if err != nil {
 			return fmt.Errorf("marshal response: %w", err)
 		}
 
-		return c.Send(string(resp))
+		doc := &tele.Document{
+			File:                 tele.FromReader(buf),
+			Thumbnail:            nil,
+			Caption:              "search results for document" + id,
+			MIME:                 "",
+			FileName:             "similar_to_" + id + ".yaml",
+			DisableTypeDetection: false,
+		}
+
+		return c.Reply(doc)
 	}
 }
 

@@ -27,6 +27,7 @@ func newStageHandler(
 
 	con, err := cm.CreateOrUpdateConsumer(ctx, jetstream.ConsumerConfig{ //nolint:exhaustruct
 		FilterSubject: fullsubject,
+		Name:          "documentpipeline_" + string(s.Trigger),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create new consumer: %w", err)

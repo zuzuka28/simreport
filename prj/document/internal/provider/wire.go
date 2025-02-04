@@ -10,14 +10,14 @@ import (
 	"os"
 	"sync"
 
-	analyzenatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/similarity"
 	attributenatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/attribute"
 	documentnatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/document"
+	analyzenatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/similarity"
 	servernats "github.com/zuzuka28/simreport/prj/document/api/nats/server"
 	serverhttp "github.com/zuzuka28/simreport/prj/document/api/rest/server"
-	analyzeapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/similarity"
 	attributeapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/attribute"
 	documentapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/document"
+	analyzeapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/similarity"
 	"github.com/zuzuka28/simreport/prj/document/internal/config"
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
 	analyzehistoryrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/analyzehistory"
@@ -28,7 +28,6 @@ import (
 	fulltextindexrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/fulltextindexclient"
 	semanticindexrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/semanticindexclient"
 	shingleindexrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/shingleindexclient"
-	analyzesrv "github.com/zuzuka28/simreport/prj/document/internal/service/similarity"
 	attributesrv "github.com/zuzuka28/simreport/prj/document/internal/service/attribute"
 	documentsrv "github.com/zuzuka28/simreport/prj/document/internal/service/document"
 	documentparsersrv "github.com/zuzuka28/simreport/prj/document/internal/service/documentparser"
@@ -38,6 +37,7 @@ import (
 	fulltextindexsrv "github.com/zuzuka28/simreport/prj/document/internal/service/fulltextindex"
 	semanticindexsrv "github.com/zuzuka28/simreport/prj/document/internal/service/semanticindex"
 	shingleindexsrv "github.com/zuzuka28/simreport/prj/document/internal/service/shingleindex"
+	analyzesrv "github.com/zuzuka28/simreport/prj/document/internal/service/similarity"
 
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/minioutil"
@@ -164,8 +164,9 @@ func ProvideDocumentStatusJetstreamStream(
 	js jetstream.JetStream,
 ) (jetstream.Stream, error) {
 	s, err := js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{ //nolint:exhaustruct
-		Name:     "documentstatus",
-		Subjects: []string{"documentstatus.>"},
+		Name:      "documentstatus",
+		Subjects:  []string{"documentstatus.>"},
+		Retention: jetstream.WorkQueuePolicy,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new steream: %w", err)

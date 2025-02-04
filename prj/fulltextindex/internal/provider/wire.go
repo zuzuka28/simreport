@@ -4,6 +4,7 @@ package provider
 
 import (
 	"context"
+	"sync"
 
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	serverevent "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/event"
@@ -35,15 +36,23 @@ func InitElastic(
 	))
 }
 
-func InitNats(
+//nolint:gochecknoglobals
+var (
+	natsCli     *nats.Conn
+	natsCliOnce sync.Once
+)
+
+func ProvideNats(
 	_ context.Context,
-	_ *config.Config,
+	cfg *config.Config,
 ) (*nats.Conn, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "Nats"),
-		wire.Value([]nats.Option(nil)),
-		nats.Connect,
-	))
+	var err error
+
+	natsCliOnce.Do(func() {
+		natsCli, err = nats.Connect(cfg.Nats)
+	})
+
+	return natsCli, err //nolint:wrapcheck
 }
 
 func InitDocumentRepository(
@@ -110,7 +119,7 @@ func InitNatsMicroAPI(
 ) (*servermicro.Server, error) {
 	panic(wire.Build(
 		InitElastic,
-		InitNats,
+		ProvideNats,
 
 		InitDocumentRepository,
 		InitDocumentService,
@@ -131,7 +140,7 @@ func InitNatsEventAPI(
 ) (*serverevent.Server, error) {
 	panic(wire.Build(
 		InitElastic,
-		InitNats,
+		ProvideNats,
 
 		InitDocumentRepository,
 		InitDocumentService,

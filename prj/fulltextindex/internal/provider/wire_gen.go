@@ -20,6 +20,7 @@ import (
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/fulltextindex"
 	document2 "github.com/zuzuka28/simreport/prj/fulltextindex/internal/service/document"
 	fulltextindex2 "github.com/zuzuka28/simreport/prj/fulltextindex/internal/service/fulltextindex"
+	"sync"
 )
 
 // Injectors from wire.go:
@@ -40,20 +41,6 @@ func InitElastic(contextContext context.Context, configConfig *config.Config) (*
 	}
 	return client, nil
 }
-
-func InitNats(contextContext context.Context, configConfig *config.Config) (*nats.Conn, error) {
-	string2 := configConfig.Nats
-	v := _wireValue
-	conn, err := nats.Connect(string2, v...)
-	if err != nil {
-		return nil, err
-	}
-	return conn, nil
-}
-
-var (
-	_wireValue = []nats.Option(nil)
-)
 
 func InitDocumentRepository(conn *nats.Conn) (*document.Repository, error) {
 	repository := document.NewRepository(conn)
@@ -90,7 +77,7 @@ func InitIndexerHandler(service *fulltextindex2.Service, documentService *docume
 }
 
 func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Config) (*server.Server, error) {
-	conn, err := InitNats(contextContext, configConfig)
+	conn, err := ProvideNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +110,7 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 }
 
 func InitNatsEventAPI(contextContext context.Context, configConfig *config.Config) (*server2.Server, error) {
-	conn, err := InitNats(contextContext, configConfig)
+	conn, err := ProvideNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -153,4 +140,25 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 	}
 	serverServer := server2.NewServer(conn, handler)
 	return serverServer, nil
+}
+
+// wire.go:
+
+//nolint:gochecknoglobals
+var (
+	natsCli     *nats.Conn
+	natsCliOnce sync.Once
+)
+
+func ProvideNats(
+	_ context.Context,
+	cfg *config.Config,
+) (*nats.Conn, error) {
+	var err error
+
+	natsCliOnce.Do(func() {
+		natsCli, err = nats.Connect(cfg.Nats)
+	})
+
+	return natsCli, err
 }

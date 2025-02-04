@@ -19,7 +19,7 @@ func parseFetchDocumentResponse(in *pb.FetchDocumentResponse) (model.Document, e
 	}
 
 	return model.Document{
-		ID:   raw.GetText().GetId(),
+		ID:   raw.GetId(),
 		Text: raw.GetText().GetContent(),
 	}, nil
 }

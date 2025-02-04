@@ -7,8 +7,11 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/nats-io/nats.go v1.38.0
 	github.com/redis/go-redis/v9 v9.7.0
+	github.com/sergi/go-diff v1.3.1
 	github.com/urfave/cli/v2 v2.27.5
 	github.com/zuzuka28/simreport/lib v0.0.0-20250118163011-133c4e9f4f95
+	github.com/zuzuka28/simreport/prj/document v0.0.0-20250203230002-1b1a027f43c9
+	github.com/zuzuka28/simreport/prj/similarityindex v0.0.0-20250203230002-1b1a027f43c9
 	golang.org/x/sync v0.10.0
 )
 
@@ -28,6 +31,8 @@ require (
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
+	google.golang.org/protobuf v1.36.4 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
