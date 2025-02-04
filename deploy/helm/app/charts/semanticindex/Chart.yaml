@@ -1,13 +1,13 @@
 apiVersion: v2
-name: semanticindex
+name: fulltextindex
 description: A Helm chart for Kubernetes
 type: application
 version: 0.1.0
 appVersion: "0.0.1"
 dependencies:
-  - name: semanticindex-api-nats
+  - name: fulltextindex-api-nats
     version: "0.0.1"
-    repository: "file://semanticindex-api-nats"
-  - name: semanticindex-processing
+    repository: "file://fulltextindex-api-nats"
+  - name: fulltextindex-processing
     version: "0.0.1"
-    repository: "file://semanticindex-processing"
+    repository: "file://fulltextindex-processing"

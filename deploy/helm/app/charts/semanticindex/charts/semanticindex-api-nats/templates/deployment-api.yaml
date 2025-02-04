@@ -29,17 +29,17 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["python3.11", "-m", "src.service_handler"]
+          command: ["./app", "--config", "/etc/config/config.yaml", "run-api"]
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          env:
-          {{- range $key, $value := pluck .Values.global.env .Values.config | first }}
-            - name: {{ $key }}
-              valueFrom:
-                secretKeyRef:
-                  key:  {{ $key }}
-                  name: {{ include "semanticindex-api-nats.fullname" $ }}
-          {{- end }}
+          volumeMounts:
+            - name: config-volume
+              mountPath: "/etc/config"
+              readOnly: true
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "semanticindex-api-nats.fullname" . }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

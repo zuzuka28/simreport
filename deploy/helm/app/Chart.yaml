@@ -11,6 +11,9 @@ dependencies:
   - name: fulltextindex
     version: "0.0.1"
     repository: "file://fulltextindex"
+  - name: vectorizer
+    version: "0.0.1"
+    repository: "file://vectorizer"
   - name: semanticindex
     version: "0.0.1"
     repository: "file://semanticindex"

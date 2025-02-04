@@ -1,14 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "semanticindex-processing.fullname" . }}
+  name: {{ include "vectorizer-api-rest.fullname" . }}
   labels:
-    {{- include "semanticindex-processing.labels" . | nindent 4 }}
+    {{- include "vectorizer-api-rest.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      {{- include "semanticindex-processing.selectorLabels" . | nindent 6 }}
+      {{- include "vectorizer-api-rest.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -16,7 +16,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "semanticindex-processing.labels" . | nindent 8 }}
+        {{- include "vectorizer-api-rest.labels" . | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -29,7 +29,15 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ["./app", "--config", "/etc/config/config.yaml", "run-async-processing"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          command: ["python", "-m", "src.api.run"]
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
@@ -39,7 +47,7 @@ spec:
       volumes:
         - name: config-volume
           configMap:
-            name: {{ include "semanticindex-processing.fullname" . }}
+            name: {{ include "vectorizer-api-rest.fullname" . }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
