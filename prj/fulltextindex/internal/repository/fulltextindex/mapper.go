@@ -70,51 +70,40 @@ func mapSearchResponseToMatches(
 }
 
 func parseSimilarityHighlights(in json.RawMessage) ([]string, error) {
+	if in == nil {
+		return nil, nil
+	}
+
 	var doc similarityHighlight
 
 	if err := json.Unmarshal(in, &doc); err != nil {
 		return nil, fmt.Errorf("unmarshal highlights: %w", err)
 	}
 
-	return doc.Text, nil
+	return doc.TextRu, nil
 }
 
 func buildSearchQuery(
+	index string,
 	query model.DocumentSimilarQuery,
 ) ([]byte, error) {
-	var criteria []map_
-
-	if len(query.Item.Text) > 0 {
-		criteria = append(
-			criteria,
-			map_{
-				"match": map_{
-					"text": string(query.Item.Text),
-				},
-			},
-			map_{
-				"match": map_{
-					"text.russian": string(query.Item.Text),
-				},
-			},
-			map_{
-				"match": map_{
-					"text.english": string(query.Item.Text),
-				},
-			},
-		)
-	}
-
 	q := map_{
 		"query": map_{
-			"bool": map_{
-				"should": criteria,
+			"more_like_this": map_{
+				"fields": []string{"text", "text.russian", "text.english"},
+				"like": []map_{
+					{
+						"_index": index,
+						"_id":    query.ID,
+					},
+				},
 			},
 		},
 		"highlight": map_{
 			"number_of_fragments": 0,
 			"fields": map_{
 				"text.russian": map_{},
+				"text.english": map_{},
 			},
 		},
 	}

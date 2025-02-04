@@ -9,5 +9,6 @@ type analyzedDocument struct {
 }
 
 type similarityHighlight struct {
-	Text []string `json:"text.russian"`
+	TextRu []string `json:"text.russian"`
+	TextEn []string `json:"text.english"`
 }
