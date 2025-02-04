@@ -1,4 +1,3 @@
-port: 8000
 nats: nats://localhost:4222
 elastic:
   hosts:

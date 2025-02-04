@@ -10,9 +10,7 @@ import (
 )
 
 type Config struct {
-	Port         int                `yaml:"port"`
 	Nats         string             `yaml:"nats"`
-	Tika         string             `yaml:"tika"`
 	Elastic      elasticutil.Config `yaml:"elastic"`
 	FulltextRepo fulltextindex.Opts `yaml:"fulltextRepo"`
 }
