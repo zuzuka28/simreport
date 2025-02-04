@@ -1,0 +1,16 @@
+nats: nats://localhost:4222
+elastic:
+  hosts:
+    - http://localhost:9200/
+  indexopts:
+    - index: "semantic_index"
+      updateMapping: true
+      createMapping: true
+      mappingPath: "config/mappings/semantic_index.json"
+      alias: ""
+      shards: 1
+      replics: 1
+semanticRepo:
+  index: "semantic_index"
+vectorizerRepo:
+  host: http://localhost:8081

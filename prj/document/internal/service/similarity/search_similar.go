@@ -51,33 +51,33 @@ func (s *Service) SearchSimilar(
 		return nil
 	})
 
-	// eg.Go(func() error {
-	// 	r, err := s.fulltextis.SearchSimilar(egCtx, query)
-	// 	if err != nil {
-	// 		return fmt.Errorf("fulltext similar: %w", err)
-	// 	}
-	//
-	// 	resMu.Lock()
-	// 	defer resMu.Unlock()
-	//
-	// 	res = append(res, r...)
-	//
-	// 	return nil
-	// })
-	//
-	// eg.Go(func() error {
-	// 	r, err := s.semanticis.SearchSimilar(egCtx, query)
-	// 	if err != nil {
-	// 		return fmt.Errorf("semantic similar: %w", err)
-	// 	}
-	//
-	// 	resMu.Lock()
-	// 	defer resMu.Unlock()
-	//
-	// 	res = append(res, r...)
-	//
-	// 	return nil
-	// })
+	eg.Go(func() error {
+		r, err := s.fulltextis.SearchSimilar(egCtx, query)
+		if err != nil {
+			return fmt.Errorf("fulltext similar: %w", err)
+		}
+
+		resMu.Lock()
+		defer resMu.Unlock()
+
+		res = append(res, r...)
+
+		return nil
+	})
+
+	eg.Go(func() error {
+		r, err := s.semanticis.SearchSimilar(egCtx, query)
+		if err != nil {
+			return fmt.Errorf("semantic similar: %w", err)
+		}
+
+		resMu.Lock()
+		defer resMu.Unlock()
+
+		res = append(res, r...)
+
+		return nil
+	})
 
 	if err := eg.Wait(); err != nil {
 		return nil, fmt.Errorf("search similar: %w", err)

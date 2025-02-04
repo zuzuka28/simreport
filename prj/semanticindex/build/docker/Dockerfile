@@ -1,14 +1,19 @@
-FROM python:3.11-slim as builder
+ARG GO_VERSION=1.23
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    libffi-dev \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
+FROM golang:${GO_VERSION} AS build
+
+RUN apt update && apt install -y git  ca-certificates && update-ca-certificates
 
 WORKDIR /app
 
 COPY . .
 
-RUN pip install -U pip setuptools wheel \
-    && BLIS_ARCH="generic" pip install --no-cache-dir -r requirements.txt
+RUN export CGO_ENABLED=0 && \
+    go test ./... && \
+    go build -installsuffix 'static' -o app ./cmd/semanticindex
+
+FROM gcr.io/distroless/static AS final
+
+COPY --from=build /app .
+
+ENTRYPOINT [ "/app" ]
