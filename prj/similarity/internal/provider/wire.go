@@ -1,4 +1,4 @@
-//go:build wireinject
+// // go:build wireinject
 
 package provider
 
@@ -15,9 +15,7 @@ import (
 	"github.com/zuzuka28/simreport/prj/similarity/internal/config"
 	analyzehistoryrepo "github.com/zuzuka28/simreport/prj/similarity/internal/repository/analyzehistory"
 	documentrepo "github.com/zuzuka28/simreport/prj/similarity/internal/repository/document"
-	fulltextindexrepo "github.com/zuzuka28/simreport/prj/similarity/internal/repository/fulltextindexclient"
-	semanticindexrepo "github.com/zuzuka28/simreport/prj/similarity/internal/repository/semanticindexclient"
-	shingleindexrepo "github.com/zuzuka28/simreport/prj/similarity/internal/repository/shingleindexclient"
+	similarityindexrepo "github.com/zuzuka28/simreport/prj/similarity/internal/repository/similarityindexclient"
 	documentsrv "github.com/zuzuka28/simreport/prj/similarity/internal/service/document"
 	fulltextindexsrv "github.com/zuzuka28/simreport/prj/similarity/internal/service/fulltextindex"
 	semanticindexsrv "github.com/zuzuka28/simreport/prj/similarity/internal/service/semanticindex"
@@ -104,53 +102,50 @@ func InitDocumentService(
 	))
 }
 
-func InitShingleIndexRepository(
+func InitSimilarityIndexRepository(
+	_ similarityindexrepo.Opts,
 	_ *nats.Conn,
-) (*shingleindexrepo.Repository, error) {
+) (*similarityindexrepo.Repository, error) {
 	panic(wire.Build(
-		shingleindexrepo.NewRepository,
-	))
-}
-
-func InitShingleIndexService(
-	_ *shingleindexrepo.Repository,
-) (*shingleindexsrv.Service, error) {
-	panic(wire.Build(
-		wire.Bind(new(shingleindexsrv.Repository), new(*shingleindexrepo.Repository)),
-		shingleindexsrv.NewService,
-	))
-}
-
-func InitFulltextIndexRepository(
-	_ *nats.Conn,
-) (*fulltextindexrepo.Repository, error) {
-	panic(wire.Build(
-		fulltextindexrepo.NewRepository,
+		similarityindexrepo.NewRepository,
 	))
 }
 
 func InitFulltextIndexService(
-	_ *fulltextindexrepo.Repository,
+	_ *nats.Conn,
 ) (*fulltextindexsrv.Service, error) {
 	panic(wire.Build(
-		wire.Bind(new(fulltextindexsrv.Repository), new(*fulltextindexrepo.Repository)),
+		wire.Value(similarityindexrepo.Opts{
+			MicroSubject: "similarity_fulltext",
+		}),
+		InitSimilarityIndexRepository,
+		wire.Bind(new(fulltextindexsrv.Repository), new(*similarityindexrepo.Repository)),
 		fulltextindexsrv.NewService,
 	))
 }
 
-func InitSemanticIndexRepository(
+func InitShingleIndexService(
 	_ *nats.Conn,
-) (*semanticindexrepo.Repository, error) {
+) (*shingleindexsrv.Service, error) {
 	panic(wire.Build(
-		semanticindexrepo.NewRepository,
+		wire.Value(similarityindexrepo.Opts{
+			MicroSubject: "similarity_shingle",
+		}),
+		InitSimilarityIndexRepository,
+		wire.Bind(new(shingleindexsrv.Repository), new(*similarityindexrepo.Repository)),
+		shingleindexsrv.NewService,
 	))
 }
 
 func InitSemanticIndexService(
-	_ *semanticindexrepo.Repository,
+	_ *nats.Conn,
 ) (*semanticindexsrv.Service, error) {
 	panic(wire.Build(
-		wire.Bind(new(semanticindexsrv.Repository), new(*semanticindexrepo.Repository)),
+		wire.Value(similarityindexrepo.Opts{
+			MicroSubject: "similarity_semantic",
+		}),
+		InitSimilarityIndexRepository,
+		wire.Bind(new(semanticindexsrv.Repository), new(*similarityindexrepo.Repository)),
 		semanticindexsrv.NewService,
 	))
 }
@@ -209,13 +204,10 @@ func InitRestAPI(
 		InitDocumentRepository,
 		InitDocumentService,
 
-		InitShingleIndexRepository,
 		InitShingleIndexService,
 
-		InitFulltextIndexRepository,
 		InitFulltextIndexService,
 
-		InitSemanticIndexRepository,
 		InitSemanticIndexService,
 
 		InitAnalyzeHistoryRepository,
@@ -250,13 +242,10 @@ func InitNatsAPI(
 		InitDocumentRepository,
 		InitDocumentService,
 
-		InitShingleIndexRepository,
 		InitShingleIndexService,
 
-		InitFulltextIndexRepository,
 		InitFulltextIndexService,
 
-		InitSemanticIndexRepository,
 		InitSemanticIndexService,
 
 		InitAnalyzeHistoryRepository,

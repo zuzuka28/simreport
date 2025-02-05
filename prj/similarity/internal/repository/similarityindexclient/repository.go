@@ -1,4 +1,4 @@
-package semanticindexclient
+package similarityindexclient
 
 import (
 	"github.com/nats-io/nats.go"
@@ -6,15 +6,22 @@ import (
 	pb "github.com/zuzuka28/simreport/prj/similarityindex/pkg/pb/v1"
 )
 
+type Opts struct {
+	MicroSubject string
+}
+
 type Repository struct {
 	cli *pb.SimilarityIndexClient
 }
 
-func NewRepository(conn *nats.Conn) *Repository {
+func NewRepository(
+	cfg Opts,
+	conn *nats.Conn,
+) *Repository {
 	return &Repository{
 		cli: pb.NewSimilarityIndexClient(
 			pb.SimilarityIndexClientConfig{
-				MicroSubject: "similarity_semantic",
+				MicroSubject: cfg.MicroSubject,
 			},
 			conn,
 		),

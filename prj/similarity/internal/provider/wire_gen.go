@@ -18,9 +18,7 @@ import (
 	"github.com/zuzuka28/simreport/prj/similarity/internal/config"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/analyzehistory"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/document"
-	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/fulltextindexclient"
-	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/semanticindexclient"
-	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/shingleindexclient"
+	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/similarityindexclient"
 	document2 "github.com/zuzuka28/simreport/prj/similarity/internal/service/document"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/service/fulltextindex"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/service/semanticindex"
@@ -51,35 +49,58 @@ func InitDocumentService(repository *document.Repository) (*document2.Service, e
 	return service, nil
 }
 
-func InitShingleIndexRepository(conn *nats.Conn) (*shingleindexclient.Repository, error) {
-	repository := shingleindexclient.NewRepository(conn)
+func InitSimilarityIndexRepository(opts similarityindexclient.Opts, conn *nats.Conn) (*similarityindexclient.Repository, error) {
+	repository := similarityindexclient.NewRepository(opts, conn)
 	return repository, nil
 }
 
-func InitShingleIndexService(repository *shingleindexclient.Repository) (*shingleindex.Service, error) {
-	service := shingleindex.NewService(repository)
-	return service, nil
-}
-
-func InitFulltextIndexRepository(conn *nats.Conn) (*fulltextindexclient.Repository, error) {
-	repository := fulltextindexclient.NewRepository(conn)
-	return repository, nil
-}
-
-func InitFulltextIndexService(repository *fulltextindexclient.Repository) (*fulltextindex.Service, error) {
+func InitFulltextIndexService(conn *nats.Conn) (*fulltextindex.Service, error) {
+	opts := _wireOptsValue
+	repository, err := InitSimilarityIndexRepository(opts, conn)
+	if err != nil {
+		return nil, err
+	}
 	service := fulltextindex.NewService(repository)
 	return service, nil
 }
 
-func InitSemanticIndexRepository(conn *nats.Conn) (*semanticindexclient.Repository, error) {
-	repository := semanticindexclient.NewRepository(conn)
-	return repository, nil
+var (
+	_wireOptsValue = similarityindexclient.Opts{
+		MicroSubject: "similarity_fulltext",
+	}
+)
+
+func InitShingleIndexService(conn *nats.Conn) (*shingleindex.Service, error) {
+	opts := _wireSimilarityindexclientOptsValue
+	repository, err := InitSimilarityIndexRepository(opts, conn)
+	if err != nil {
+		return nil, err
+	}
+	service := shingleindex.NewService(repository)
+	return service, nil
 }
 
-func InitSemanticIndexService(repository *semanticindexclient.Repository) (*semanticindex.Service, error) {
+var (
+	_wireSimilarityindexclientOptsValue = similarityindexclient.Opts{
+		MicroSubject: "similarity_shingle",
+	}
+)
+
+func InitSemanticIndexService(conn *nats.Conn) (*semanticindex.Service, error) {
+	opts := _wireOptsValue2
+	repository, err := InitSimilarityIndexRepository(opts, conn)
+	if err != nil {
+		return nil, err
+	}
 	service := semanticindex.NewService(repository)
 	return service, nil
 }
+
+var (
+	_wireOptsValue2 = similarityindexclient.Opts{
+		MicroSubject: "similarity_semantic",
+	}
+)
 
 func InitAnalyzeHistoryRepository(client *elasticsearch.Client, configConfig *config.Config) (*analyzehistory.Repository, error) {
 	opts := configConfig.AnalyzeHistoryRepo
@@ -119,27 +140,15 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	shingleindexclientRepository, err := InitShingleIndexRepository(conn)
+	shingleindexService, err := InitShingleIndexService(conn)
 	if err != nil {
 		return nil, err
 	}
-	shingleindexService, err := InitShingleIndexService(shingleindexclientRepository)
+	fulltextindexService, err := InitFulltextIndexService(conn)
 	if err != nil {
 		return nil, err
 	}
-	fulltextindexclientRepository, err := InitFulltextIndexRepository(conn)
-	if err != nil {
-		return nil, err
-	}
-	fulltextindexService, err := InitFulltextIndexService(fulltextindexclientRepository)
-	if err != nil {
-		return nil, err
-	}
-	semanticindexclientRepository, err := InitSemanticIndexRepository(conn)
-	if err != nil {
-		return nil, err
-	}
-	semanticindexService, err := InitSemanticIndexService(semanticindexclientRepository)
+	semanticindexService, err := InitSemanticIndexService(conn)
 	if err != nil {
 		return nil, err
 	}
@@ -186,27 +195,15 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	shingleindexclientRepository, err := InitShingleIndexRepository(conn)
+	shingleindexService, err := InitShingleIndexService(conn)
 	if err != nil {
 		return nil, err
 	}
-	shingleindexService, err := InitShingleIndexService(shingleindexclientRepository)
+	fulltextindexService, err := InitFulltextIndexService(conn)
 	if err != nil {
 		return nil, err
 	}
-	fulltextindexclientRepository, err := InitFulltextIndexRepository(conn)
-	if err != nil {
-		return nil, err
-	}
-	fulltextindexService, err := InitFulltextIndexService(fulltextindexclientRepository)
-	if err != nil {
-		return nil, err
-	}
-	semanticindexclientRepository, err := InitSemanticIndexRepository(conn)
-	if err != nil {
-		return nil, err
-	}
-	semanticindexService, err := InitSemanticIndexService(semanticindexclientRepository)
+	semanticindexService, err := InitSemanticIndexService(conn)
 	if err != nil {
 		return nil, err
 	}

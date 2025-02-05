@@ -1,4 +1,4 @@
-package fulltextindexclient
+package similarityindexclient
 
 import (
 	"errors"

@@ -1,4 +1,4 @@
-package semanticindexclient
+package similarityindexclient
 
 import (
 	"context"
