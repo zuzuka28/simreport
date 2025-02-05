@@ -1,0 +1,15 @@
+port: 8080
+nats: nats://localhost:4222
+elastic:
+  hosts:
+    - http://localhost:9200/
+  indexopts:
+    - index: "analyze_history"
+      updateMapping: true
+      createMapping: true
+      mappingPath: "config/mappings/analyze_history.json"
+      alias: ""
+      shards: 1
+      replics: 1
+analyzeHistoryRepo:
+  index: "analyze_history"

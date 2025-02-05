@@ -1,0 +1,134 @@
+openapi: 3.0.0
+info:
+  title: Document Similarity API
+  version: 0.0.1
+
+paths:
+  /analyze/{document_id}/similar:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/DocumentId"
+      responses:
+        "200":
+          $ref: "#/components/responses/SimilaritySearchResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+  /analyze/history:
+    post:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SimilaritySearchHistoryRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/SimilaritySearchHistoryResult"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/ServerError"
+
+components:
+  schemas:
+    AnalyzedDocumentMatch:
+      type: object
+      properties:
+        id:
+          type: string
+        rate:
+          type: number
+          format: float
+        highlights:
+          type: array
+          items:
+            type: string
+        similarImages:
+          type: array
+          items:
+            type: string
+
+    SimilaritySearchHistoryRequest:
+      type: object
+      properties:
+        documentID:
+          type: string
+        limit:
+          type: integer
+        offset:
+          type: integer
+        dateFrom:
+          type: string
+          format: date-time
+        dateTo:
+          type: string
+          format: date-time
+
+    SimilaritySearchHistory:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date-time
+        documentID:
+          type: string
+        id:
+          type: string
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyzedDocumentMatch"
+
+  responses:
+    SimilaritySearchResult:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              documents:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnalyzedDocumentMatch"
+
+    SimilaritySearchHistoryResult:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              documents:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SimilaritySearchHistory"
+              count:
+                type: integer
+
+    BadRequest:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
+    ServerError:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+
+  parameters:
+    DocumentId:
+      name: document_id
+      in: path
+      required: true
+      schema:
+        type: string

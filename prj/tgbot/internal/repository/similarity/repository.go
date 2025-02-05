@@ -3,18 +3,18 @@ package similarity
 import (
 	"github.com/nats-io/nats.go"
 
-	pb "github.com/zuzuka28/simreport/prj/document/pkg/pb/v1"
+	pb "github.com/zuzuka28/simreport/prj/similarity/pkg/pb/v1"
 )
 
 type Repository struct {
-	cli *pb.DocumentServiceClient
+	cli *pb.SimilarityServiceClient
 }
 
 func NewRepository(conn *nats.Conn) *Repository {
 	return &Repository{
-		cli: pb.NewDocumentServiceClient(
-			pb.DocumentServiceClientConfig{
-				MicroSubject: "document",
+		cli: pb.NewSimilarityServiceClient(
+			pb.SimilarityServiceClientConfig{
+				MicroSubject: "similarity",
 			},
 			conn,
 		),

@@ -18,14 +18,6 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
-// AnalyzedDocumentMatch defines model for AnalyzedDocumentMatch.
-type AnalyzedDocumentMatch struct {
-	Highlights    *[]string `json:"highlights,omitempty"`
-	Id            *string   `json:"id,omitempty"`
-	Rate          *float32  `json:"rate,omitempty"`
-	SimilarImages *[]string `json:"similarImages,omitempty"`
-}
-
 // Attribute defines model for Attribute.
 type Attribute struct {
 	Label string `json:"label"`
@@ -53,23 +45,6 @@ type SearchRequest struct {
 	Name     *string   `json:"name,omitempty"`
 	ParentID *string   `json:"parentID,omitempty"`
 	Version  *string   `json:"version,omitempty"`
-}
-
-// SimilaritySearchHistory defines model for SimilaritySearchHistory.
-type SimilaritySearchHistory struct {
-	Date       *time.Time               `json:"date,omitempty"`
-	DocumentID *string                  `json:"documentID,omitempty"`
-	Id         *string                  `json:"id,omitempty"`
-	Matches    *[]AnalyzedDocumentMatch `json:"matches,omitempty"`
-}
-
-// SimilaritySearchHistoryRequest defines model for SimilaritySearchHistoryRequest.
-type SimilaritySearchHistoryRequest struct {
-	DateFrom   *time.Time `json:"dateFrom,omitempty"`
-	DateTo     *time.Time `json:"dateTo,omitempty"`
-	DocumentID *string    `json:"documentID,omitempty"`
-	Limit      *int       `json:"limit,omitempty"`
-	Offset     *int       `json:"offset,omitempty"`
 }
 
 // UploadRequest defines model for UploadRequest.
@@ -109,24 +84,10 @@ type ServerError struct {
 	Error *string `json:"error,omitempty"`
 }
 
-// SimilaritySearchHistoryResult defines model for SimilaritySearchHistoryResult.
-type SimilaritySearchHistoryResult struct {
-	Count     *int                       `json:"count,omitempty"`
-	Documents *[]SimilaritySearchHistory `json:"documents,omitempty"`
-}
-
-// SimilaritySearchResult defines model for SimilaritySearchResult.
-type SimilaritySearchResult struct {
-	Documents *[]AnalyzedDocumentMatch `json:"documents,omitempty"`
-}
-
 // UploadSuccess defines model for UploadSuccess.
 type UploadSuccess struct {
 	DocumentID *string `json:"documentID,omitempty"`
 }
-
-// PostAnalyzeHistoryJSONRequestBody defines body for PostAnalyzeHistory for application/json ContentType.
-type PostAnalyzeHistoryJSONRequestBody = SimilaritySearchHistoryRequest
 
 // PostAttributeJSONRequestBody defines body for PostAttribute for application/json ContentType.
 type PostAttributeJSONRequestBody = AttributeRequest
@@ -139,12 +100,6 @@ type PostDocumentUploadMultipartRequestBody = UploadRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-
-	// (POST /analyze/history)
-	PostAnalyzeHistory(w http.ResponseWriter, r *http.Request)
-
-	// (GET /analyze/{document_id}/similar)
-	GetAnalyzeDocumentIdSimilar(w http.ResponseWriter, r *http.Request, documentId DocumentId)
 
 	// (POST /attribute)
 	PostAttribute(w http.ResponseWriter, r *http.Request)
@@ -167,45 +122,6 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
-
-// PostAnalyzeHistory operation middleware
-func (siw *ServerInterfaceWrapper) PostAnalyzeHistory(w http.ResponseWriter, r *http.Request) {
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostAnalyzeHistory(w, r)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
-
-// GetAnalyzeDocumentIdSimilar operation middleware
-func (siw *ServerInterfaceWrapper) GetAnalyzeDocumentIdSimilar(w http.ResponseWriter, r *http.Request) {
-
-	var err error
-
-	// ------------- Path parameter "document_id" -------------
-	var documentId DocumentId
-
-	err = runtime.BindStyledParameterWithOptions("simple", "document_id", mux.Vars(r)["document_id"], &documentId, runtime.BindStyledParameterOptions{Explode: false, Required: true})
-	if err != nil {
-		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "document_id", Err: err})
-		return
-	}
-
-	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.GetAnalyzeDocumentIdSimilar(w, r, documentId)
-	}))
-
-	for _, middleware := range siw.HandlerMiddlewares {
-		handler = middleware(handler)
-	}
-
-	handler.ServeHTTP(w, r)
-}
 
 // PostAttribute operation middleware
 func (siw *ServerInterfaceWrapper) PostAttribute(w http.ResponseWriter, r *http.Request) {
@@ -387,10 +303,6 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
-	r.HandleFunc(options.BaseURL+"/analyze/history", wrapper.PostAnalyzeHistory).Methods("POST")
-
-	r.HandleFunc(options.BaseURL+"/analyze/{document_id}/similar", wrapper.GetAnalyzeDocumentIdSimilar).Methods("GET")
-
 	r.HandleFunc(options.BaseURL+"/attribute", wrapper.PostAttribute).Methods("POST")
 
 	r.HandleFunc(options.BaseURL+"/document/search", wrapper.PostDocumentSearch).Methods("POST")
@@ -422,91 +334,8 @@ type ServerErrorJSONResponse struct {
 	Error *string `json:"error,omitempty"`
 }
 
-type SimilaritySearchHistoryResultJSONResponse struct {
-	Count     *int                       `json:"count,omitempty"`
-	Documents *[]SimilaritySearchHistory `json:"documents,omitempty"`
-}
-
-type SimilaritySearchResultJSONResponse struct {
-	Documents *[]AnalyzedDocumentMatch `json:"documents,omitempty"`
-}
-
 type UploadSuccessJSONResponse struct {
 	DocumentID *string `json:"documentID,omitempty"`
-}
-
-type PostAnalyzeHistoryRequestObject struct {
-	Body *PostAnalyzeHistoryJSONRequestBody
-}
-
-type PostAnalyzeHistoryResponseObject interface {
-	VisitPostAnalyzeHistoryResponse(w http.ResponseWriter) error
-}
-
-type PostAnalyzeHistory200JSONResponse struct {
-	SimilaritySearchHistoryResultJSONResponse
-}
-
-func (response PostAnalyzeHistory200JSONResponse) VisitPostAnalyzeHistoryResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostAnalyzeHistory400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response PostAnalyzeHistory400JSONResponse) VisitPostAnalyzeHistoryResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type PostAnalyzeHistory500JSONResponse struct{ ServerErrorJSONResponse }
-
-func (response PostAnalyzeHistory500JSONResponse) VisitPostAnalyzeHistoryResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetAnalyzeDocumentIdSimilarRequestObject struct {
-	DocumentId DocumentId `json:"document_id"`
-}
-
-type GetAnalyzeDocumentIdSimilarResponseObject interface {
-	VisitGetAnalyzeDocumentIdSimilarResponse(w http.ResponseWriter) error
-}
-
-type GetAnalyzeDocumentIdSimilar200JSONResponse struct {
-	SimilaritySearchResultJSONResponse
-}
-
-func (response GetAnalyzeDocumentIdSimilar200JSONResponse) VisitGetAnalyzeDocumentIdSimilarResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetAnalyzeDocumentIdSimilar400JSONResponse struct{ BadRequestJSONResponse }
-
-func (response GetAnalyzeDocumentIdSimilar400JSONResponse) VisitGetAnalyzeDocumentIdSimilarResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
-}
-
-type GetAnalyzeDocumentIdSimilar500JSONResponse struct{ ServerErrorJSONResponse }
-
-func (response GetAnalyzeDocumentIdSimilar500JSONResponse) VisitGetAnalyzeDocumentIdSimilarResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(500)
-
-	return json.NewEncoder(w).Encode(response)
 }
 
 type PostAttributeRequestObject struct {
@@ -650,12 +479,6 @@ func (response GetDocumentIdDownload404JSONResponse) VisitGetDocumentIdDownloadR
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
 
-	// (POST /analyze/history)
-	PostAnalyzeHistory(ctx context.Context, request PostAnalyzeHistoryRequestObject) (PostAnalyzeHistoryResponseObject, error)
-
-	// (GET /analyze/{document_id}/similar)
-	GetAnalyzeDocumentIdSimilar(ctx context.Context, request GetAnalyzeDocumentIdSimilarRequestObject) (GetAnalyzeDocumentIdSimilarResponseObject, error)
-
 	// (POST /attribute)
 	PostAttribute(ctx context.Context, request PostAttributeRequestObject) (PostAttributeResponseObject, error)
 
@@ -696,63 +519,6 @@ type strictHandler struct {
 	ssi         StrictServerInterface
 	middlewares []StrictMiddlewareFunc
 	options     StrictHTTPServerOptions
-}
-
-// PostAnalyzeHistory operation middleware
-func (sh *strictHandler) PostAnalyzeHistory(w http.ResponseWriter, r *http.Request) {
-	var request PostAnalyzeHistoryRequestObject
-
-	var body PostAnalyzeHistoryJSONRequestBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
-		return
-	}
-	request.Body = &body
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostAnalyzeHistory(ctx, request.(PostAnalyzeHistoryRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostAnalyzeHistory")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostAnalyzeHistoryResponseObject); ok {
-		if err := validResponse.VisitPostAnalyzeHistoryResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
-}
-
-// GetAnalyzeDocumentIdSimilar operation middleware
-func (sh *strictHandler) GetAnalyzeDocumentIdSimilar(w http.ResponseWriter, r *http.Request, documentId DocumentId) {
-	var request GetAnalyzeDocumentIdSimilarRequestObject
-
-	request.DocumentId = documentId
-
-	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.GetAnalyzeDocumentIdSimilar(ctx, request.(GetAnalyzeDocumentIdSimilarRequestObject))
-	}
-	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetAnalyzeDocumentIdSimilar")
-	}
-
-	response, err := handler(r.Context(), w, r, request)
-
-	if err != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(GetAnalyzeDocumentIdSimilarResponseObject); ok {
-		if err := validResponse.VisitGetAnalyzeDocumentIdSimilarResponse(w); err != nil {
-			sh.options.ResponseErrorHandlerFunc(w, r, err)
-		}
-	} else if response != nil {
-		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
-	}
 }
 
 // PostAttribute operation middleware

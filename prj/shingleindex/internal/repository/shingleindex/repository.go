@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	prefix       = "github.com/zuzuka28/simreport/prj/shingleindex"
+	prefix       = "shingleindex"
 	permutations = 512
 	bands        = 64
 )

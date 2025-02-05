@@ -25,8 +25,6 @@ type DocumentServiceServerInterface interface {
 	UploadDocument(context.Context, *UploadDocumentRequest) (*UploadDocumentResponse, error)
 	SearchAttribute(context.Context, *SearchAttributeRequest) (*SearchAttributeResponse, error)
 	SearchDocument(context.Context, *SearchRequest) (*SearchDocumentResponse, error)
-	SearchSimilar(context.Context, *DocumentId) (*SearchSimilarResponse, error)
-	SearchSimilarityHistory(context.Context, *SearchSimilarityHistoryRequest) (*SearchSimilarityHistoryResponse, error)
 	mustEmbedUnimplementedGreeterServer()
 }
 
@@ -43,12 +41,6 @@ func (UnimplementedDocumentServiceServer) SearchAttribute(context.Context, *Sear
 }
 func (UnimplementedDocumentServiceServer) SearchDocument(context.Context, *SearchRequest) (*SearchDocumentResponse, error) {
 	return nil, errors.New("method SearchDocument not implemented")
-}
-func (UnimplementedDocumentServiceServer) SearchSimilar(context.Context, *DocumentId) (*SearchSimilarResponse, error) {
-	return nil, errors.New("method SearchSimilar not implemented")
-}
-func (UnimplementedDocumentServiceServer) SearchSimilarityHistory(context.Context, *SearchSimilarityHistoryRequest) (*SearchSimilarityHistoryResponse, error) {
-	return nil, errors.New("method SearchSimilarityHistory not implemented")
 }
 
 func (UnimplementedDocumentServiceServer) mustEmbedUnimplementedDocumentServiceServer() {}
@@ -136,12 +128,6 @@ func (s *DocumentServiceServer) Start(ctx context.Context) error {
 	}
 	if err := group.AddEndpoint("search_document", s.toMicroHandler(s.handleSearchDocument)); err != nil {
 		return fmt.Errorf("failed to add endpoint SearchDocument: %w", err)
-	}
-	if err := group.AddEndpoint("search_similar", s.toMicroHandler(s.handleSearchSimilar)); err != nil {
-		return fmt.Errorf("failed to add endpoint SearchSimilar: %w", err)
-	}
-	if err := group.AddEndpoint("search_similarity_history", s.toMicroHandler(s.handleSearchSimilarityHistory)); err != nil {
-		return fmt.Errorf("failed to add endpoint SearchSimilarityHistory: %w", err)
 	}
 
 	select {
@@ -260,58 +246,6 @@ func (s *DocumentServiceServer) handleSearchDocument(
 	}
 
 	res, err := s.impl.SearchDocument(ctx, msg)
-	if err != nil {
-		s.responseErrorHandlerFunc(ctx, req, err)
-		return
-	}
-
-	resp, err := proto.Marshal(res)
-	if err != nil {
-		s.responseErrorHandlerFunc(ctx, req, err)
-		return
-	}
-
-	req.Respond(resp)
-}
-
-func (s *DocumentServiceServer) handleSearchSimilar(
-	ctx context.Context,
-	req micro.Request,
-) {
-	msg := new(DocumentId)
-
-	if err := proto.Unmarshal(req.Data(), msg); err != nil {
-		s.requestErrorHandlerFunc(ctx, req, err)
-		return
-	}
-
-	res, err := s.impl.SearchSimilar(ctx, msg)
-	if err != nil {
-		s.responseErrorHandlerFunc(ctx, req, err)
-		return
-	}
-
-	resp, err := proto.Marshal(res)
-	if err != nil {
-		s.responseErrorHandlerFunc(ctx, req, err)
-		return
-	}
-
-	req.Respond(resp)
-}
-
-func (s *DocumentServiceServer) handleSearchSimilarityHistory(
-	ctx context.Context,
-	req micro.Request,
-) {
-	msg := new(SearchSimilarityHistoryRequest)
-
-	if err := proto.Unmarshal(req.Data(), msg); err != nil {
-		s.requestErrorHandlerFunc(ctx, req, err)
-		return
-	}
-
-	res, err := s.impl.SearchSimilarityHistory(ctx, msg)
 	if err != nil {
 		s.responseErrorHandlerFunc(ctx, req, err)
 		return
@@ -455,66 +389,6 @@ func (c *DocumentServiceClient) SearchDocument(
 	}
 
 	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".search_document", data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-
-	if msg.Header.Get(micro.ErrorHeader) != "" {
-		return nil, &ClientError{
-			Status:      msg.Header.Get(micro.ErrorCodeHeader),
-			Description: msg.Header.Get(micro.ErrorHeader),
-		}
-	}
-
-	if err := proto.Unmarshal(msg.Data, resp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	return resp, nil
-}
-
-func (c *DocumentServiceClient) SearchSimilar(
-	ctx context.Context,
-	req *DocumentId,
-) (*SearchSimilarResponse, error) {
-	resp := new(SearchSimilarResponse)
-
-	data, err := proto.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".search_similar", data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-
-	if msg.Header.Get(micro.ErrorHeader) != "" {
-		return nil, &ClientError{
-			Status:      msg.Header.Get(micro.ErrorCodeHeader),
-			Description: msg.Header.Get(micro.ErrorHeader),
-		}
-	}
-
-	if err := proto.Unmarshal(msg.Data, resp); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	return resp, nil
-}
-
-func (c *DocumentServiceClient) SearchSimilarityHistory(
-	ctx context.Context,
-	req *SearchSimilarityHistoryRequest,
-) (*SearchSimilarityHistoryResponse, error) {
-	resp := new(SearchSimilarityHistoryResponse)
-
-	data, err := proto.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".search_similarity_history", data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}

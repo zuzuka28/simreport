@@ -28,15 +28,4 @@ type (
 			params *pb.SearchAttributeRequest,
 		) (*pb.SearchAttributeResponse, error)
 	}
-
-	SimilarityHandler interface {
-		SearchSimilar(
-			ctx context.Context,
-			params *pb.DocumentId,
-		) (*pb.SearchSimilarResponse, error)
-		SearchSimilarityHistory(
-			ctx context.Context,
-			params *pb.SearchSimilarityHistoryRequest,
-		) (*pb.SearchSimilarityHistoryResponse, error)
-	}
 )

@@ -12,9 +12,6 @@ service DocumentService {
   rpc SearchAttribute(SearchAttributeRequest)
       returns (SearchAttributeResponse) {}
   rpc SearchDocument(SearchRequest) returns (SearchDocumentResponse) {}
-  rpc SearchSimilar(DocumentId) returns (SearchSimilarResponse) {}
-  rpc SearchSimilarityHistory(SearchSimilarityHistoryRequest)
-      returns (SearchSimilarityHistoryResponse) {}
 }
 
 message Error {
@@ -102,37 +99,4 @@ message DocumentSummary {
   string id = 4;
   string name = 5;
   string last_updated = 6;
-}
-
-message SearchSimilarResponse {
-  Error error = 1;
-  repeated SimilarityDocumentMatch documents = 2;
-}
-
-message SimilarityDocumentMatch {
-  string id = 1;
-  float rate = 2;
-  repeated string highlights = 3;
-  repeated string similar_images = 4;
-}
-
-message SearchSimilarityHistoryRequest {
-  string document_id = 1;
-  int64 limit = 2;
-  int64 offset = 3;
-  string date_from = 4;
-  string date_to = 5;
-}
-
-message SearchSimilarityHistoryResponse {
-  Error error = 1;
-  repeated SimilaritySearchHistory documents = 2;
-  int64 count = 3;
-}
-
-message SimilaritySearchHistory {
-  string date = 1;
-  string document_id = 2;
-  string id = 3;
-  repeated SimilarityDocumentMatch matches = 4;
 }

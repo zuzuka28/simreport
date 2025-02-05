@@ -6,7 +6,7 @@ import (
 
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/model"
 
-	pb "github.com/zuzuka28/simreport/prj/document/pkg/pb/v1"
+	pb "github.com/zuzuka28/simreport/prj/similarity/pkg/pb/v1"
 )
 
 var errInternal = errors.New("internal error")

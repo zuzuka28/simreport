@@ -33,7 +33,6 @@ type Opts struct {
 
 	Spec             []byte
 	DocumentHandler  DocumentHandler
-	AnalyzeHandler   SimilarityHandler
 	AttributeHandler AttributeHandler
 }
 
@@ -54,11 +53,9 @@ func New(
 
 	compose := struct {
 		DocumentHandler
-		SimilarityHandler
 		AttributeHandler
 	}{
 		DocumentHandler:  opts.DocumentHandler,
-		SimilarityHandler:   opts.AnalyzeHandler,
 		AttributeHandler: opts.AttributeHandler,
 	}
 

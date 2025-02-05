@@ -18,32 +18,22 @@ import (
 	"github.com/zuzuka28/simreport/lib/tikaclient"
 	attribute4 "github.com/zuzuka28/simreport/prj/document/api/nats/handler/attribute"
 	document4 "github.com/zuzuka28/simreport/prj/document/api/nats/handler/document"
-	similarity3 "github.com/zuzuka28/simreport/prj/document/api/nats/handler/similarity"
 	server2 "github.com/zuzuka28/simreport/prj/document/api/nats/server"
 	"github.com/zuzuka28/simreport/prj/document/api/rest/server"
 	attribute3 "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/attribute"
 	document3 "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/document"
-	similarity2 "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/similarity"
 	"github.com/zuzuka28/simreport/prj/document/internal/config"
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
-	"github.com/zuzuka28/simreport/prj/document/internal/repository/analyzehistory"
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/attribute"
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/document"
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/documentstatus"
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/filestorage"
-	"github.com/zuzuka28/simreport/prj/document/internal/repository/fulltextindexclient"
-	"github.com/zuzuka28/simreport/prj/document/internal/repository/semanticindexclient"
-	"github.com/zuzuka28/simreport/prj/document/internal/repository/shingleindexclient"
 	attribute2 "github.com/zuzuka28/simreport/prj/document/internal/service/attribute"
 	document2 "github.com/zuzuka28/simreport/prj/document/internal/service/document"
 	"github.com/zuzuka28/simreport/prj/document/internal/service/documentparser"
 	"github.com/zuzuka28/simreport/prj/document/internal/service/documentpipeline"
 	"github.com/zuzuka28/simreport/prj/document/internal/service/documentpipeline/handler/filesaved"
 	documentstatus2 "github.com/zuzuka28/simreport/prj/document/internal/service/documentstatus"
-	"github.com/zuzuka28/simreport/prj/document/internal/service/fulltextindex"
-	"github.com/zuzuka28/simreport/prj/document/internal/service/semanticindex"
-	"github.com/zuzuka28/simreport/prj/document/internal/service/shingleindex"
-	"github.com/zuzuka28/simreport/prj/document/internal/service/similarity"
 	"io"
 	"net/http"
 	"os"
@@ -89,36 +79,6 @@ func InitFilestorageRepository(client *minio.Client, configConfig *config.Config
 	return repository, nil
 }
 
-func InitShingleIndexRepository(conn *nats.Conn) (*shingleindexclient.Repository, error) {
-	repository := shingleindexclient.NewRepository(conn)
-	return repository, nil
-}
-
-func InitShingleIndexService(repository *shingleindexclient.Repository) (*shingleindex.Service, error) {
-	service := shingleindex.NewService(repository)
-	return service, nil
-}
-
-func InitFulltextIndexRepository(conn *nats.Conn) (*fulltextindexclient.Repository, error) {
-	repository := fulltextindexclient.NewRepository(conn)
-	return repository, nil
-}
-
-func InitFulltextIndexService(repository *fulltextindexclient.Repository) (*fulltextindex.Service, error) {
-	service := fulltextindex.NewService(repository)
-	return service, nil
-}
-
-func InitSemanticIndexRepository(conn *nats.Conn) (*semanticindexclient.Repository, error) {
-	repository := semanticindexclient.NewRepository(conn)
-	return repository, nil
-}
-
-func InitSemanticIndexService(repository *semanticindexclient.Repository) (*semanticindex.Service, error) {
-	service := semanticindex.NewService(repository)
-	return service, nil
-}
-
 func InitDocumentRepository(client *elasticsearch.Client, configConfig *config.Config) (*document.Repository, error) {
 	opts := configConfig.DocumentRepo
 	repository, err := document.NewRepository(opts, client)
@@ -131,15 +91,6 @@ func InitDocumentRepository(client *elasticsearch.Client, configConfig *config.C
 func InitAttributeRepository(client *elasticsearch.Client, configConfig *config.Config) (*attribute.Repository, error) {
 	opts := configConfig.AttributeRepo
 	repository, err := attribute.NewRepository(opts, client)
-	if err != nil {
-		return nil, err
-	}
-	return repository, nil
-}
-
-func InitAnalyzeHistoryRepository(client *elasticsearch.Client, configConfig *config.Config) (*analyzehistory.Repository, error) {
-	opts := configConfig.AnalyzeHistoryRepo
-	repository, err := analyzehistory.NewRepository(opts, client)
 	if err != nil {
 		return nil, err
 	}
@@ -165,12 +116,6 @@ func InitDocumentStatusService(repository *documentstatus.Repository) (*document
 	return service, nil
 }
 
-func InitAnalyzeService(configConfig *config.Config, service *shingleindex.Service, fulltextindexService *fulltextindex.Service, documentService *document2.Service, semanticindexService *semanticindex.Service, repository *analyzehistory.Repository) (*similarity.Service, error) {
-	opts := ProvideAnalyzeServiceOpts()
-	similarityService := similarity.NewService(opts, documentService, service, fulltextindexService, semanticindexService, repository)
-	return similarityService, nil
-}
-
 func InitDocumentParserService(client *tikaclient.Client) (*documentparser.Service, error) {
 	service := documentparser.NewService(client)
 	return service, nil
@@ -188,11 +133,6 @@ func InitDocumentService(configConfig *config.Config, client *tikaclient.Client,
 
 func InitDocumentHandler(service *document2.Service, documentstatusService *documentstatus2.Service) *document3.Handler {
 	handler := document3.NewHandler(service, documentstatusService)
-	return handler
-}
-
-func InitAnalyzeHandler(service *similarity.Service) *similarity2.Handler {
-	handler := similarity2.NewHandler(service)
 	return handler
 }
 
@@ -248,39 +188,6 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 		return nil, err
 	}
 	handler := InitDocumentHandler(service, documentstatusService)
-	shingleindexclientRepository, err := InitShingleIndexRepository(conn)
-	if err != nil {
-		return nil, err
-	}
-	shingleindexService, err := InitShingleIndexService(shingleindexclientRepository)
-	if err != nil {
-		return nil, err
-	}
-	fulltextindexclientRepository, err := InitFulltextIndexRepository(conn)
-	if err != nil {
-		return nil, err
-	}
-	fulltextindexService, err := InitFulltextIndexService(fulltextindexclientRepository)
-	if err != nil {
-		return nil, err
-	}
-	semanticindexclientRepository, err := InitSemanticIndexRepository(conn)
-	if err != nil {
-		return nil, err
-	}
-	semanticindexService, err := InitSemanticIndexService(semanticindexclientRepository)
-	if err != nil {
-		return nil, err
-	}
-	analyzehistoryRepository, err := InitAnalyzeHistoryRepository(elasticsearchClient, configConfig)
-	if err != nil {
-		return nil, err
-	}
-	similarityService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, service, semanticindexService, analyzehistoryRepository)
-	if err != nil {
-		return nil, err
-	}
-	similarityHandler := InitAnalyzeHandler(similarityService)
 	attributeRepository, err := InitAttributeRepository(elasticsearchClient, configConfig)
 	if err != nil {
 		return nil, err
@@ -294,7 +201,6 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 		Port:             int2,
 		Spec:             v,
 		DocumentHandler:  handler,
-		AnalyzeHandler:   similarityHandler,
 		AttributeHandler: attributeHandler,
 	}
 	serverServer, err := server.New(opts)
@@ -306,11 +212,6 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 
 func InitDocumentNatsHandler(service *document2.Service, documentstatusService *documentstatus2.Service) *document4.Handler {
 	handler := document4.NewHandler(service, documentstatusService)
-	return handler
-}
-
-func InitAnalyzeNatsHandler(service *similarity.Service) *similarity3.Handler {
-	handler := similarity3.NewHandler(service)
 	return handler
 }
 
@@ -370,40 +271,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 		return nil, err
 	}
 	attributeHandler := InitAttributeNatsHandler(attributeService)
-	shingleindexclientRepository, err := InitShingleIndexRepository(conn)
-	if err != nil {
-		return nil, err
-	}
-	shingleindexService, err := InitShingleIndexService(shingleindexclientRepository)
-	if err != nil {
-		return nil, err
-	}
-	fulltextindexclientRepository, err := InitFulltextIndexRepository(conn)
-	if err != nil {
-		return nil, err
-	}
-	fulltextindexService, err := InitFulltextIndexService(fulltextindexclientRepository)
-	if err != nil {
-		return nil, err
-	}
-	semanticindexclientRepository, err := InitSemanticIndexRepository(conn)
-	if err != nil {
-		return nil, err
-	}
-	semanticindexService, err := InitSemanticIndexService(semanticindexclientRepository)
-	if err != nil {
-		return nil, err
-	}
-	analyzehistoryRepository, err := InitAnalyzeHistoryRepository(elasticsearchClient, configConfig)
-	if err != nil {
-		return nil, err
-	}
-	similarityService, err := InitAnalyzeService(configConfig, shingleindexService, fulltextindexService, service, semanticindexService, analyzehistoryRepository)
-	if err != nil {
-		return nil, err
-	}
-	similarityHandler := InitAnalyzeNatsHandler(similarityService)
-	serverServer := server2.NewServer(conn, handler, attributeHandler, similarityHandler)
+	serverServer := server2.NewServer(conn, handler, attributeHandler)
 	return serverServer, nil
 }
 
@@ -570,10 +438,6 @@ func ProvideDocumentStatusJetstreamStream(
 	}
 
 	return s, nil
-}
-
-func ProvideAnalyzeServiceOpts() similarity.Opts {
-	return similarity.Opts{}
 }
 
 func ProvideDocumentServiceOpts() document2.Opts {

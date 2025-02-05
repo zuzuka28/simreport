@@ -12,32 +12,22 @@ import (
 
 	attributenatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/attribute"
 	documentnatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/document"
-	analyzenatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/similarity"
 	servernats "github.com/zuzuka28/simreport/prj/document/api/nats/server"
 	serverhttp "github.com/zuzuka28/simreport/prj/document/api/rest/server"
 	attributeapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/attribute"
 	documentapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/document"
-	analyzeapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/similarity"
 	"github.com/zuzuka28/simreport/prj/document/internal/config"
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
-	analyzehistoryrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/analyzehistory"
 	attributerepo "github.com/zuzuka28/simreport/prj/document/internal/repository/attribute"
 	documentrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/document"
 	documentstatusrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/documentstatus"
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/filestorage"
-	fulltextindexrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/fulltextindexclient"
-	semanticindexrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/semanticindexclient"
-	shingleindexrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/shingleindexclient"
 	attributesrv "github.com/zuzuka28/simreport/prj/document/internal/service/attribute"
 	documentsrv "github.com/zuzuka28/simreport/prj/document/internal/service/document"
 	documentparsersrv "github.com/zuzuka28/simreport/prj/document/internal/service/documentparser"
 	"github.com/zuzuka28/simreport/prj/document/internal/service/documentpipeline"
 	filesavedhandler "github.com/zuzuka28/simreport/prj/document/internal/service/documentpipeline/handler/filesaved"
 	documentstatussrv "github.com/zuzuka28/simreport/prj/document/internal/service/documentstatus"
-	fulltextindexsrv "github.com/zuzuka28/simreport/prj/document/internal/service/fulltextindex"
-	semanticindexsrv "github.com/zuzuka28/simreport/prj/document/internal/service/semanticindex"
-	shingleindexsrv "github.com/zuzuka28/simreport/prj/document/internal/service/shingleindex"
-	analyzesrv "github.com/zuzuka28/simreport/prj/document/internal/service/similarity"
 
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/minioutil"
@@ -184,57 +174,6 @@ func InitFilestorageRepository(
 	))
 }
 
-func InitShingleIndexRepository(
-	_ *nats.Conn,
-) (*shingleindexrepo.Repository, error) {
-	panic(wire.Build(
-		shingleindexrepo.NewRepository,
-	))
-}
-
-func InitShingleIndexService(
-	_ *shingleindexrepo.Repository,
-) (*shingleindexsrv.Service, error) {
-	panic(wire.Build(
-		wire.Bind(new(shingleindexsrv.Repository), new(*shingleindexrepo.Repository)),
-		shingleindexsrv.NewService,
-	))
-}
-
-func InitFulltextIndexRepository(
-	_ *nats.Conn,
-) (*fulltextindexrepo.Repository, error) {
-	panic(wire.Build(
-		fulltextindexrepo.NewRepository,
-	))
-}
-
-func InitFulltextIndexService(
-	_ *fulltextindexrepo.Repository,
-) (*fulltextindexsrv.Service, error) {
-	panic(wire.Build(
-		wire.Bind(new(fulltextindexsrv.Repository), new(*fulltextindexrepo.Repository)),
-		fulltextindexsrv.NewService,
-	))
-}
-
-func InitSemanticIndexRepository(
-	_ *nats.Conn,
-) (*semanticindexrepo.Repository, error) {
-	panic(wire.Build(
-		semanticindexrepo.NewRepository,
-	))
-}
-
-func InitSemanticIndexService(
-	_ *semanticindexrepo.Repository,
-) (*semanticindexsrv.Service, error) {
-	panic(wire.Build(
-		wire.Bind(new(semanticindexsrv.Repository), new(*semanticindexrepo.Repository)),
-		semanticindexsrv.NewService,
-	))
-}
-
 func InitDocumentRepository(
 	_ *elasticsearch.Client,
 	_ *config.Config,
@@ -252,16 +191,6 @@ func InitAttributeRepository(
 	panic(wire.Build(
 		wire.FieldsOf(new(*config.Config), "AttributeRepo"),
 		attributerepo.NewRepository,
-	))
-}
-
-func InitAnalyzeHistoryRepository(
-	_ *elasticsearch.Client,
-	_ *config.Config,
-) (*analyzehistoryrepo.Repository, error) {
-	panic(wire.Build(
-		wire.FieldsOf(new(*config.Config), "AnalyzeHistoryRepo"),
-		analyzehistoryrepo.NewRepository,
 	))
 }
 
@@ -291,29 +220,6 @@ func InitDocumentStatusService(
 	panic(wire.Build(
 		wire.Bind(new(documentstatussrv.Repository), new(*documentstatusrepo.Repository)),
 		documentstatussrv.NewService,
-	))
-}
-
-func ProvideAnalyzeServiceOpts() analyzesrv.Opts {
-	return analyzesrv.Opts{}
-}
-
-func InitAnalyzeService(
-	_ *config.Config,
-	_ *shingleindexsrv.Service,
-	_ *fulltextindexsrv.Service,
-	_ *documentsrv.Service,
-	_ *semanticindexsrv.Service,
-	_ *analyzehistoryrepo.Repository,
-) (*analyzesrv.Service, error) {
-	panic(wire.Build(
-		ProvideAnalyzeServiceOpts,
-		wire.Bind(new(analyzesrv.DocumentService), new(*documentsrv.Service)),
-		wire.Bind(new(analyzesrv.ShingleIndexService), new(*shingleindexsrv.Service)),
-		wire.Bind(new(analyzesrv.FulltextIndexService), new(*fulltextindexsrv.Service)),
-		wire.Bind(new(analyzesrv.SemanticIndexService), new(*semanticindexsrv.Service)),
-		wire.Bind(new(analyzesrv.HistoryRepository), new(*analyzehistoryrepo.Repository)),
-		analyzesrv.NewService,
 	))
 }
 
@@ -356,15 +262,6 @@ func InitDocumentHandler(
 	))
 }
 
-func InitAnalyzeHandler(
-	_ *analyzesrv.Service,
-) *analyzeapi.Handler {
-	panic(wire.Build(
-		wire.Bind(new(analyzeapi.Service), new(*analyzesrv.Service)),
-		analyzeapi.NewHandler,
-	))
-}
-
 func InitAttributeHandler(
 	_ *attributesrv.Service,
 ) *attributeapi.Handler {
@@ -389,33 +286,19 @@ func InitRestAPI(
 		InitDocumentStatusRepository,
 		InitDocumentStatusService,
 
-		InitShingleIndexRepository,
-		InitShingleIndexService,
-
-		InitFulltextIndexRepository,
-		InitFulltextIndexService,
-
-		InitSemanticIndexRepository,
-		InitSemanticIndexService,
-
 		InitFilestorageRepository,
 
 		InitAttributeRepository,
 
 		InitDocumentRepository,
-		InitAnalyzeHistoryRepository,
 
 		InitAttributeService,
 
 		InitDocumentService,
 
-		InitAnalyzeService,
-
 		InitDocumentHandler,
-		InitAnalyzeHandler,
 		InitAttributeHandler,
 		wire.Bind(new(serverhttp.DocumentHandler), new(*documentapi.Handler)),
-		wire.Bind(new(serverhttp.SimilarityHandler), new(*analyzeapi.Handler)),
 		wire.Bind(new(serverhttp.AttributeHandler), new(*attributeapi.Handler)),
 		wire.FieldsOf(new(*config.Config), "Port"),
 		wire.Struct(new(serverhttp.Opts), "*"),
@@ -431,15 +314,6 @@ func InitDocumentNatsHandler(
 		wire.Bind(new(documentnatsapi.Service), new(*documentsrv.Service)),
 		wire.Bind(new(documentnatsapi.StatusService), new(*documentstatussrv.Service)),
 		documentnatsapi.NewHandler,
-	))
-}
-
-func InitAnalyzeNatsHandler(
-	_ *analyzesrv.Service,
-) *analyzenatsapi.Handler {
-	panic(wire.Build(
-		wire.Bind(new(analyzenatsapi.Service), new(*analyzesrv.Service)),
-		analyzenatsapi.NewHandler,
 	))
 }
 
@@ -466,34 +340,20 @@ func InitNatsAPI(
 		InitDocumentStatusRepository,
 		InitDocumentStatusService,
 
-		InitShingleIndexRepository,
-		InitShingleIndexService,
-
-		InitFulltextIndexRepository,
-		InitFulltextIndexService,
-
-		InitSemanticIndexRepository,
-		InitSemanticIndexService,
-
 		InitFilestorageRepository,
 
 		InitAttributeRepository,
 
 		InitDocumentRepository,
-		InitAnalyzeHistoryRepository,
 
 		InitAttributeService,
 
 		InitDocumentService,
 
-		InitAnalyzeService,
-
 		InitDocumentNatsHandler,
-		InitAnalyzeNatsHandler,
 		InitAttributeNatsHandler,
 
 		wire.Bind(new(servernats.DocumentHandler), new(*documentnatsapi.Handler)),
-		wire.Bind(new(servernats.SimilarityHandler), new(*analyzenatsapi.Handler)),
 		wire.Bind(new(servernats.AttributeHandler), new(*attributenatsapi.Handler)),
 		servernats.NewServer,
 	))

@@ -20,18 +20,15 @@ func NewServer(
 	conn *nats.Conn,
 	doch DocumentHandler,
 	attrh AttributeHandler,
-	anh SimilarityHandler,
 ) *Server {
 	compose := struct {
 		pb.UnsafeDocumentServiceServer
 		DocumentHandler
 		AttributeHandler
-		SimilarityHandler
 	}{
 		UnsafeDocumentServiceServer: nil,
 		DocumentHandler:             doch,
 		AttributeHandler:            attrh,
-		SimilarityHandler:           anh,
 	}
 
 	return &Server{
