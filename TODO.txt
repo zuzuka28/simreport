@@ -1,1 +1,10 @@
-- [ ] fix semanticindex `blis` package build (should be not generic arch)
+- [ ] generalize ranking and highlighting functions
+- [ ] generate reports for similarity check
+- [ ] use cassandra for shingleindex
+- [ ] upload sessions for documents
+- [ ] observability - add logging, tracing, metrics
+- [ ] implement group labeling and batch processing by label selector
+- [ ] write authn authz to support multiuser cases
+- [ ] save sha256 of source files in similarity indices, not only document id
+- [ ] benchmarks for system shingleindex
+- [ ] update and test helm deployments
