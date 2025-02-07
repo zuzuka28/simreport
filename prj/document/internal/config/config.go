@@ -14,6 +14,7 @@ import (
 
 type Config struct {
 	Port          int                `yaml:"port"`
+	MetricsPort   int                `yaml:"metricsPort"`
 	S3            minioutil.Config   `yaml:"s3"`
 	Nats          string             `yaml:"nats"`
 	Tika          string             `yaml:"tika"`
@@ -28,6 +29,10 @@ func New(path string) (*Config, error) {
 	err := cleanenv.ReadConfig(path, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
+	}
+
+	if cfg.MetricsPort == 0 {
+		cfg.MetricsPort = 9000
 	}
 
 	return cfg, nil

@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/zuzuka28/simreport/prj/document/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/document/internal/provider"
 
 	"github.com/urfave/cli/v2"
@@ -23,7 +24,17 @@ func runRestServer(c *cli.Context) error {
 		return fmt.Errorf("init api: %w", err)
 	}
 
+	reg := metrics.NewRegistry()
+	reg.MustRegister(provider.ProvideMetrics().Collectors()...)
+	metricsserv := metrics.NewMetricsServer(cfg.MetricsPort, reg)
+
 	errCh := make(chan error)
+
+	go func() {
+		if err := metricsserv.Start(); err != nil {
+			errCh <- fmt.Errorf("run metrics server: %w", err)
+		}
+	}()
 
 	go func() {
 		if err := api.Start(c.Context); err != nil {

@@ -280,5 +280,8 @@ func (m *Metrics) Collectors() []prometheus.Collector {
 		m.natsMicroRequests,
 		m.natsMicroRequestDurations,
 		m.natsMicroSizes,
+		m.httpRequests,
+		m.httpRequestDurations,
+		m.httpSizes,
 	}
 }
