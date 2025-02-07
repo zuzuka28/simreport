@@ -17,13 +17,17 @@ func (r *Repository) Update(
 
 	_, err := r.p.Publish(ctx, fullsubject, []byte(cmd.ID))
 	if err != nil {
+		r.m.IncDocumentStatusRepositoryUpdates(string(cmd.Status), metricsFailed)
 		return fmt.Errorf("publush update: %w", err)
 	}
 
 	_, err = r.kv.Put(ctx, key, []byte(cmd.Status))
 	if err != nil {
+		r.m.IncDocumentStatusRepositoryUpdates(string(cmd.Status), metricsFailed)
 		return fmt.Errorf("put status: %w", err)
 	}
+
+	r.m.IncDocumentStatusRepositoryUpdates(string(cmd.Status), metricsSuccess)
 
 	return nil
 }

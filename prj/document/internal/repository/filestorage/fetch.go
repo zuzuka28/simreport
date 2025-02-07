@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
 
@@ -17,6 +19,10 @@ func (r *Repository) Fetch(
 	ctx context.Context,
 	query model.FileQuery,
 ) (model.File, error) {
+	const op = "fetch"
+
+	t := time.Now()
+
 	if query.Bucket == "" {
 		query.Bucket = bucketAnysave
 	}
@@ -29,7 +35,14 @@ func (r *Repository) Fetch(
 	)
 	if err != nil {
 		var cerr minio.ErrorResponse
-		if errors.As(err, &cerr) && cerr.StatusCode == http.StatusNotFound {
+		if !errors.As(err, &cerr) {
+			r.m.IncFilestorageRequests(op, metricsError, time.Since(t).Seconds())
+			return model.File{}, fmt.Errorf("stat object: %w", err)
+		}
+
+		r.m.IncFilestorageRequests(op, strconv.Itoa(cerr.StatusCode), time.Since(t).Seconds())
+
+		if cerr.StatusCode == http.StatusNotFound {
 			return model.File{}, model.ErrNotFound
 		}
 
@@ -43,6 +56,7 @@ func (r *Repository) Fetch(
 		minio.GetObjectOptions{}, //nolint:exhaustruct
 	)
 	if err != nil {
+		r.m.IncFilestorageRequests(op, metricsError, time.Since(t).Seconds())
 		return model.File{}, fmt.Errorf("get object: %w", err)
 	}
 
@@ -53,6 +67,8 @@ func (r *Repository) Fetch(
 	if _, err := io.Copy(&buf, object); err != nil {
 		return model.File{}, fmt.Errorf("copy object data: %w", err)
 	}
+
+	r.m.IncFilestorageRequests(op, metricsSuccess, time.Since(t).Seconds())
 
 	return model.File{
 		Name:        objectInfo.UserMetadata[userMetadataNameKey],

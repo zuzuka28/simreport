@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
 
@@ -14,6 +15,10 @@ func (r *Repository) Search(
 	ctx context.Context,
 	query model.DocumentSearchQuery,
 ) ([]model.Document, error) {
+	const op = "search"
+
+	t := time.Now()
+
 	q, err := buildSearchQuery(query)
 	if err != nil {
 		return nil, fmt.Errorf("build search query: %w", err)
@@ -25,10 +30,13 @@ func (r *Repository) Search(
 		r.cli.Search.WithBody(bytes.NewReader(q)),
 	)
 	if err != nil {
+		r.m.IncDocumentRepositoryRequests(op, esRes.Status(), time.Since(t).Seconds())
 		return nil, fmt.Errorf("search documents: %w", err)
 	}
 
 	defer esRes.Body.Close()
+
+	r.m.IncDocumentRepositoryRequests(op, esRes.Status(), time.Since(t).Seconds())
 
 	if err := elasticutil.IsErr(esRes); err != nil {
 		return nil, fmt.Errorf("search error: %s: %w", esRes.Status(), mapErrorToModel(err))

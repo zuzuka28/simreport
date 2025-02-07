@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
 
@@ -13,6 +14,10 @@ import (
 )
 
 func (r *Repository) Save(ctx context.Context, cmd model.FileSaveCommand) error {
+	const op = "save"
+
+	t := time.Now()
+
 	if cmd.Bucket == "" {
 		cmd.Bucket = bucketAnysave
 	}
@@ -23,11 +28,20 @@ func (r *Repository) Save(ctx context.Context, cmd model.FileSaveCommand) error 
 		cmd.Item.Sha256,
 		minio.StatObjectOptions{}, //nolint:exhaustruct
 	)
-	if err != nil {
-		var cerr minio.ErrorResponse
-		if errors.As(err, &cerr) && cerr.StatusCode != http.StatusNotFound {
-			return fmt.Errorf("check object already exists: %w", err)
-		}
+
+	if err == nil { // == nil
+		r.m.IncFilestorageRequests(op, metricsSuccess, time.Since(t).Seconds())
+		r.m.IncFilestorageUploads(metricsUploadDuplicate)
+
+		return nil
+	}
+
+	var cerr minio.ErrorResponse
+	if errors.As(err, &cerr) && cerr.StatusCode != http.StatusNotFound {
+		r.m.IncFilestorageRequests(op, metricsError, time.Since(t).Seconds())
+		r.m.IncFilestorageUploads(metricsError)
+
+		return fmt.Errorf("check object already exists: %w", err)
 	}
 
 	opts := minio.PutObjectOptions{ //nolint:exhaustruct
@@ -49,8 +63,14 @@ func (r *Repository) Save(ctx context.Context, cmd model.FileSaveCommand) error 
 		},
 	)
 	if err != nil {
+		r.m.IncFilestorageRequests(op, metricsError, time.Since(t).Seconds())
+		r.m.IncFilestorageUploads(metricsError)
+
 		return fmt.Errorf("put file %s: %w", cmd.Item.Sha256, err)
 	}
+
+	r.m.IncFilestorageRequests(op, metricsSuccess, time.Since(t).Seconds())
+	r.m.IncFilestorageUploads(metricsUploadSuccess)
 
 	return nil
 }

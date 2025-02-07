@@ -7,6 +7,10 @@ import (
 )
 
 type (
+	Metrics interface {
+		IncNatsMicroRequest(op string, status string, size int, dur float64)
+	}
+
 	DocumentHandler interface {
 		FetchDocument(
 			ctx context.Context,

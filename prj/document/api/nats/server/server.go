@@ -7,6 +7,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/micro"
 
+	metricsmw "github.com/zuzuka28/simreport/prj/document/api/nats/middleware/metrics"
 	pb "github.com/zuzuka28/simreport/prj/document/pkg/pb/v1"
 )
 
@@ -20,6 +21,7 @@ func NewServer(
 	conn *nats.Conn,
 	doch DocumentHandler,
 	attrh AttributeHandler,
+	m Metrics,
 ) *Server {
 	compose := struct {
 		pb.UnsafeDocumentServiceServer
@@ -46,7 +48,7 @@ func NewServer(
 					ErrorHandler: nil,
 				},
 				RequestTimeout:       requestTimeout,
-				Middleware:           nil,
+				Middleware:           metricsmw.NewMiddleware(m),
 				RequestErrorHandler:  nil,
 				ResponseErrorHandler: nil,
 			},

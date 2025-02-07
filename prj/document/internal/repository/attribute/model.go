@@ -1,5 +1,9 @@
 package attribute
 
+const (
+	metricsError = "error"
+)
+
 //nolint:revive
 type map_ map[string]any
 

@@ -11,14 +11,18 @@ type Opts struct {
 type Repository struct {
 	cli   *elasticsearch.Client
 	index string
+
+	m Metrics
 }
 
 func NewRepository(
 	opts Opts,
 	es *elasticsearch.Client,
+	m Metrics,
 ) (*Repository, error) {
 	return &Repository{
 		cli:   es,
 		index: opts.Index,
+		m:     m,
 	}, nil
 }

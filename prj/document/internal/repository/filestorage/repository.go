@@ -12,12 +12,16 @@ const (
 
 type Repository struct {
 	cli *minio.Client
+
+	m Metrics
 }
 
 func NewRepository(
 	s3 *minio.Client,
+	m Metrics,
 ) *Repository {
 	return &Repository{
 		cli: s3,
+		m:   m,
 	}
 }

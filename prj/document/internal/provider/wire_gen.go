@@ -23,6 +23,7 @@ import (
 	attribute3 "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/attribute"
 	document3 "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/document"
 	"github.com/zuzuka28/simreport/prj/document/internal/config"
+	"github.com/zuzuka28/simreport/prj/document/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/attribute"
 	"github.com/zuzuka28/simreport/prj/document/internal/repository/document"
@@ -74,35 +75,35 @@ var (
 	_wireValue = []jetstream.JetStreamOpt(nil)
 )
 
-func InitFilestorageRepository(client *minio.Client, configConfig *config.Config) (*filestorage.Repository, error) {
-	repository := filestorage.NewRepository(client)
+func InitFilestorageRepository(client *minio.Client, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*filestorage.Repository, error) {
+	repository := filestorage.NewRepository(client, metricsMetrics)
 	return repository, nil
 }
 
-func InitDocumentRepository(client *elasticsearch.Client, configConfig *config.Config) (*document.Repository, error) {
+func InitDocumentRepository(client *elasticsearch.Client, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*document.Repository, error) {
 	opts := configConfig.DocumentRepo
-	repository, err := document.NewRepository(opts, client)
+	repository, err := document.NewRepository(opts, client, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
 	return repository, nil
 }
 
-func InitAttributeRepository(client *elasticsearch.Client, configConfig *config.Config) (*attribute.Repository, error) {
+func InitAttributeRepository(client *elasticsearch.Client, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*attribute.Repository, error) {
 	opts := configConfig.AttributeRepo
-	repository, err := attribute.NewRepository(opts, client)
+	repository, err := attribute.NewRepository(opts, client, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
 	return repository, nil
 }
 
-func InitDocumentStatusRepository(contextContext context.Context, jetStream jetstream.JetStream) (*documentstatus.Repository, error) {
+func InitDocumentStatusRepository(contextContext context.Context, jetStream jetstream.JetStream, metricsMetrics *metrics.Metrics) (*documentstatus.Repository, error) {
 	keyValue, err := ProvideDocumentStatusJetstreamKV(contextContext, jetStream)
 	if err != nil {
 		return nil, err
 	}
-	repository := documentstatus.NewRepository(keyValue, jetStream)
+	repository := documentstatus.NewRepository(keyValue, jetStream, metricsMetrics)
 	return repository, nil
 }
 
@@ -155,7 +156,8 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitFilestorageRepository(minioClient, configConfig)
+	metricsMetrics := ProvideMetrics()
+	repository, err := InitFilestorageRepository(minioClient, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +165,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	documentRepository, err := InitDocumentRepository(elasticsearchClient, configConfig)
+	documentRepository, err := InitDocumentRepository(elasticsearchClient, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +181,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	documentstatusRepository, err := InitDocumentStatusRepository(contextContext, jetStream)
+	documentstatusRepository, err := InitDocumentStatusRepository(contextContext, jetStream, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +190,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 		return nil, err
 	}
 	handler := InitDocumentHandler(service, documentstatusService)
-	attributeRepository, err := InitAttributeRepository(elasticsearchClient, configConfig)
+	attributeRepository, err := InitAttributeRepository(elasticsearchClient, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -202,6 +204,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 		Spec:             v,
 		DocumentHandler:  handler,
 		AttributeHandler: attributeHandler,
+		Metrics:          metricsMetrics,
 	}
 	serverServer, err := server.New(opts)
 	if err != nil {
@@ -233,7 +236,8 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitFilestorageRepository(minioClient, configConfig)
+	metricsMetrics := ProvideMetrics()
+	repository, err := InitFilestorageRepository(minioClient, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +245,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	documentRepository, err := InitDocumentRepository(elasticsearchClient, configConfig)
+	documentRepository, err := InitDocumentRepository(elasticsearchClient, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -253,7 +257,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	documentstatusRepository, err := InitDocumentStatusRepository(contextContext, jetStream)
+	documentstatusRepository, err := InitDocumentStatusRepository(contextContext, jetStream, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +266,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 		return nil, err
 	}
 	handler := InitDocumentNatsHandler(service, documentstatusService)
-	attributeRepository, err := InitAttributeRepository(elasticsearchClient, configConfig)
+	attributeRepository, err := InitAttributeRepository(elasticsearchClient, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -271,7 +275,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 		return nil, err
 	}
 	attributeHandler := InitAttributeNatsHandler(attributeService)
-	serverServer := server2.NewServer(conn, handler, attributeHandler)
+	serverServer := server2.NewServer(conn, handler, attributeHandler, metricsMetrics)
 	return serverServer, nil
 }
 
@@ -293,7 +297,8 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitDocumentStatusRepository(contextContext, jetStream)
+	metricsMetrics := ProvideMetrics()
+	repository, err := InitDocumentStatusRepository(contextContext, jetStream, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -309,7 +314,7 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	filestorageRepository, err := InitFilestorageRepository(minioClient, configConfig)
+	filestorageRepository, err := InitFilestorageRepository(minioClient, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -317,7 +322,7 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	documentRepository, err := InitDocumentRepository(elasticsearchClient, configConfig)
+	documentRepository, err := InitDocumentRepository(elasticsearchClient, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -338,6 +343,20 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 }
 
 // wire.go:
+
+//nolint:gochecknoglobals
+var (
+	metricsS    *metrics.Metrics
+	metricsOnce sync.Once
+)
+
+func ProvideMetrics() *metrics.Metrics {
+	metricsOnce.Do(func() {
+		metricsS = metrics.New()
+	})
+
+	return metricsS
+}
 
 func ProvideSpec() ([]byte, error) {
 	f, err := os.Open("./api/rest/doc/openapi.yaml")

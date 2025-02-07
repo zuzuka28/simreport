@@ -17,6 +17,7 @@ import (
 	attributeapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/attribute"
 	documentapi "github.com/zuzuka28/simreport/prj/document/api/rest/server/handler/document"
 	"github.com/zuzuka28/simreport/prj/document/internal/config"
+	"github.com/zuzuka28/simreport/prj/document/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
 	attributerepo "github.com/zuzuka28/simreport/prj/document/internal/repository/attribute"
 	documentrepo "github.com/zuzuka28/simreport/prj/document/internal/repository/document"
@@ -39,6 +40,20 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 )
+
+//nolint:gochecknoglobals
+var (
+	metricsS    *metrics.Metrics
+	metricsOnce sync.Once
+)
+
+func ProvideMetrics() *metrics.Metrics {
+	metricsOnce.Do(func() {
+		metricsS = metrics.New()
+	})
+
+	return metricsS
+}
 
 func ProvideSpec() ([]byte, error) {
 	f, err := os.Open("./api/rest/doc/openapi.yaml")
@@ -168,8 +183,10 @@ func ProvideDocumentStatusJetstreamStream(
 func InitFilestorageRepository(
 	_ *minio.Client,
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*filestorage.Repository, error) {
 	panic(wire.Build(
+		wire.Bind(new(filestorage.Metrics), new(*metrics.Metrics)),
 		filestorage.NewRepository,
 	))
 }
@@ -177,8 +194,10 @@ func InitFilestorageRepository(
 func InitDocumentRepository(
 	_ *elasticsearch.Client,
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*documentrepo.Repository, error) {
 	panic(wire.Build(
+		wire.Bind(new(documentrepo.Metrics), new(*metrics.Metrics)),
 		wire.FieldsOf(new(*config.Config), "DocumentRepo"),
 		documentrepo.NewRepository,
 	))
@@ -187,8 +206,10 @@ func InitDocumentRepository(
 func InitAttributeRepository(
 	_ *elasticsearch.Client,
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*attributerepo.Repository, error) {
 	panic(wire.Build(
+		wire.Bind(new(attributerepo.Metrics), new(*metrics.Metrics)),
 		wire.FieldsOf(new(*config.Config), "AttributeRepo"),
 		attributerepo.NewRepository,
 	))
@@ -197,9 +218,11 @@ func InitAttributeRepository(
 func InitDocumentStatusRepository(
 	_ context.Context,
 	_ jetstream.JetStream,
+	_ *metrics.Metrics,
 ) (*documentstatusrepo.Repository, error) {
 	panic(wire.Build(
 		ProvideDocumentStatusJetstreamKV,
+		wire.Bind(new(documentstatusrepo.Metrics), new(*metrics.Metrics)),
 		wire.Bind(new(jetstream.Publisher), new(jetstream.JetStream)),
 		documentstatusrepo.NewRepository,
 	))
@@ -276,6 +299,7 @@ func InitRestAPI(
 	_ *config.Config,
 ) (*serverhttp.Server, error) {
 	panic(wire.Build(
+		ProvideMetrics,
 		ProvideSpec,
 		ProvideS3,
 		ProvideElastic,
@@ -300,6 +324,7 @@ func InitRestAPI(
 		InitAttributeHandler,
 		wire.Bind(new(serverhttp.DocumentHandler), new(*documentapi.Handler)),
 		wire.Bind(new(serverhttp.AttributeHandler), new(*attributeapi.Handler)),
+		wire.Bind(new(serverhttp.Metrics), new(*metrics.Metrics)),
 		wire.FieldsOf(new(*config.Config), "Port"),
 		wire.Struct(new(serverhttp.Opts), "*"),
 		serverhttp.New,
@@ -331,6 +356,7 @@ func InitNatsAPI(
 	_ *config.Config,
 ) (*servernats.Server, error) {
 	panic(wire.Build(
+		ProvideMetrics,
 		ProvideS3,
 		ProvideElastic,
 		ProvideNats,
@@ -355,6 +381,7 @@ func InitNatsAPI(
 
 		wire.Bind(new(servernats.DocumentHandler), new(*documentnatsapi.Handler)),
 		wire.Bind(new(servernats.AttributeHandler), new(*attributenatsapi.Handler)),
+		wire.Bind(new(servernats.Metrics), new(*metrics.Metrics)),
 		servernats.NewServer,
 	))
 }
@@ -385,6 +412,7 @@ func InitDocumentPipeline(
 	_ *config.Config,
 ) (*documentpipeline.Service, error) {
 	panic(wire.Build(
+		ProvideMetrics,
 		ProvideS3,
 		ProvideElastic,
 		ProvideNats,
