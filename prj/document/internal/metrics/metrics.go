@@ -3,7 +3,8 @@ package metrics
 import "github.com/prometheus/client_golang/prometheus"
 
 const (
-	namespace = "simrep_documents"
+	namespace = "simrep"
+	subsystem = "document"
 )
 
 type Metrics struct {
@@ -28,8 +29,8 @@ func New() *Metrics {
 		attributeRepositoryRequests: prometheus.NewCounterVec(
 			prometheus.CounterOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "attribute_repository",
-				Name:      "requests_total",
+				Subsystem: subsystem,
+				Name:      "attribute_repository_requests_total",
 				Help:      "Tracks document status updates",
 			},
 			[]string{
@@ -40,8 +41,8 @@ func New() *Metrics {
 		attributeRepositoryRequestDurations: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "attribute_repository",
-				Name:      "request_duration_seconds",
+				Subsystem: subsystem,
+				Name:      "attribute_repository_request_duration_seconds",
 				Help:      "Tracks request durations in attribute repository",
 				Buckets:   prometheus.ExponentialBuckets(0.1, 2, 10), //nolint:gomnd,mnd
 			},
@@ -53,8 +54,8 @@ func New() *Metrics {
 		documentRepositoryRequests: prometheus.NewCounterVec(
 			prometheus.CounterOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "document_repository",
-				Name:      "requests_total",
+				Subsystem: subsystem,
+				Name:      "document_repository_requests_total",
 				Help:      "Tracks document status updates",
 			},
 			[]string{
@@ -65,8 +66,8 @@ func New() *Metrics {
 		documentRepositoryRequestDurations: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "document_repository",
-				Name:      "request_duration_seconds",
+				Subsystem: subsystem,
+				Name:      "document_repository_request_duration_seconds",
 				Help:      "Tracks request durations in document repository",
 				Buckets:   prometheus.ExponentialBuckets(0.1, 2, 10), //nolint:gomnd,mnd
 			},
@@ -78,8 +79,8 @@ func New() *Metrics {
 		documentStatusRepositoryUpdates: prometheus.NewCounterVec(
 			prometheus.CounterOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "document_status_repository",
-				Name:      "updates_total",
+				Subsystem: subsystem,
+				Name:      "document_status_repository_updates_total",
 				Help:      "Tracks document status updates",
 			},
 			[]string{
@@ -90,8 +91,8 @@ func New() *Metrics {
 		filestorageRequests: prometheus.NewCounterVec(
 			prometheus.CounterOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "filestorage",
-				Name:      "requests_total",
+				Subsystem: subsystem,
+				Name:      "filestorage_requests_total",
 				Help:      "Tracks requests to filestorage",
 			},
 			[]string{
@@ -102,8 +103,8 @@ func New() *Metrics {
 		filestorageRequestDurations: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "filestorage",
-				Name:      "request_duration_seconds",
+				Subsystem: subsystem,
+				Name:      "filestorage_request_duration_seconds",
 				Help:      "Tracks request durations filestorage",
 				Buckets:   prometheus.ExponentialBuckets(0.1, 2, 10), //nolint:gomnd,mnd
 			},
@@ -115,8 +116,8 @@ func New() *Metrics {
 		filestorageUploads: prometheus.NewCounterVec(
 			prometheus.CounterOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "filestorage",
-				Name:      "updates_total",
+				Subsystem: subsystem,
+				Name:      "filestorage_updates_total",
 				Help:      "Tracks filestorage updates",
 			},
 			[]string{
@@ -126,8 +127,8 @@ func New() *Metrics {
 		natsMicroRequests: prometheus.NewCounterVec(
 			prometheus.CounterOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "nats_micro",
-				Name:      "requests_total",
+				Subsystem: subsystem,
+				Name:      "nats_micro_requests_total",
 				Help:      "Tracks requests to nats micro",
 			},
 			[]string{
@@ -138,8 +139,8 @@ func New() *Metrics {
 		natsMicroRequestDurations: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "nats_micro",
-				Name:      "request_duration_seconds",
+				Subsystem: subsystem,
+				Name:      "nats_micro_request_duration_seconds",
 				Help:      "Tracks request durations in nats micro",
 				Buckets:   prometheus.ExponentialBuckets(0.1, 2, 10), //nolint:gomnd,mnd
 			},
@@ -151,8 +152,8 @@ func New() *Metrics {
 		natsMicroSizes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "nats_micro",
-				Name:      "request_sizes_bytes",
+				Subsystem: subsystem,
+				Name:      "nats_micro_request_sizes_bytes",
 				Help:      "Tracks request sizes in nats micro",
 				Buckets:   prometheus.ExponentialBuckets(1024*256, 2, 10), //nolint:gomnd,mnd
 			},
@@ -164,8 +165,8 @@ func New() *Metrics {
 		httpRequests: prometheus.NewCounterVec(
 			prometheus.CounterOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "http_server",
-				Name:      "requests_total",
+				Subsystem: subsystem,
+				Name:      "http_server_requests_total",
 				Help:      "Tracks requests to http_server",
 			},
 			[]string{
@@ -176,8 +177,8 @@ func New() *Metrics {
 		httpRequestDurations: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "http_server",
-				Name:      "request_duration_seconds",
+				Subsystem: subsystem,
+				Name:      "http_server_request_duration_seconds",
 				Help:      "Tracks request durations in http server",
 				Buckets:   prometheus.ExponentialBuckets(0.1, 2, 10), //nolint:gomnd,mnd
 			},
@@ -189,8 +190,8 @@ func New() *Metrics {
 		httpSizes: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{ //nolint:exhaustruct
 				Namespace: namespace,
-				Subsystem: "http_server",
-				Name:      "request_sizes_bytes",
+				Subsystem: subsystem,
+				Name:      "http_server_request_sizes_bytes",
 				Help:      "Tracks request sizes in http server",
 				Buckets:   prometheus.ExponentialBuckets(1024*256, 2, 10), //nolint:gomnd,mnd
 			},

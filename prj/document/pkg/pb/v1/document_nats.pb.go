@@ -269,8 +269,13 @@ func (ce *ClientError) Error() string {
 	return fmt.Sprintf("[%s] %s", ce.Status, ce.Description)
 }
 
+type Invoker func(ctx context.Context, msg *nats.Msg) (*nats.Msg, error)
+
+type InvokerMiddleware func(Invoker) Invoker
+
 type DocumentServiceClientConfig struct {
 	MicroSubject string
+	Middleware   InvokerMiddleware
 }
 
 // DocumentServiceClient is the client API for DocumentService service.
@@ -298,19 +303,28 @@ func (c *DocumentServiceClient) FetchDocument(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".fetch_document", data)
+	reqmsg := nats.NewMsg(c.cfg.MicroSubject + ".fetch_document")
+	reqmsg.Data = data
+
+	doRequest := c.nc.RequestMsgWithContext
+
+	if c.cfg.Middleware != nil {
+		doRequest = c.cfg.Middleware(doRequest)
+	}
+
+	respmsg, err := doRequest(ctx, reqmsg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 
-	if msg.Header.Get(micro.ErrorHeader) != "" {
+	if respmsg.Header.Get(micro.ErrorHeader) != "" {
 		return nil, &ClientError{
-			Status:      msg.Header.Get(micro.ErrorCodeHeader),
-			Description: msg.Header.Get(micro.ErrorHeader),
+			Status:      respmsg.Header.Get(micro.ErrorCodeHeader),
+			Description: respmsg.Header.Get(micro.ErrorHeader),
 		}
 	}
 
-	if err := proto.Unmarshal(msg.Data, resp); err != nil {
+	if err := proto.Unmarshal(respmsg.Data, resp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
@@ -328,19 +342,28 @@ func (c *DocumentServiceClient) UploadDocument(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".upload_document", data)
+	reqmsg := nats.NewMsg(c.cfg.MicroSubject + ".upload_document")
+	reqmsg.Data = data
+
+	doRequest := c.nc.RequestMsgWithContext
+
+	if c.cfg.Middleware != nil {
+		doRequest = c.cfg.Middleware(doRequest)
+	}
+
+	respmsg, err := doRequest(ctx, reqmsg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 
-	if msg.Header.Get(micro.ErrorHeader) != "" {
+	if respmsg.Header.Get(micro.ErrorHeader) != "" {
 		return nil, &ClientError{
-			Status:      msg.Header.Get(micro.ErrorCodeHeader),
-			Description: msg.Header.Get(micro.ErrorHeader),
+			Status:      respmsg.Header.Get(micro.ErrorCodeHeader),
+			Description: respmsg.Header.Get(micro.ErrorHeader),
 		}
 	}
 
-	if err := proto.Unmarshal(msg.Data, resp); err != nil {
+	if err := proto.Unmarshal(respmsg.Data, resp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
@@ -358,19 +381,28 @@ func (c *DocumentServiceClient) SearchAttribute(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".search_attribute", data)
+	reqmsg := nats.NewMsg(c.cfg.MicroSubject + ".search_attribute")
+	reqmsg.Data = data
+
+	doRequest := c.nc.RequestMsgWithContext
+
+	if c.cfg.Middleware != nil {
+		doRequest = c.cfg.Middleware(doRequest)
+	}
+
+	respmsg, err := doRequest(ctx, reqmsg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 
-	if msg.Header.Get(micro.ErrorHeader) != "" {
+	if respmsg.Header.Get(micro.ErrorHeader) != "" {
 		return nil, &ClientError{
-			Status:      msg.Header.Get(micro.ErrorCodeHeader),
-			Description: msg.Header.Get(micro.ErrorHeader),
+			Status:      respmsg.Header.Get(micro.ErrorCodeHeader),
+			Description: respmsg.Header.Get(micro.ErrorHeader),
 		}
 	}
 
-	if err := proto.Unmarshal(msg.Data, resp); err != nil {
+	if err := proto.Unmarshal(respmsg.Data, resp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
@@ -388,19 +420,28 @@ func (c *DocumentServiceClient) SearchDocument(
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	msg, err := c.nc.RequestWithContext(ctx, c.cfg.MicroSubject+".search_document", data)
+	reqmsg := nats.NewMsg(c.cfg.MicroSubject + ".search_document")
+	reqmsg.Data = data
+
+	doRequest := c.nc.RequestMsgWithContext
+
+	if c.cfg.Middleware != nil {
+		doRequest = c.cfg.Middleware(doRequest)
+	}
+
+	respmsg, err := doRequest(ctx, reqmsg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
 
-	if msg.Header.Get(micro.ErrorHeader) != "" {
+	if respmsg.Header.Get(micro.ErrorHeader) != "" {
 		return nil, &ClientError{
-			Status:      msg.Header.Get(micro.ErrorCodeHeader),
-			Description: msg.Header.Get(micro.ErrorHeader),
+			Status:      respmsg.Header.Get(micro.ErrorCodeHeader),
+			Description: respmsg.Header.Get(micro.ErrorHeader),
 		}
 	}
 
-	if err := proto.Unmarshal(msg.Data, resp); err != nil {
+	if err := proto.Unmarshal(respmsg.Data, resp); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
