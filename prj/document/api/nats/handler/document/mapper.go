@@ -102,42 +102,62 @@ func mapFetchDocumentRequestToQuery(
 	}
 }
 
-func mapFileToPb(
-	in model.File,
-) *pb.File {
-	return &pb.File{
-		Content:  in.Content,
-		Id:       in.Sha256,
-		Filename: in.Name,
-	}
-}
-
 func mapDocumentToPb(
+	q model.DocumentQuery,
 	in model.Document,
 ) *pb.Document {
 	imgs := make([]*pb.File, 0, len(in.Images))
-
-	for _, v := range in.Images {
-		imgs = append(imgs, mapFileToPb(v))
+	for _, v := range in.ImageIDs {
+		imgs = append(imgs, &pb.File{
+			Content:  nil,
+			Id:       v,
+			Filename: "",
+		})
 	}
 
-	return &pb.Document{
+	doc := &pb.Document{
 		Id:          in.ID(),
 		Name:        in.Name,
 		LastUpdated: timestamppb.New(in.LastUpdated),
 		Version:     int64(in.Version),
 		GroupIds:    in.GroupID,
-		Source:      mapFileToPb(in.Source),
-		Text:        mapFileToPb(in.Text),
-		Images:      imgs,
+		Source: &pb.File{
+			Content:  nil,
+			Id:       in.SourceID,
+			Filename: "",
+		},
+		Text: &pb.File{
+			Content:  nil,
+			Id:       in.TextID,
+			Filename: "",
+		},
+		Images: imgs,
 	}
+
+	if !q.WithContent {
+		return doc
+	}
+
+	doc.Source.Content = in.Source.Content
+	doc.Source.Filename = in.Source.Name
+
+	doc.Text.Content = in.Text.Content
+	doc.Text.Filename = in.Text.Name
+
+	for i, v := range in.Images {
+		doc.Images[i].Content = v.Content
+		doc.Images[i].Filename = v.Name
+	}
+
+	return doc
 }
 
 func mapFetchDocumentResponseToPb(
+	q model.DocumentQuery,
 	in model.Document,
 ) *pb.FetchDocumentResponse {
 	return &pb.FetchDocumentResponse{
 		Error:    nil,
-		Document: mapDocumentToPb(in),
+		Document: mapDocumentToPb(q, in),
 	}
 }

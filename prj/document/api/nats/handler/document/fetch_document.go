@@ -18,5 +18,5 @@ func (h *Handler) FetchDocument(
 		return nil, fmt.Errorf("fetch document: %w", err)
 	}
 
-	return mapFetchDocumentResponseToPb(res), nil
+	return mapFetchDocumentResponseToPb(q, res), nil
 }
