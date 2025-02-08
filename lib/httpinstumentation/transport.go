@@ -50,7 +50,6 @@ func (it *InstumentedTransport) RoundTrip(req *http.Request) (*http.Response, er
 	attrs = append(attrs,
 		"elapsed_time", time.Since(t),
 		"response_status", res.StatusCode,
-		"response_size", res.Body,
 	)
 
 	if it.LogResponseBody && res != nil && res.Body != nil && res.Body != http.NoBody {
@@ -65,7 +64,10 @@ func (it *InstumentedTransport) RoundTrip(req *http.Request) (*http.Response, er
 			return nil, fmt.Errorf("log response body: %w", err)
 		}
 
-		attrs = append(attrs, "response_body", buf.String())
+		attrs = append(attrs,
+			"response_body", buf.String(),
+			"response_size", buf.Len(),
+		)
 	}
 
 	if err != nil {
