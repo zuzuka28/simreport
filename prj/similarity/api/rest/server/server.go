@@ -13,7 +13,9 @@ import (
 	openapimw "github.com/oapi-codegen/nethttp-middleware"
 	"github.com/rs/cors"
 	openapi "github.com/zuzuka28/simreport/prj/similarity/api/rest/gen"
+	"github.com/zuzuka28/simreport/prj/similarity/api/rest/middleware/logging"
 	metricsmw "github.com/zuzuka28/simreport/prj/similarity/api/rest/middleware/metrics"
+	"github.com/zuzuka28/simreport/prj/similarity/api/rest/middleware/reqid"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -47,8 +49,13 @@ func New(
 
 	router := mux.NewRouter()
 
-	router.Use(metricsmw.NewMiddleware(opts.Metrics))
-	router.Use(openapimw.OapiRequestValidator(spec))
+	router.Use(
+		reqid.NewMiddleware(),
+		metricsmw.NewMiddleware(opts.Metrics),
+		logging.NewMiddleware(),
+		openapimw.OapiRequestValidator(spec),
+	)
+
 	openapi3filter.RegisterBodyDecoder(docMime, openapi3filter.FileBodyDecoder)
 	openapi3filter.RegisterBodyDecoder(docxMime, openapi3filter.FileBodyDecoder)
 	openapi3filter.RegisterBodyDecoder(pdfMime, openapi3filter.FileBodyDecoder)

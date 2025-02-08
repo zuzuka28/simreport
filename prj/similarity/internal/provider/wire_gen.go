@@ -11,12 +11,14 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/nats-io/nats.go"
 	"github.com/zuzuka28/simreport/lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/httpinstumentation"
 	similarity3 "github.com/zuzuka28/simreport/prj/similarity/api/nats/handler/similarity"
 	server2 "github.com/zuzuka28/simreport/prj/similarity/api/nats/server"
 	"github.com/zuzuka28/simreport/prj/similarity/api/rest/server"
 	similarity2 "github.com/zuzuka28/simreport/prj/similarity/api/rest/server/handler/similarity"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/config"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/metrics"
+	"github.com/zuzuka28/simreport/prj/similarity/internal/model"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/analyzehistory"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/document"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/similarityindexclient"
@@ -26,19 +28,14 @@ import (
 	"github.com/zuzuka28/simreport/prj/similarity/internal/service/shingleindex"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/service/similarity"
 	"io"
+	"net"
+	"net/http"
 	"os"
 	"sync"
+	"time"
 )
 
 // Injectors from wire.go:
-
-func InitConfig(string2 string) (*config.Config, error) {
-	configConfig, err := config.New(string2)
-	if err != nil {
-		return nil, err
-	}
-	return configConfig, nil
-}
 
 func InitDocumentRepository(conn *nats.Conn, metricsMetrics *metrics.Metrics) (*document.Repository, error) {
 	repository := document.NewRepository(conn, metricsMetrics)
@@ -256,6 +253,43 @@ func ProvideSpec() ([]byte, error) {
 	}
 
 	return spec, nil
+}
+
+func ProvideConfig(path string) (*config.Config, error) {
+	cfg, err := config.New(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defaultTransportDialContext := func(
+		dialer *net.Dialer,
+	) func(context.Context, string, string) (net.Conn, error) {
+		return dialer.DialContext
+	}
+
+	transport := &httpinstumentation.InstumentedTransport{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: defaultTransportDialContext(&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}),
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		ExtractAttrs: func(ctx context.Context) []any {
+			return []any{"request_id", ctx.Value(model.RequestIDKey)}
+		},
+		LogRequestBody:  true,
+		LogResponseBody: false,
+	}
+
+	cfg.Elastic.Transport = transport
+
+	return cfg, nil
 }
 
 //nolint:gochecknoglobals
