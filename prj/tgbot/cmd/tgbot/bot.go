@@ -14,7 +14,7 @@ import (
 )
 
 func runApp(c *cli.Context) error {
-	cfg, err := provider.InitConfig(c.String("config"))
+	cfg, err := provider.ProvideConfig(c.String("config"))
 	if err != nil {
 		return fmt.Errorf("read config: %w", err)
 	}

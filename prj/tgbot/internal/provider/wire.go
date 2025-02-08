@@ -4,13 +4,18 @@ package provider
 
 import (
 	"context"
+	"net"
+	"net/http"
 	"sync"
+	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/zuzuka28/simreport/lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/httpinstumentation"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/bot"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/config"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/metrics"
+	"github.com/zuzuka28/simreport/prj/tgbot/internal/model"
 	userstaterepo "github.com/zuzuka28/simreport/prj/tgbot/internal/repository/userstate"
 	userstatesrv "github.com/zuzuka28/simreport/prj/tgbot/internal/service/userstate"
 
@@ -37,8 +42,42 @@ func ProvideMetrics() *metrics.Metrics {
 	return metricsS
 }
 
-func InitConfig(path string) (*config.Config, error) {
-	panic(wire.Build(config.New))
+func ProvideConfig(path string) (*config.Config, error) {
+	cfg, err := config.New(path)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	defaultTransportDialContext := func(
+		dialer *net.Dialer,
+	) func(context.Context, string, string) (net.Conn, error) {
+		return dialer.DialContext
+	}
+
+	//nolint:exhaustruct,gomnd,mnd
+	transport := &httpinstumentation.InstumentedTransport{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: defaultTransportDialContext(&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}),
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		ExtractAttrs: func(ctx context.Context) []any {
+			return []any{"request_id", ctx.Value(model.RequestIDKey)}
+		},
+		LogRequestBody:  true,
+		LogResponseBody: false,
+	}
+
+	cfg.Elastic.Transport = transport
+
+	return cfg, nil
 }
 
 //nolint:gochecknoglobals

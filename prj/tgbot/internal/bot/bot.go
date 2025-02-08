@@ -41,7 +41,12 @@ func New(
 		return nil, fmt.Errorf("new telebot: %w", err)
 	}
 
-	b.Use(newMetricsMiddleware(m))
+	b.Use(
+		newInjectContextMiddleware(),
+		newInjectRequestIDMiddleware(),
+		newMetricsMiddleware(m),
+		newLoggingMiddleware(),
+	)
 
 	sm := newStateManager(uss)
 
@@ -67,24 +72,20 @@ func New(
 	bot.fsm.AddTransitions(menu.Transitions())
 
 	b.Handle("/start", func(c tele.Context) error {
-		ctx := context.Background()
-		return bot.fsm.Trigger(ctx, c, string(eventEnterMenu))
+		return bot.fsm.Trigger(c, string(eventEnterMenu))
 	})
 
 	b.Handle(tele.OnDocument, func(c tele.Context) error {
-		ctx := context.Background()
-		return bot.fsm.Trigger(ctx, c, string(eventFileRecieved))
+		return bot.fsm.Trigger(c, string(eventFileRecieved))
 	})
 
 	b.Handle(tele.OnText, func(c tele.Context) error {
-		ctx := context.Background()
-		return bot.fsm.Trigger(ctx, c, string(eventTextRecieved))
+		return bot.fsm.Trigger(c, string(eventTextRecieved))
 	})
 
 	for _, v := range menu.Buttons() {
 		b.Handle(v.btn, func(c tele.Context) error {
-			ctx := context.Background()
-			return bot.fsm.Trigger(ctx, c, string(v.event))
+			return bot.fsm.Trigger(c, string(v.event))
 		})
 	}
 

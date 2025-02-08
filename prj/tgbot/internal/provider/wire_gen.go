@@ -11,27 +11,24 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/nats-io/nats.go"
 	"github.com/zuzuka28/simreport/lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/httpinstumentation"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/bot"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/config"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/metrics"
+	"github.com/zuzuka28/simreport/prj/tgbot/internal/model"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/repository/document"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/repository/similarity"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/repository/userstate"
 	document2 "github.com/zuzuka28/simreport/prj/tgbot/internal/service/document"
 	similarity2 "github.com/zuzuka28/simreport/prj/tgbot/internal/service/similarity"
 	userstate2 "github.com/zuzuka28/simreport/prj/tgbot/internal/service/userstate"
+	"net"
+	"net/http"
 	"sync"
+	"time"
 )
 
 // Injectors from wire.go:
-
-func InitConfig(path string) (*config.Config, error) {
-	configConfig, err := config.New(path)
-	if err != nil {
-		return nil, err
-	}
-	return configConfig, nil
-}
 
 func ProvideUserStateRepository(configConfig *config.Config, client *elasticsearch.Client, metricsMetrics *metrics.Metrics) *userstate.Repository {
 	userstateConfig := configConfig.UserStateRepo
@@ -102,6 +99,43 @@ func ProvideMetrics() *metrics.Metrics {
 	})
 
 	return metricsS
+}
+
+func ProvideConfig(path string) (*config.Config, error) {
+	cfg, err := config.New(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defaultTransportDialContext := func(
+		dialer *net.Dialer,
+	) func(context.Context, string, string) (net.Conn, error) {
+		return dialer.DialContext
+	}
+
+	transport := &httpinstumentation.InstumentedTransport{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: defaultTransportDialContext(&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}),
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		ExtractAttrs: func(ctx context.Context) []any {
+			return []any{"request_id", ctx.Value(model.RequestIDKey)}
+		},
+		LogRequestBody:  true,
+		LogResponseBody: false,
+	}
+
+	cfg.Elastic.Transport = transport
+
+	return cfg, nil
 }
 
 //nolint:gochecknoglobals

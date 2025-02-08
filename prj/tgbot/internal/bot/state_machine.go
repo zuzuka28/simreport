@@ -71,7 +71,9 @@ func (sm *StateMachine) CurrentState(ctx context.Context, userID int) (State, er
 	return State(state), nil
 }
 
-func (sm *StateMachine) Trigger(ctx context.Context, c tele.Context, event string) error {
+func (sm *StateMachine) Trigger(c tele.Context, event string) error {
+	ctx := c.Get(contextKey).(context.Context)
+
 	currentState, err := sm.CurrentState(ctx, int(c.Sender().ID))
 	if err != nil {
 		return fmt.Errorf("get current state: %w", err)
