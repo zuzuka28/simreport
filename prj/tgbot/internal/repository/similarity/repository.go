@@ -8,9 +8,13 @@ import (
 
 type Repository struct {
 	cli *pb.SimilarityServiceClient
+	m   Metrics
 }
 
-func NewRepository(conn *nats.Conn) *Repository {
+func NewRepository(
+	conn *nats.Conn,
+	m Metrics,
+) *Repository {
 	return &Repository{
 		cli: pb.NewSimilarityServiceClient(
 			pb.SimilarityServiceClientConfig{
@@ -18,5 +22,6 @@ func NewRepository(conn *nats.Conn) *Repository {
 			},
 			conn,
 		),
+		m: m,
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/bot"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/config"
+	"github.com/zuzuka28/simreport/prj/tgbot/internal/metrics"
 	userstaterepo "github.com/zuzuka28/simreport/prj/tgbot/internal/repository/userstate"
 	userstatesrv "github.com/zuzuka28/simreport/prj/tgbot/internal/service/userstate"
 
@@ -21,6 +22,20 @@ import (
 	"github.com/google/wire"
 	"github.com/nats-io/nats.go"
 )
+
+//nolint:gochecknoglobals
+var (
+	metricsS    *metrics.Metrics
+	metricsOnce sync.Once
+)
+
+func ProvideMetrics() *metrics.Metrics {
+	metricsOnce.Do(func() {
+		metricsS = metrics.New()
+	})
+
+	return metricsS
+}
 
 func InitConfig(path string) (*config.Config, error) {
 	panic(wire.Build(config.New))
@@ -67,25 +82,31 @@ func ProvideNats(
 func ProvideUserStateRepository(
 	*config.Config,
 	*elasticsearch.Client,
+	*metrics.Metrics,
 ) *userstaterepo.Repository {
 	panic(wire.Build(
 		wire.FieldsOf(new(*config.Config), "UserStateRepo"),
+		wire.Bind(new(userstaterepo.Metrics), new(*metrics.Metrics)),
 		userstaterepo.NewRepository,
 	))
 }
 
 func ProvideDocumentRepository(
 	*nats.Conn,
+	*metrics.Metrics,
 ) *documentrepo.Repository {
 	panic(wire.Build(
+		wire.Bind(new(documentrepo.Metrics), new(*metrics.Metrics)),
 		documentrepo.NewRepository,
 	))
 }
 
 func ProvideSimilarityRepository(
 	*nats.Conn,
+	*metrics.Metrics,
 ) *similarityrepo.Repository {
 	panic(wire.Build(
+		wire.Bind(new(similarityrepo.Metrics), new(*metrics.Metrics)),
 		similarityrepo.NewRepository,
 	))
 }
@@ -122,6 +143,7 @@ func InitBot(
 	*config.Config,
 ) (*bot.Bot, error) {
 	panic(wire.Build(
+		ProvideMetrics,
 		ProvideElastic,
 		ProvideNats,
 		ProvideUserStateRepository,
@@ -133,6 +155,7 @@ func InitBot(
 		wire.Bind(new(bot.UserStateService), new(*userstatesrv.Service)),
 		wire.Bind(new(bot.DocumentService), new(*documentsrv.Service)),
 		wire.Bind(new(bot.SimilarityService), new(*similaritysrv.Service)),
+		wire.Bind(new(bot.Metrics), new(*metrics.Metrics)),
 		wire.FieldsOf(new(*config.Config), "Bot"),
 		bot.New,
 	))

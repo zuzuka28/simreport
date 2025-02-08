@@ -13,6 +13,7 @@ import (
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/bot"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/config"
+	"github.com/zuzuka28/simreport/prj/tgbot/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/repository/document"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/repository/similarity"
 	"github.com/zuzuka28/simreport/prj/tgbot/internal/repository/userstate"
@@ -32,19 +33,19 @@ func InitConfig(path string) (*config.Config, error) {
 	return configConfig, nil
 }
 
-func ProvideUserStateRepository(configConfig *config.Config, client *elasticsearch.Client) *userstate.Repository {
+func ProvideUserStateRepository(configConfig *config.Config, client *elasticsearch.Client, metricsMetrics *metrics.Metrics) *userstate.Repository {
 	userstateConfig := configConfig.UserStateRepo
-	repository := userstate.NewRepository(userstateConfig, client)
+	repository := userstate.NewRepository(userstateConfig, client, metricsMetrics)
 	return repository
 }
 
-func ProvideDocumentRepository(conn *nats.Conn) *document.Repository {
-	repository := document.NewRepository(conn)
+func ProvideDocumentRepository(conn *nats.Conn, metricsMetrics *metrics.Metrics) *document.Repository {
+	repository := document.NewRepository(conn, metricsMetrics)
 	return repository
 }
 
-func ProvideSimilarityRepository(conn *nats.Conn) *similarity.Repository {
-	repository := similarity.NewRepository(conn)
+func ProvideSimilarityRepository(conn *nats.Conn, metricsMetrics *metrics.Metrics) *similarity.Repository {
+	repository := similarity.NewRepository(conn, metricsMetrics)
 	return repository
 }
 
@@ -69,17 +70,18 @@ func InitBot(contextContext context.Context, configConfig *config.Config) (*bot.
 	if err != nil {
 		return nil, err
 	}
-	repository := ProvideUserStateRepository(configConfig, client)
+	metricsMetrics := ProvideMetrics()
+	repository := ProvideUserStateRepository(configConfig, client, metricsMetrics)
 	service := ProvideUserStateService(repository)
 	conn, err := ProvideNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
-	documentRepository := ProvideDocumentRepository(conn)
+	documentRepository := ProvideDocumentRepository(conn, metricsMetrics)
 	documentService := ProvideDocumentService(documentRepository)
-	similarityRepository := ProvideSimilarityRepository(conn)
+	similarityRepository := ProvideSimilarityRepository(conn, metricsMetrics)
 	similarityService := ProvideSimilarityService(similarityRepository)
-	botBot, err := bot.New(botConfig, service, documentService, similarityService)
+	botBot, err := bot.New(botConfig, service, documentService, similarityService, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -87,6 +89,20 @@ func InitBot(contextContext context.Context, configConfig *config.Config) (*bot.
 }
 
 // wire.go:
+
+//nolint:gochecknoglobals
+var (
+	metricsS    *metrics.Metrics
+	metricsOnce sync.Once
+)
+
+func ProvideMetrics() *metrics.Metrics {
+	metricsOnce.Do(func() {
+		metricsS = metrics.New()
+	})
+
+	return metricsS
+}
 
 //nolint:gochecknoglobals
 var (

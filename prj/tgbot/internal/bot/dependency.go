@@ -7,6 +7,11 @@ import (
 )
 
 type (
+	Metrics interface {
+		IncBotRequestsByUser(username, userid string)
+		IncBotErrors(desc string)
+	}
+
 	UserStateService interface {
 		Fetch(
 			ctx context.Context,

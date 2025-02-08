@@ -8,15 +8,21 @@ import (
 
 type Repository struct {
 	cli *pb.DocumentServiceClient
+	m   Metrics
 }
 
-func NewRepository(conn *nats.Conn) *Repository {
+func NewRepository(
+	conn *nats.Conn,
+	m Metrics,
+) *Repository {
 	return &Repository{
 		cli: pb.NewDocumentServiceClient(
 			pb.DocumentServiceClientConfig{
 				MicroSubject: "document",
+				Middleware:   nil,
 			},
 			conn,
 		),
+		m: m,
 	}
 }

@@ -29,6 +29,7 @@ func New(
 	uss UserStateService,
 	ds DocumentService,
 	ss SimilarityService,
+	m Metrics,
 ) (*Bot, error) {
 	pref := tele.Settings{ //nolint:exhaustruct
 		Token:  cfg.Token,
@@ -39,6 +40,8 @@ func New(
 	if err != nil {
 		return nil, fmt.Errorf("new telebot: %w", err)
 	}
+
+	b.Use(newMetricsMiddleware(m))
 
 	sm := newStateManager(uss)
 
