@@ -2,6 +2,10 @@ package analyzehistory
 
 import "time"
 
+const (
+	metricsError = "error"
+)
+
 //nolint:revive
 type map_ map[string]any
 

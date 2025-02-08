@@ -11,19 +11,24 @@ type Opts struct {
 }
 
 type Repository struct {
-	cli *pb.SimilarityIndexClient
+	index string
+	cli   *pb.SimilarityIndexClient
+	m     Metrics
 }
 
 func NewRepository(
 	cfg Opts,
 	conn *nats.Conn,
+	m Metrics,
 ) *Repository {
 	return &Repository{
+		index: cfg.MicroSubject,
 		cli: pb.NewSimilarityIndexClient(
 			pb.SimilarityIndexClientConfig{
 				MicroSubject: cfg.MicroSubject,
 			},
 			conn,
 		),
+		m: m,
 	}
 }

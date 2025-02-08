@@ -76,22 +76,37 @@ func mapFileToModel(
 	}
 }
 
-func isErr(in *pb.Error) error {
-	if in == nil {
-		return nil
+func mapErrorToModel(err error) error {
+	clierr := new(pb.ClientError)
+
+	if !errors.As(err, &clierr) {
+		return errors.Join(errInternal, err)
 	}
 
-	status := in.GetStatus()
-	switch status {
-	case 404:
-		return fmt.Errorf("%w: %s", model.ErrNotFound, in.GetDescription())
+	var merr error
 
-	case 400:
-		return fmt.Errorf("%w: %s", model.ErrInvalid, in.GetDescription())
+	switch clierr.Status {
+	case "404":
+		merr = model.ErrNotFound
+
+	case "400":
+		merr = model.ErrInvalid
 
 	default:
-		return fmt.Errorf("%w: %s", errInternal, in.GetDescription())
+		merr = errInternal
 	}
+
+	return errors.Join(merr, err)
+}
+
+func mapErrorToStatus(err error) string {
+	clierr := new(pb.ClientError)
+
+	if !errors.As(err, &clierr) {
+		return "500"
+	}
+
+	return clierr.Status
 }
 
 func mapDocumentQueryToPb(

@@ -3,6 +3,7 @@ package similarityindexclient
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/zuzuka28/simreport/prj/similarity/internal/model"
 
@@ -13,16 +14,19 @@ func (s *Repository) SearchSimilar(
 	ctx context.Context,
 	query model.SimilarityQuery,
 ) ([]*model.SimilarityMatch, error) {
+	const op = "searchSimilar"
+
+	t := time.Now()
+
 	resp, err := s.cli.SearchSimilar(ctx, &pb.SearchSimilarRequest{
 		Id: query.ID,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("do request: %w", err)
+		s.m.IncSimilarityIndexRequests(s.index, op, mapErrorToStatus(err), time.Since(t).Seconds())
+		return nil, fmt.Errorf("do request: %w", mapErrorToModel(err))
 	}
 
-	if err := isErr(resp.GetError()); err != nil {
-		return nil, err
-	}
+	s.m.IncSimilarityIndexRequests(s.index, op, "200", time.Since(t).Seconds())
 
 	return parseSearchSimilarResponse(resp), nil
 }

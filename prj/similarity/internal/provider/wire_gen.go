@@ -16,6 +16,7 @@ import (
 	"github.com/zuzuka28/simreport/prj/similarity/api/rest/server"
 	similarity2 "github.com/zuzuka28/simreport/prj/similarity/api/rest/server/handler/similarity"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/config"
+	"github.com/zuzuka28/simreport/prj/similarity/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/analyzehistory"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/document"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/similarityindexclient"
@@ -39,8 +40,8 @@ func InitConfig(string2 string) (*config.Config, error) {
 	return configConfig, nil
 }
 
-func InitDocumentRepository(conn *nats.Conn) (*document.Repository, error) {
-	repository := document.NewRepository(conn)
+func InitDocumentRepository(conn *nats.Conn, metricsMetrics *metrics.Metrics) (*document.Repository, error) {
+	repository := document.NewRepository(conn, metricsMetrics)
 	return repository, nil
 }
 
@@ -49,14 +50,14 @@ func InitDocumentService(repository *document.Repository) (*document2.Service, e
 	return service, nil
 }
 
-func InitSimilarityIndexRepository(opts similarityindexclient.Opts, conn *nats.Conn) (*similarityindexclient.Repository, error) {
-	repository := similarityindexclient.NewRepository(opts, conn)
+func InitSimilarityIndexRepository(opts similarityindexclient.Opts, conn *nats.Conn, metricsMetrics *metrics.Metrics) (*similarityindexclient.Repository, error) {
+	repository := similarityindexclient.NewRepository(opts, conn, metricsMetrics)
 	return repository, nil
 }
 
-func InitFulltextIndexService(conn *nats.Conn) (*fulltextindex.Service, error) {
+func InitFulltextIndexService(conn *nats.Conn, metricsMetrics *metrics.Metrics) (*fulltextindex.Service, error) {
 	opts := _wireOptsValue
-	repository, err := InitSimilarityIndexRepository(opts, conn)
+	repository, err := InitSimilarityIndexRepository(opts, conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -70,9 +71,9 @@ var (
 	}
 )
 
-func InitShingleIndexService(conn *nats.Conn) (*shingleindex.Service, error) {
+func InitShingleIndexService(conn *nats.Conn, metricsMetrics *metrics.Metrics) (*shingleindex.Service, error) {
 	opts := _wireSimilarityindexclientOptsValue
-	repository, err := InitSimilarityIndexRepository(opts, conn)
+	repository, err := InitSimilarityIndexRepository(opts, conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -86,9 +87,9 @@ var (
 	}
 )
 
-func InitSemanticIndexService(conn *nats.Conn) (*semanticindex.Service, error) {
+func InitSemanticIndexService(conn *nats.Conn, metricsMetrics *metrics.Metrics) (*semanticindex.Service, error) {
 	opts := _wireOptsValue2
-	repository, err := InitSimilarityIndexRepository(opts, conn)
+	repository, err := InitSimilarityIndexRepository(opts, conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -102,9 +103,9 @@ var (
 	}
 )
 
-func InitAnalyzeHistoryRepository(client *elasticsearch.Client, configConfig *config.Config) (*analyzehistory.Repository, error) {
+func InitAnalyzeHistoryRepository(client *elasticsearch.Client, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*analyzehistory.Repository, error) {
 	opts := configConfig.AnalyzeHistoryRepo
-	repository, err := analyzehistory.NewRepository(opts, client)
+	repository, err := analyzehistory.NewRepository(opts, client, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +133,8 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitDocumentRepository(conn)
+	metricsMetrics := ProvideMetrics()
+	repository, err := InitDocumentRepository(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -140,15 +142,15 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	shingleindexService, err := InitShingleIndexService(conn)
+	shingleindexService, err := InitShingleIndexService(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
-	fulltextindexService, err := InitFulltextIndexService(conn)
+	fulltextindexService, err := InitFulltextIndexService(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
-	semanticindexService, err := InitSemanticIndexService(conn)
+	semanticindexService, err := InitSemanticIndexService(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +158,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzehistoryRepository, err := InitAnalyzeHistoryRepository(client, configConfig)
+	analyzehistoryRepository, err := InitAnalyzeHistoryRepository(client, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +189,8 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitDocumentRepository(conn)
+	metricsMetrics := ProvideMetrics()
+	repository, err := InitDocumentRepository(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -195,15 +198,15 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	shingleindexService, err := InitShingleIndexService(conn)
+	shingleindexService, err := InitShingleIndexService(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
-	fulltextindexService, err := InitFulltextIndexService(conn)
+	fulltextindexService, err := InitFulltextIndexService(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
-	semanticindexService, err := InitSemanticIndexService(conn)
+	semanticindexService, err := InitSemanticIndexService(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +214,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	analyzehistoryRepository, err := InitAnalyzeHistoryRepository(client, configConfig)
+	analyzehistoryRepository, err := InitAnalyzeHistoryRepository(client, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -225,6 +228,20 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 }
 
 // wire.go:
+
+//nolint:gochecknoglobals
+var (
+	metricsS    *metrics.Metrics
+	metricsOnce sync.Once
+)
+
+func ProvideMetrics() *metrics.Metrics {
+	metricsOnce.Do(func() {
+		metricsS = metrics.New()
+	})
+
+	return metricsS
+}
 
 func ProvideSpec() ([]byte, error) {
 	f, err := os.Open("./api/rest/doc/openapi.yaml")

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/zuzuka28/simreport/prj/similarity/internal/model"
 
@@ -14,10 +15,14 @@ func (r *Repository) Fetch(
 	ctx context.Context,
 	query model.SimilarityHistoryQuery,
 ) (*model.SimilarityHistoryList, error) {
+	const op = "fetch"
+
 	q, err := buildSearchQuery(query)
 	if err != nil {
 		return nil, fmt.Errorf("build search query: %w", err)
 	}
+
+	t := time.Now()
 
 	esRes, err := r.cli.Search(
 		r.cli.Search.WithContext(ctx),
@@ -25,10 +30,13 @@ func (r *Repository) Fetch(
 		r.cli.Search.WithBody(bytes.NewReader(q)),
 	)
 	if err != nil {
+		r.m.IncAnalyzeHistoryRepositoryRequests(op, metricsError, time.Since(t).Seconds())
 		return nil, fmt.Errorf("search history: %w", err)
 	}
 
 	defer esRes.Body.Close()
+
+	r.m.IncAnalyzeHistoryRepositoryRequests(op, esRes.Status(), time.Since(t).Seconds())
 
 	if err := elasticutil.IsErr(esRes); err != nil {
 		return nil, fmt.Errorf("search error: %s: %w", esRes.Status(), mapErrorToModel(err))

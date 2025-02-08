@@ -13,6 +13,7 @@ import (
 	serverhttp "github.com/zuzuka28/simreport/prj/similarity/api/rest/server"
 	analyzeapi "github.com/zuzuka28/simreport/prj/similarity/api/rest/server/handler/similarity"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/config"
+	"github.com/zuzuka28/simreport/prj/similarity/internal/metrics"
 	analyzehistoryrepo "github.com/zuzuka28/simreport/prj/similarity/internal/repository/analyzehistory"
 	documentrepo "github.com/zuzuka28/simreport/prj/similarity/internal/repository/document"
 	similarityindexrepo "github.com/zuzuka28/simreport/prj/similarity/internal/repository/similarityindexclient"
@@ -28,6 +29,20 @@ import (
 	"github.com/google/wire"
 	"github.com/nats-io/nats.go"
 )
+
+//nolint:gochecknoglobals
+var (
+	metricsS    *metrics.Metrics
+	metricsOnce sync.Once
+)
+
+func ProvideMetrics() *metrics.Metrics {
+	metricsOnce.Do(func() {
+		metricsS = metrics.New()
+	})
+
+	return metricsS
+}
 
 func ProvideSpec() ([]byte, error) {
 	f, err := os.Open("./api/rest/doc/openapi.yaml")
@@ -87,8 +102,10 @@ func ProvideNats(
 
 func InitDocumentRepository(
 	_ *nats.Conn,
+	_ *metrics.Metrics,
 ) (*documentrepo.Repository, error) {
 	panic(wire.Build(
+		wire.Bind(new(documentrepo.Metrics), new(*metrics.Metrics)),
 		documentrepo.NewRepository,
 	))
 }
@@ -105,14 +122,17 @@ func InitDocumentService(
 func InitSimilarityIndexRepository(
 	_ similarityindexrepo.Opts,
 	_ *nats.Conn,
+	_ *metrics.Metrics,
 ) (*similarityindexrepo.Repository, error) {
 	panic(wire.Build(
+		wire.Bind(new(similarityindexrepo.Metrics), new(*metrics.Metrics)),
 		similarityindexrepo.NewRepository,
 	))
 }
 
 func InitFulltextIndexService(
 	_ *nats.Conn,
+	_ *metrics.Metrics,
 ) (*fulltextindexsrv.Service, error) {
 	panic(wire.Build(
 		wire.Value(similarityindexrepo.Opts{
@@ -126,6 +146,7 @@ func InitFulltextIndexService(
 
 func InitShingleIndexService(
 	_ *nats.Conn,
+	_ *metrics.Metrics,
 ) (*shingleindexsrv.Service, error) {
 	panic(wire.Build(
 		wire.Value(similarityindexrepo.Opts{
@@ -139,6 +160,7 @@ func InitShingleIndexService(
 
 func InitSemanticIndexService(
 	_ *nats.Conn,
+	_ *metrics.Metrics,
 ) (*semanticindexsrv.Service, error) {
 	panic(wire.Build(
 		wire.Value(similarityindexrepo.Opts{
@@ -153,9 +175,11 @@ func InitSemanticIndexService(
 func InitAnalyzeHistoryRepository(
 	_ *elasticsearch.Client,
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*analyzehistoryrepo.Repository, error) {
 	panic(wire.Build(
 		wire.FieldsOf(new(*config.Config), "AnalyzeHistoryRepo"),
+		wire.Bind(new(analyzehistoryrepo.Metrics), new(*metrics.Metrics)),
 		analyzehistoryrepo.NewRepository,
 	))
 }
@@ -197,6 +221,7 @@ func InitRestAPI(
 	_ *config.Config,
 ) (*serverhttp.Server, error) {
 	panic(wire.Build(
+		ProvideMetrics,
 		ProvideSpec,
 		ProvideElastic,
 		ProvideNats,
@@ -236,6 +261,7 @@ func InitNatsAPI(
 	_ *config.Config,
 ) (*servernats.Server, error) {
 	panic(wire.Build(
+		ProvideMetrics,
 		ProvideElastic,
 		ProvideNats,
 
