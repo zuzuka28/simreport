@@ -12,6 +12,7 @@ import (
 	fulltextindexmicro "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/micro/handler/fulltextindex"
 	servermicro "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/micro/server"
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/config"
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/metrics"
 	documentrepo "github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/document"
 	fulltextindexrepo "github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/fulltextindex"
 	documentsrv "github.com/zuzuka28/simreport/prj/fulltextindex/internal/service/document"
@@ -21,6 +22,20 @@ import (
 	"github.com/google/wire"
 	"github.com/nats-io/nats.go"
 )
+
+//nolint:gochecknoglobals
+var (
+	metricsS    *metrics.Metrics
+	metricsOnce sync.Once
+)
+
+func ProvideMetrics() *metrics.Metrics {
+	metricsOnce.Do(func() {
+		metricsS = metrics.New()
+	})
+
+	return metricsS
+}
 
 func InitConfig(path string) (*config.Config, error) {
 	panic(wire.Build(config.New))
@@ -57,8 +72,10 @@ func ProvideNats(
 
 func InitDocumentRepository(
 	_ *nats.Conn,
+	_ *metrics.Metrics,
 ) (*documentrepo.Repository, error) {
 	panic(wire.Build(
+		wire.Bind(new(documentrepo.Metrics), new(*metrics.Metrics)),
 		documentrepo.NewRepository,
 	))
 }
@@ -75,9 +92,11 @@ func InitDocumentService(
 func InitFulltextIndexRepository(
 	_ *elasticsearch.Client,
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*fulltextindexrepo.Repository, error) {
 	panic(wire.Build(
 		wire.FieldsOf(new(*config.Config), "FulltextRepo"),
+		wire.Bind(new(fulltextindexrepo.Metrics), new(*metrics.Metrics)),
 		fulltextindexrepo.NewRepository,
 	))
 }
@@ -118,6 +137,7 @@ func InitNatsMicroAPI(
 	_ *config.Config,
 ) (*servermicro.Server, error) {
 	panic(wire.Build(
+		ProvideMetrics,
 		InitElastic,
 		ProvideNats,
 
@@ -130,6 +150,7 @@ func InitNatsMicroAPI(
 		InitFulltextHandler,
 
 		wire.Bind(new(servermicro.Handler), new(*fulltextindexmicro.Handler)),
+		wire.Bind(new(servermicro.Metrics), new(*metrics.Metrics)),
 		servermicro.NewServer,
 	))
 }
@@ -139,6 +160,7 @@ func InitNatsEventAPI(
 	_ *config.Config,
 ) (*serverevent.Server, error) {
 	panic(wire.Build(
+		ProvideMetrics,
 		InitElastic,
 		ProvideNats,
 

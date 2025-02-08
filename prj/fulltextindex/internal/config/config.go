@@ -10,6 +10,7 @@ import (
 )
 
 type Config struct {
+	MetricsPort  int                `yaml:"metricsPort"`
 	Nats         string             `yaml:"nats"`
 	Elastic      elasticutil.Config `yaml:"elastic"`
 	FulltextRepo fulltextindex.Opts `yaml:"fulltextRepo"`
@@ -21,6 +22,10 @@ func New(path string) (*Config, error) {
 	err := cleanenv.ReadConfig(path, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("read config: %w", err)
+	}
+
+	if cfg.MetricsPort == 0 {
+		cfg.MetricsPort = 9000
 	}
 
 	return cfg, nil

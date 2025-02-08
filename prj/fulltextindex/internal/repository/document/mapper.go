@@ -2,7 +2,6 @@ package document
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/model"
 
@@ -11,33 +10,55 @@ import (
 
 var errInternal = errors.New("internal error")
 
-func parseFetchDocumentResponse(in *pb.FetchDocumentResponse) (model.Document, error) {
-	raw := in.GetDocument()
-
-	if in == nil || raw.GetText() == nil {
-		return model.Document{}, nil
-	}
-
+func parseFetchDocumentResponse(in *pb.FetchDocumentResponse) model.Document {
 	return model.Document{
-		ID:   raw.GetId(),
-		Text: raw.GetText().GetContent(),
-	}, nil
+		ID:       in.GetDocument().GetId(),
+		SourceID: in.GetDocument().GetSource().GetId(),
+		Text:     in.GetDocument().GetText().GetContent(),
+	}
 }
 
-func isErr(in *pb.Error) error {
-	if in == nil {
-		return nil
+func mapErrorToModel(err error) error {
+	clierr := new(pb.ClientError)
+
+	if !errors.As(err, &clierr) {
+		return errors.Join(errInternal, err)
 	}
 
-	status := in.GetStatus()
-	switch status {
-	case 404:
-		return fmt.Errorf("%w: %s", model.ErrNotFound, in.GetDescription())
+	var merr error
 
-	case 400:
-		return fmt.Errorf("%w: %s", model.ErrInvalid, in.GetDescription())
+	switch clierr.Status {
+	case "404":
+		merr = model.ErrNotFound
+
+	case "400":
+		merr = model.ErrInvalid
 
 	default:
-		return fmt.Errorf("%w: %s", errInternal, in.GetDescription())
+		merr = errInternal
+	}
+
+	return errors.Join(merr, err)
+}
+
+func mapErrorToStatus(err error) string {
+	clierr := new(pb.ClientError)
+
+	if !errors.As(err, &clierr) {
+		return "500"
+	}
+
+	return clierr.Status
+}
+
+func mapDocumentQueryToPb(
+	query model.DocumentQuery,
+) *pb.FetchDocumentRequest {
+	return &pb.FetchDocumentRequest{
+		Id:          query.ID,
+		WithContent: true,
+		Include: []pb.DocumentQueryInclude{
+			pb.DocumentQueryInclude_DOCUMENT_QUERY_INCLUDE_TEXT,
+		},
 	}
 }

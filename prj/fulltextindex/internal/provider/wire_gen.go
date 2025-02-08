@@ -16,6 +16,7 @@ import (
 	fulltextindex3 "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/micro/handler/fulltextindex"
 	"github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/micro/server"
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/config"
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/document"
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/fulltextindex"
 	document2 "github.com/zuzuka28/simreport/prj/fulltextindex/internal/service/document"
@@ -42,8 +43,8 @@ func InitElastic(contextContext context.Context, configConfig *config.Config) (*
 	return client, nil
 }
 
-func InitDocumentRepository(conn *nats.Conn) (*document.Repository, error) {
-	repository := document.NewRepository(conn)
+func InitDocumentRepository(conn *nats.Conn, metricsMetrics *metrics.Metrics) (*document.Repository, error) {
+	repository := document.NewRepository(conn, metricsMetrics)
 	return repository, nil
 }
 
@@ -52,9 +53,9 @@ func InitDocumentService(repository *document.Repository) (*document2.Service, e
 	return service, nil
 }
 
-func InitFulltextIndexRepository(client *elasticsearch.Client, configConfig *config.Config) (*fulltextindex.Repository, error) {
+func InitFulltextIndexRepository(client *elasticsearch.Client, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*fulltextindex.Repository, error) {
 	opts := configConfig.FulltextRepo
-	repository, err := fulltextindex.NewRepository(opts, client)
+	repository, err := fulltextindex.NewRepository(opts, client, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +86,8 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitFulltextIndexRepository(client, configConfig)
+	metricsMetrics := ProvideMetrics()
+	repository, err := InitFulltextIndexRepository(client, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +95,7 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	documentRepository, err := InitDocumentRepository(conn)
+	documentRepository, err := InitDocumentRepository(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +107,7 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	serverServer := server.NewServer(conn, handler)
+	serverServer := server.NewServer(conn, handler, metricsMetrics)
 	return serverServer, nil
 }
 
@@ -118,7 +120,8 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitFulltextIndexRepository(client, configConfig)
+	metricsMetrics := ProvideMetrics()
+	repository, err := InitFulltextIndexRepository(client, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +129,7 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	documentRepository, err := InitDocumentRepository(conn)
+	documentRepository, err := InitDocumentRepository(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +146,20 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 }
 
 // wire.go:
+
+//nolint:gochecknoglobals
+var (
+	metricsS    *metrics.Metrics
+	metricsOnce sync.Once
+)
+
+func ProvideMetrics() *metrics.Metrics {
+	metricsOnce.Do(func() {
+		metricsS = metrics.New()
+	})
+
+	return metricsS
+}
 
 //nolint:gochecknoglobals
 var (

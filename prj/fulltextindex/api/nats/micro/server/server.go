@@ -7,6 +7,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/micro"
 
+	metricsmw "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/micro/middleware/metrics"
 	pb "github.com/zuzuka28/simreport/prj/similarityindex/pkg/pb/v1"
 )
 
@@ -19,6 +20,7 @@ type Server struct {
 func NewServer(
 	conn *nats.Conn,
 	h Handler,
+	m Metrics,
 ) *Server {
 	compose := struct {
 		pb.UnsafeSimilarityIndexServer
@@ -43,7 +45,7 @@ func NewServer(
 					ErrorHandler: nil,
 				},
 				RequestTimeout:       requestTimeout,
-				Middleware:           nil,
+				Middleware:           metricsmw.NewMiddleware(m),
 				RequestErrorHandler:  nil,
 				ResponseErrorHandler: nil,
 			},
