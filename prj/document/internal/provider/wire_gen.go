@@ -14,6 +14,7 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/zuzuka28/simreport/lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/httpinstumentation"
 	"github.com/zuzuka28/simreport/lib/minioutil"
 	"github.com/zuzuka28/simreport/lib/tikaclient"
 	attribute4 "github.com/zuzuka28/simreport/prj/document/api/nats/handler/attribute"
@@ -36,20 +37,14 @@ import (
 	"github.com/zuzuka28/simreport/prj/document/internal/service/documentpipeline/handler/filesaved"
 	documentstatus2 "github.com/zuzuka28/simreport/prj/document/internal/service/documentstatus"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"sync"
+	"time"
 )
 
 // Injectors from wire.go:
-
-func InitConfig(string2 string) (*config.Config, error) {
-	configConfig, err := config.New(string2)
-	if err != nil {
-		return nil, err
-	}
-	return configConfig, nil
-}
 
 func InitTika(contextContext context.Context, configConfig *config.Config) (*tikaclient.Client, error) {
 	client := _wireClientValue
@@ -370,6 +365,44 @@ func ProvideSpec() ([]byte, error) {
 	}
 
 	return spec, nil
+}
+
+func ProvideConfig(path string) (*config.Config, error) {
+	cfg, err := config.New(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defaultTransportDialContext := func(
+		dialer *net.Dialer,
+	) func(context.Context, string, string) (net.Conn, error) {
+		return dialer.DialContext
+	}
+
+	transport := &httpinstumentation.InstumentedTransport{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: defaultTransportDialContext(&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}),
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		ExtractAttrs: func(ctx context.Context) []any {
+			return []any{"request_id", ctx.Value(model.RequestIDKey)}
+		},
+		LogRequestBody:  true,
+		LogResponseBody: false,
+	}
+
+	cfg.Elastic.Transport = transport
+	cfg.S3.Transport = transport
+
+	return cfg, nil
 }
 
 //nolint:gochecknoglobals

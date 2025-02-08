@@ -2,12 +2,15 @@ package server
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/micro"
 
+	"github.com/zuzuka28/simreport/prj/document/api/nats/middleware/logging"
 	metricsmw "github.com/zuzuka28/simreport/prj/document/api/nats/middleware/metrics"
+	"github.com/zuzuka28/simreport/prj/document/api/nats/middleware/reqid"
 	pb "github.com/zuzuka28/simreport/prj/document/pkg/pb/v1"
 )
 
@@ -47,8 +50,12 @@ func NewServer(
 					DoneHandler:  nil,
 					ErrorHandler: nil,
 				},
-				RequestTimeout:       requestTimeout,
-				Middleware:           metricsmw.NewMiddleware(m),
+				RequestTimeout: requestTimeout,
+				Middleware: useMiddleware(
+					reqid.NewMiddleware(),
+					metricsmw.NewMiddleware(m),
+					logging.NewMiddleware(),
+				),
 				RequestErrorHandler:  nil,
 				ResponseErrorHandler: nil,
 			},
@@ -64,4 +71,16 @@ func (s *Server) Start(ctx context.Context) error {
 
 func (s *Server) Stop() error {
 	return s.s.Stop() //nolint:wrapcheck
+}
+
+func useMiddleware(mws ...pb.Middleware) pb.Middleware {
+	return func(h pb.Handler) pb.Handler {
+		for _, mw := range slices.Backward(mws) {
+			h = mw(h)
+		}
+
+		return func(ctx context.Context, req micro.Request) {
+			h(ctx, req)
+		}
+	}
 }

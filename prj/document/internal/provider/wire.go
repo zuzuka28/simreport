@@ -6,9 +6,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	attributenatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/attribute"
 	documentnatsapi "github.com/zuzuka28/simreport/prj/document/api/nats/handler/document"
@@ -31,6 +33,7 @@ import (
 	documentstatussrv "github.com/zuzuka28/simreport/prj/document/internal/service/documentstatus"
 
 	"github.com/zuzuka28/simreport/lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/httpinstumentation"
 	"github.com/zuzuka28/simreport/lib/minioutil"
 	"github.com/zuzuka28/simreport/lib/tikaclient"
 
@@ -69,8 +72,43 @@ func ProvideSpec() ([]byte, error) {
 	return spec, nil
 }
 
-func InitConfig(_ string) (*config.Config, error) {
-	panic(wire.Build(config.New))
+func ProvideConfig(path string) (*config.Config, error) {
+	cfg, err := config.New(path)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	defaultTransportDialContext := func(
+		dialer *net.Dialer,
+	) func(context.Context, string, string) (net.Conn, error) {
+		return dialer.DialContext
+	}
+
+	//nolint:exhaustruct,gomnd,mnd
+	transport := &httpinstumentation.InstumentedTransport{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: defaultTransportDialContext(&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}),
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		ExtractAttrs: func(ctx context.Context) []any {
+			return []any{"request_id", ctx.Value(model.RequestIDKey)}
+		},
+		LogRequestBody:  true,
+		LogResponseBody: false,
+	}
+
+	cfg.Elastic.Transport = transport
+	cfg.S3.Transport = transport
+
+	return cfg, nil
 }
 
 //nolint:gochecknoglobals
