@@ -1,5 +1,9 @@
 package elasticutil
 
+import (
+	"net/http"
+)
+
 type StartupIndexConfig struct {
 	Index         string `yaml:"index"`
 	UpdateMapping bool   `yaml:"updateMapping"`
@@ -11,6 +15,8 @@ type StartupIndexConfig struct {
 }
 
 type Config struct {
-	Hosts     []string             `json:"hosts"`
-	IndexOpts []StartupIndexConfig `json:"startupIndex"`
+	Hosts     []string             `yaml:"hosts"`
+	IndexOpts []StartupIndexConfig `yaml:"startupIndex"`
+
+	Transport http.RoundTripper `yaml:"-"`
 }

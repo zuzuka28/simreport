@@ -15,7 +15,8 @@ func NewClientWithStartup(ctx context.Context, opts Config) (*minio.Client, erro
 			opts.SecletAccessKey,
 			"",
 		),
-		Secure: false,
+		Secure:    false,
+		Transport: opts.Transport,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("new s3 client: %w", err)

@@ -19,6 +19,7 @@ func NewClientWithStartup(
 ) (*elasticsearch.Client, error) {
 	esCfg := elasticsearch.Config{ //nolint:exhaustruct
 		Addresses: cfg.Hosts,
+		Transport: cfg.Transport,
 	}
 
 	client, err := elasticsearch.NewClient(esCfg)
