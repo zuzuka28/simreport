@@ -11,30 +11,27 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/nats-io/nats.go"
 	"github.com/zuzuka28/simreport/lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/httpinstumentation"
 	server2 "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/event"
 	"github.com/zuzuka28/simreport/prj/semanticindex/api/nats/event/handler/indexer"
 	semanticindex3 "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/micro/handler/semanticindex"
 	"github.com/zuzuka28/simreport/prj/semanticindex/api/nats/micro/server"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/config"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/metrics"
+	"github.com/zuzuka28/simreport/prj/semanticindex/internal/model"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/document"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/semanticindex"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/vectorizer"
 	document2 "github.com/zuzuka28/simreport/prj/semanticindex/internal/service/document"
 	semanticindex2 "github.com/zuzuka28/simreport/prj/semanticindex/internal/service/semanticindex"
 	vectorizer2 "github.com/zuzuka28/simreport/prj/semanticindex/internal/service/vectorizer"
+	"net"
+	"net/http"
 	"sync"
+	"time"
 )
 
 // Injectors from wire.go:
-
-func InitConfig(path string) (*config.Config, error) {
-	configConfig, err := config.New(path)
-	if err != nil {
-		return nil, err
-	}
-	return configConfig, nil
-}
 
 func InitElastic(contextContext context.Context, configConfig *config.Config) (*elasticsearch.Client, error) {
 	elasticutilConfig := configConfig.Elastic
@@ -191,6 +188,43 @@ func ProvideMetrics() *metrics.Metrics {
 	})
 
 	return metricsS
+}
+
+func ProvideConfig(path string) (*config.Config, error) {
+	cfg, err := config.New(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defaultTransportDialContext := func(
+		dialer *net.Dialer,
+	) func(context.Context, string, string) (net.Conn, error) {
+		return dialer.DialContext
+	}
+
+	transport := &httpinstumentation.InstumentedTransport{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: defaultTransportDialContext(&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}),
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		ExtractAttrs: func(ctx context.Context) []any {
+			return []any{"request_id", ctx.Value(model.RequestIDKey)}
+		},
+		LogRequestBody:  true,
+		LogResponseBody: false,
+	}
+
+	cfg.Elastic.Transport = transport
+
+	return cfg, nil
 }
 
 //nolint:gochecknoglobals

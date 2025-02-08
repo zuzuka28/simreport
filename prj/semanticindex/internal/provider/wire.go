@@ -4,15 +4,20 @@ package provider
 
 import (
 	"context"
+	"net"
+	"net/http"
 	"sync"
+	"time"
 
 	"github.com/zuzuka28/simreport/lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/httpinstumentation"
 	serverevent "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/event"
 	indexerevent "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/event/handler/indexer"
 	semanticindexmicro "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/micro/handler/semanticindex"
 	servermicro "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/micro/server"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/config"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/metrics"
+	"github.com/zuzuka28/simreport/prj/semanticindex/internal/model"
 	documentrepo "github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/document"
 	semanticindexrepo "github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/semanticindex"
 	vectorizerrepo "github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/vectorizer"
@@ -39,8 +44,42 @@ func ProvideMetrics() *metrics.Metrics {
 	return metricsS
 }
 
-func InitConfig(path string) (*config.Config, error) {
-	panic(wire.Build(config.New))
+func ProvideConfig(path string) (*config.Config, error) {
+	cfg, err := config.New(path)
+	if err != nil {
+		return nil, err //nolint:wrapcheck
+	}
+
+	defaultTransportDialContext := func(
+		dialer *net.Dialer,
+	) func(context.Context, string, string) (net.Conn, error) {
+		return dialer.DialContext
+	}
+
+	//nolint:exhaustruct,gomnd,mnd
+	transport := &httpinstumentation.InstumentedTransport{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: defaultTransportDialContext(&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}),
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		ExtractAttrs: func(ctx context.Context) []any {
+			return []any{"request_id", ctx.Value(model.RequestIDKey)}
+		},
+		LogRequestBody:  true,
+		LogResponseBody: false,
+	}
+
+	cfg.Elastic.Transport = transport
+
+	return cfg, nil
 }
 
 func InitElastic(

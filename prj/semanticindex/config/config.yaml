@@ -3,7 +3,7 @@ nats: nats://localhost:4222
 elastic:
   hosts:
     - http://localhost:9200/
-  indexopts:
+  startupIndex:
     - index: "semantic_index"
       updateMapping: true
       createMapping: true
