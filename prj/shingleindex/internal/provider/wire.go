@@ -11,6 +11,7 @@ import (
 	shingleindexmicro "github.com/zuzuka28/simreport/prj/shingleindex/api/nats/micro/handler/shingleindex"
 	servermicro "github.com/zuzuka28/simreport/prj/shingleindex/api/nats/micro/server"
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/config"
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/metrics"
 	documentrepo "github.com/zuzuka28/simreport/prj/shingleindex/internal/repository/document"
 	shingleindexrepo "github.com/zuzuka28/simreport/prj/shingleindex/internal/repository/shingleindex"
 	documentsrv "github.com/zuzuka28/simreport/prj/shingleindex/internal/service/document"
@@ -20,6 +21,20 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/redis/go-redis/v9"
 )
+
+//nolint:gochecknoglobals
+var (
+	metricsS    *metrics.Metrics
+	metricsOnce sync.Once
+)
+
+func ProvideMetrics() *metrics.Metrics {
+	metricsOnce.Do(func() {
+		metricsS = metrics.New()
+	})
+
+	return metricsS
+}
 
 func InitConfig(path string) (*config.Config, error) {
 	panic(wire.Build(config.New))
@@ -57,8 +72,10 @@ func ProvideRedis(
 
 func InitDocumentRepository(
 	_ *nats.Conn,
+	_ *metrics.Metrics,
 ) (*documentrepo.Repository, error) {
 	panic(wire.Build(
+		wire.Bind(new(documentrepo.Metrics), new(*metrics.Metrics)),
 		documentrepo.NewRepository,
 	))
 }
@@ -120,6 +137,7 @@ func InitNatsMicroAPI(
 	_ *config.Config,
 ) (*servermicro.Server, error) {
 	panic(wire.Build(
+		ProvideMetrics,
 		ProvideRedis,
 		ProvideNats,
 
@@ -132,6 +150,7 @@ func InitNatsMicroAPI(
 		InitShingleHandler,
 
 		wire.Bind(new(servermicro.Handler), new(*shingleindexmicro.Handler)),
+		wire.Bind(new(servermicro.Metrics), new(*metrics.Metrics)),
 		servermicro.NewServer,
 	))
 }
@@ -141,6 +160,7 @@ func InitNatsEventAPI(
 	_ *config.Config,
 ) (*serverevent.Server, error) {
 	panic(wire.Build(
+		ProvideMetrics,
 		ProvideRedis,
 		ProvideNats,
 

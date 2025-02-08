@@ -1,6 +1,7 @@
 package model
 
 type Document struct {
-	ID   string
-	Text []byte
+	ID       string
+	SourceID string
+	Text     []byte
 }

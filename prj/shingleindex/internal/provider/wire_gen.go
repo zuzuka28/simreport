@@ -15,6 +15,7 @@ import (
 	shingleindex3 "github.com/zuzuka28/simreport/prj/shingleindex/api/nats/micro/handler/shingleindex"
 	"github.com/zuzuka28/simreport/prj/shingleindex/api/nats/micro/server"
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/config"
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/repository/document"
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/repository/shingleindex"
 	document2 "github.com/zuzuka28/simreport/prj/shingleindex/internal/service/document"
@@ -32,8 +33,8 @@ func InitConfig(path string) (*config.Config, error) {
 	return configConfig, nil
 }
 
-func InitDocumentRepository(conn *nats.Conn) (*document.Repository, error) {
-	repository := document.NewRepository(conn)
+func InitDocumentRepository(conn *nats.Conn, metricsMetrics *metrics.Metrics) (*document.Repository, error) {
+	repository := document.NewRepository(conn, metricsMetrics)
 	return repository, nil
 }
 
@@ -83,7 +84,8 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	documentRepository, err := InitDocumentRepository(conn)
+	metricsMetrics := ProvideMetrics()
+	documentRepository, err := InitDocumentRepository(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +101,7 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	serverServer := server.NewServer(conn, handler)
+	serverServer := server.NewServer(conn, handler, metricsMetrics)
 	return serverServer, nil
 }
 
@@ -116,7 +118,8 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	documentRepository, err := InitDocumentRepository(conn)
+	metricsMetrics := ProvideMetrics()
+	documentRepository, err := InitDocumentRepository(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -137,6 +140,20 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 }
 
 // wire.go:
+
+//nolint:gochecknoglobals
+var (
+	metricsS    *metrics.Metrics
+	metricsOnce sync.Once
+)
+
+func ProvideMetrics() *metrics.Metrics {
+	metricsOnce.Do(func() {
+		metricsS = metrics.New()
+	})
+
+	return metricsS
+}
 
 //nolint:gochecknoglobals
 var (
