@@ -12,6 +12,7 @@ import (
 	semanticindexmicro "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/micro/handler/semanticindex"
 	servermicro "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/micro/server"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/config"
+	"github.com/zuzuka28/simreport/prj/semanticindex/internal/metrics"
 	documentrepo "github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/document"
 	semanticindexrepo "github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/semanticindex"
 	vectorizerrepo "github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/vectorizer"
@@ -23,6 +24,20 @@ import (
 	"github.com/google/wire"
 	"github.com/nats-io/nats.go"
 )
+
+//nolint:gochecknoglobals
+var (
+	metricsS    *metrics.Metrics
+	metricsOnce sync.Once
+)
+
+func ProvideMetrics() *metrics.Metrics {
+	metricsOnce.Do(func() {
+		metricsS = metrics.New()
+	})
+
+	return metricsS
+}
 
 func InitConfig(path string) (*config.Config, error) {
 	panic(wire.Build(config.New))
@@ -59,17 +74,21 @@ func ProvideNats(
 
 func InitDocumentRepository(
 	_ *nats.Conn,
+	_ *metrics.Metrics,
 ) (*documentrepo.Repository, error) {
 	panic(wire.Build(
+		wire.Bind(new(documentrepo.Metrics), new(*metrics.Metrics)),
 		documentrepo.NewRepository,
 	))
 }
 
 func InitVectorizerRepository(
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*vectorizerrepo.Repository, error) {
 	panic(wire.Build(
 		wire.FieldsOf(new(*config.Config), "VectorizerRepo"),
+		wire.Bind(new(vectorizerrepo.Metrics), new(*metrics.Metrics)),
 		vectorizerrepo.NewRepository,
 	))
 }
@@ -86,9 +105,11 @@ func InitDocumentService(
 func InitSemanticIndexRepository(
 	_ *elasticsearch.Client,
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*semanticindexrepo.Repository, error) {
 	panic(wire.Build(
 		wire.FieldsOf(new(*config.Config), "SemanticRepo"),
+		wire.Bind(new(semanticindexrepo.Metrics), new(*metrics.Metrics)),
 		semanticindexrepo.NewRepository,
 	))
 }
@@ -141,6 +162,7 @@ func InitNatsMicroAPI(
 	_ *config.Config,
 ) (*servermicro.Server, error) {
 	panic(wire.Build(
+		ProvideMetrics,
 		InitElastic,
 		ProvideNats,
 
@@ -156,6 +178,7 @@ func InitNatsMicroAPI(
 		InitSemanticHandler,
 
 		wire.Bind(new(servermicro.Handler), new(*semanticindexmicro.Handler)),
+		wire.Bind(new(servermicro.Metrics), new(*metrics.Metrics)),
 		servermicro.NewServer,
 	))
 }
@@ -165,6 +188,7 @@ func InitNatsEventAPI(
 	_ *config.Config,
 ) (*serverevent.Server, error) {
 	panic(wire.Build(
+		ProvideMetrics,
 		InitElastic,
 		ProvideNats,
 

@@ -1,7 +1,8 @@
 package model
 
 type Document struct {
-	ID     string
-	Text   []byte
-	Vector Vector
+	ID       string
+	SourceID string
+	Text     []byte
+	Vector   Vector
 }

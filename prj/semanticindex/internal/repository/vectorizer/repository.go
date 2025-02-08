@@ -15,10 +15,13 @@ type Opts struct {
 
 type Repository struct {
 	cli client.ClientWithResponsesInterface
+
+	m Metrics
 }
 
 func NewRepository(
 	cfg Opts,
+	m Metrics,
 ) (*Repository, error) {
 	cli, err := client.NewClientWithResponses(cfg.Host)
 	if err != nil {
@@ -27,6 +30,6 @@ func NewRepository(
 
 	return &Repository{
 		cli: cli,
+		m:   m,
 	}, nil
 }
-

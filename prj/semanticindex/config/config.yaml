@@ -1,3 +1,4 @@
+metricsPort: 9090
 nats: nats://localhost:4222
 elastic:
   hosts:

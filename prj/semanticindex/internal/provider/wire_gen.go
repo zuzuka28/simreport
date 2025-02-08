@@ -16,6 +16,7 @@ import (
 	semanticindex3 "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/micro/handler/semanticindex"
 	"github.com/zuzuka28/simreport/prj/semanticindex/api/nats/micro/server"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/config"
+	"github.com/zuzuka28/simreport/prj/semanticindex/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/document"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/semanticindex"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/vectorizer"
@@ -44,14 +45,14 @@ func InitElastic(contextContext context.Context, configConfig *config.Config) (*
 	return client, nil
 }
 
-func InitDocumentRepository(conn *nats.Conn) (*document.Repository, error) {
-	repository := document.NewRepository(conn)
+func InitDocumentRepository(conn *nats.Conn, metricsMetrics *metrics.Metrics) (*document.Repository, error) {
+	repository := document.NewRepository(conn, metricsMetrics)
 	return repository, nil
 }
 
-func InitVectorizerRepository(configConfig *config.Config) (*vectorizer.Repository, error) {
+func InitVectorizerRepository(configConfig *config.Config, metricsMetrics *metrics.Metrics) (*vectorizer.Repository, error) {
 	opts := configConfig.VectorizerRepo
-	repository, err := vectorizer.NewRepository(opts)
+	repository, err := vectorizer.NewRepository(opts, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -63,9 +64,9 @@ func InitDocumentService(repository *document.Repository) (*document2.Service, e
 	return service, nil
 }
 
-func InitSemanticIndexRepository(client *elasticsearch.Client, configConfig *config.Config) (*semanticindex.Repository, error) {
+func InitSemanticIndexRepository(client *elasticsearch.Client, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*semanticindex.Repository, error) {
 	opts := configConfig.SemanticRepo
-	repository, err := semanticindex.NewRepository(opts, client)
+	repository, err := semanticindex.NewRepository(opts, client, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -101,11 +102,12 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitSemanticIndexRepository(client, configConfig)
+	metricsMetrics := ProvideMetrics()
+	repository, err := InitSemanticIndexRepository(client, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
-	vectorizerRepository, err := InitVectorizerRepository(configConfig)
+	vectorizerRepository, err := InitVectorizerRepository(configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +119,7 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	documentRepository, err := InitDocumentRepository(conn)
+	documentRepository, err := InitDocumentRepository(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +131,7 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	serverServer := server.NewServer(conn, handler)
+	serverServer := server.NewServer(conn, handler, metricsMetrics)
 	return serverServer, nil
 }
 
@@ -142,11 +144,12 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	repository, err := InitSemanticIndexRepository(client, configConfig)
+	metricsMetrics := ProvideMetrics()
+	repository, err := InitSemanticIndexRepository(client, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
-	vectorizerRepository, err := InitVectorizerRepository(configConfig)
+	vectorizerRepository, err := InitVectorizerRepository(configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +161,7 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	documentRepository, err := InitDocumentRepository(conn)
+	documentRepository, err := InitDocumentRepository(conn, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +178,20 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 }
 
 // wire.go:
+
+//nolint:gochecknoglobals
+var (
+	metricsS    *metrics.Metrics
+	metricsOnce sync.Once
+)
+
+func ProvideMetrics() *metrics.Metrics {
+	metricsOnce.Do(func() {
+		metricsS = metrics.New()
+	})
+
+	return metricsS
+}
 
 //nolint:gochecknoglobals
 var (
