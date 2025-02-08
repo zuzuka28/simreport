@@ -171,6 +171,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 		Port:           int2,
 		Spec:           v,
 		AnalyzeHandler: handler,
+		Metrics:        metricsMetrics,
 	}
 	serverServer, err := server.New(opts)
 	if err != nil {
@@ -223,7 +224,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 		return nil, err
 	}
 	handler := InitAnalyzeNatsHandler(similarityService)
-	serverServer := server2.NewServer(conn, handler)
+	serverServer := server2.NewServer(conn, handler, metricsMetrics)
 	return serverServer, nil
 }
 

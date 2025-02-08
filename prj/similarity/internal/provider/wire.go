@@ -243,6 +243,7 @@ func InitRestAPI(
 		wire.Bind(new(serverhttp.SimilarityHandler), new(*analyzeapi.Handler)),
 		wire.FieldsOf(new(*config.Config), "Port"),
 		wire.Struct(new(serverhttp.Opts), "*"),
+		wire.Bind(new(serverhttp.Metrics), new(*metrics.Metrics)),
 		serverhttp.New,
 	))
 }
@@ -281,6 +282,7 @@ func InitNatsAPI(
 		InitAnalyzeNatsHandler,
 
 		wire.Bind(new(servernats.SimilarityHandler), new(*analyzenatsapi.Handler)),
+		wire.Bind(new(servernats.Metrics), new(*metrics.Metrics)),
 		servernats.NewServer,
 	))
 }

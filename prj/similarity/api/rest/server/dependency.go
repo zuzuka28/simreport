@@ -7,6 +7,10 @@ import (
 )
 
 type (
+	Metrics interface {
+		IncHTTPRequest(op string, status string, size int, dur float64)
+	}
+
 	SimilarityHandler interface {
 		GetAnalyzeDocumentIdSimilar(
 			ctx context.Context,

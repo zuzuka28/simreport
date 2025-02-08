@@ -7,13 +7,13 @@ import (
 	"net/http"
 	"time"
 
-	openapi "github.com/zuzuka28/simreport/prj/similarity/api/rest/gen"
-
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/gorilla/mux"
 	openapimw "github.com/oapi-codegen/nethttp-middleware"
 	"github.com/rs/cors"
+	openapi "github.com/zuzuka28/simreport/prj/similarity/api/rest/gen"
+	metricsmw "github.com/zuzuka28/simreport/prj/similarity/api/rest/middleware/metrics"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -33,6 +33,8 @@ type Opts struct {
 
 	Spec           []byte
 	AnalyzeHandler SimilarityHandler
+
+	Metrics Metrics
 }
 
 func New(
@@ -45,6 +47,7 @@ func New(
 
 	router := mux.NewRouter()
 
+	router.Use(metricsmw.NewMiddleware(opts.Metrics))
 	router.Use(openapimw.OapiRequestValidator(spec))
 	openapi3filter.RegisterBodyDecoder(docMime, openapi3filter.FileBodyDecoder)
 	openapi3filter.RegisterBodyDecoder(docxMime, openapi3filter.FileBodyDecoder)
