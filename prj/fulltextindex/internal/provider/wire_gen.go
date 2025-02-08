@@ -11,28 +11,25 @@ import (
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/nats-io/nats.go"
 	"github.com/zuzuka28/simreport/lib/elasticutil"
+	"github.com/zuzuka28/simreport/lib/httpinstumentation"
 	server2 "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/event"
 	"github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/event/handler/indexer"
 	fulltextindex3 "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/micro/handler/fulltextindex"
 	"github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/micro/server"
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/config"
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/metrics"
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/model"
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/document"
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/fulltextindex"
 	document2 "github.com/zuzuka28/simreport/prj/fulltextindex/internal/service/document"
 	fulltextindex2 "github.com/zuzuka28/simreport/prj/fulltextindex/internal/service/fulltextindex"
+	"net"
+	"net/http"
 	"sync"
+	"time"
 )
 
 // Injectors from wire.go:
-
-func InitConfig(path string) (*config.Config, error) {
-	configConfig, err := config.New(path)
-	if err != nil {
-		return nil, err
-	}
-	return configConfig, nil
-}
 
 func InitElastic(contextContext context.Context, configConfig *config.Config) (*elasticsearch.Client, error) {
 	elasticutilConfig := configConfig.Elastic
@@ -159,6 +156,43 @@ func ProvideMetrics() *metrics.Metrics {
 	})
 
 	return metricsS
+}
+
+func ProvideConfig(path string) (*config.Config, error) {
+	cfg, err := config.New(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defaultTransportDialContext := func(
+		dialer *net.Dialer,
+	) func(context.Context, string, string) (net.Conn, error) {
+		return dialer.DialContext
+	}
+
+	transport := &httpinstumentation.InstumentedTransport{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: defaultTransportDialContext(&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}),
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		ExtractAttrs: func(ctx context.Context) []any {
+			return []any{"request_id", ctx.Value(model.RequestIDKey)}
+		},
+		LogRequestBody:  true,
+		LogResponseBody: false,
+	}
+
+	cfg.Elastic.Transport = transport
+
+	return cfg, nil
 }
 
 //nolint:gochecknoglobals
