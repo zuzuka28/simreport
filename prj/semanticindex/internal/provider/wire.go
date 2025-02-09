@@ -9,8 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/minio/minio-go/v7"
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/httpinstumentation"
+	"github.com/zuzuka28/simreport/lib/minioutil"
 	serverevent "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/event"
 	indexerevent "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/event/handler/indexer"
 	semanticindexmicro "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/micro/handler/semanticindex"
@@ -19,6 +21,7 @@ import (
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/model"
 	documentrepo "github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/document"
+	"github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/filestorage"
 	semanticindexrepo "github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/semanticindex"
 	vectorizerrepo "github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/vectorizer"
 	documentsrv "github.com/zuzuka28/simreport/prj/semanticindex/internal/service/document"
@@ -78,6 +81,7 @@ func ProvideConfig(path string) (*config.Config, error) {
 	}
 
 	cfg.Elastic.Transport = transport
+	cfg.S3.Transport = transport
 
 	return cfg, nil
 }
@@ -109,6 +113,36 @@ func ProvideNats(
 	})
 
 	return natsCli, err //nolint:wrapcheck
+}
+
+//nolint:gochecknoglobals
+var (
+	s3Cli     *minio.Client
+	s3CliOnce sync.Once
+)
+
+func ProvideS3(
+	ctx context.Context,
+	cfg *config.Config,
+) (*minio.Client, error) {
+	var err error
+
+	s3CliOnce.Do(func() {
+		s3Cli, err = minioutil.NewClientWithStartup(ctx, cfg.S3)
+	})
+
+	return s3Cli, err //nolint:wrapcheck
+}
+
+func InitFilestorageRepository(
+	_ *minio.Client,
+	_ *config.Config,
+	_ *metrics.Metrics,
+) (*filestorage.Repository, error) {
+	panic(wire.Build(
+		wire.Bind(new(filestorage.Metrics), new(*metrics.Metrics)),
+		filestorage.NewRepository,
+	))
 }
 
 func InitDocumentRepository(
@@ -177,10 +211,12 @@ func InitSemanticIndexService(
 func InitSemanticHandler(
 	_ *semanticindexsrv.Service,
 	_ *documentsrv.Service,
+	_ *filestorage.Repository,
 ) (*semanticindexmicro.Handler, error) {
 	panic(wire.Build(
 		wire.Bind(new(semanticindexmicro.Service), new(*semanticindexsrv.Service)),
 		wire.Bind(new(semanticindexmicro.DocumentService), new(*documentsrv.Service)),
+		wire.Bind(new(semanticindexmicro.Filestorage), new(*filestorage.Repository)),
 		semanticindexmicro.NewHandler,
 	))
 }
@@ -188,10 +224,12 @@ func InitSemanticHandler(
 func InitIndexerHandler(
 	_ *semanticindexsrv.Service,
 	_ *documentsrv.Service,
+	_ *filestorage.Repository,
 ) (*indexerevent.Handler, error) {
 	panic(wire.Build(
 		wire.Bind(new(indexerevent.Service), new(*semanticindexsrv.Service)),
 		wire.Bind(new(indexerevent.DocumentService), new(*documentsrv.Service)),
+		wire.Bind(new(indexerevent.Filestorage), new(*filestorage.Repository)),
 		indexerevent.NewHandler,
 	))
 }
@@ -204,6 +242,9 @@ func InitNatsMicroAPI(
 		ProvideMetrics,
 		InitElastic,
 		ProvideNats,
+
+		ProvideS3,
+		InitFilestorageRepository,
 
 		InitVectorizerRepository,
 		InitVectorizerService,
@@ -230,6 +271,9 @@ func InitNatsEventAPI(
 		ProvideMetrics,
 		InitElastic,
 		ProvideNats,
+
+		ProvideS3,
+		InitFilestorageRepository,
 
 		InitVectorizerRepository,
 		InitVectorizerService,

@@ -8,6 +8,8 @@ const (
 )
 
 type Metrics struct {
+	filestorageRequests               *prometheus.CounterVec
+	filestorageRequestDurations       *prometheus.HistogramVec
 	semanticIndexRequests             *prometheus.CounterVec
 	semanticIndexRequestDuration      *prometheus.HistogramVec
 	vectorizerRequests                *prometheus.CounterVec
@@ -21,6 +23,31 @@ type Metrics struct {
 
 func New() *Metrics {
 	return &Metrics{
+		filestorageRequests: prometheus.NewCounterVec(
+			prometheus.CounterOpts{ //nolint:exhaustruct
+				Namespace: namespace,
+				Subsystem: subsystem,
+				Name:      "filestorage_requests_total",
+				Help:      "Tracks requests to filestorage",
+			},
+			[]string{
+				"op",
+				"status",
+			},
+		),
+		filestorageRequestDurations: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{ //nolint:exhaustruct
+				Namespace: namespace,
+				Subsystem: subsystem,
+				Name:      "filestorage_request_duration_seconds",
+				Help:      "Tracks request durations filestorage",
+				Buckets:   prometheus.ExponentialBuckets(0.1, 2, 10), //nolint:gomnd,mnd
+			},
+			[]string{
+				"op",
+				"status",
+			},
+		),
 		semanticIndexRequests: prometheus.NewCounterVec(
 			prometheus.CounterOpts{ //nolint:exhaustruct
 				Namespace: namespace,
@@ -137,6 +164,16 @@ func New() *Metrics {
 	}
 }
 
+func (m *Metrics) IncFilestorageRequests(op string, status string, dur float64) {
+	labels := prometheus.Labels{
+		"op":     op,
+		"status": status,
+	}
+
+	m.filestorageRequestDurations.With(labels).Observe(dur)
+	m.filestorageRequests.With(labels).Inc()
+}
+
 func (m *Metrics) IncSemanticIndexRequests(op string, status string, dur float64) {
 	labels := prometheus.Labels{
 		"op":     op,
@@ -180,6 +217,8 @@ func (m *Metrics) IncNatsMicroRequest(op string, status string, size int, dur fl
 
 func (m *Metrics) Collectors() []prometheus.Collector {
 	return []prometheus.Collector{
+		m.filestorageRequests,
+		m.filestorageRequestDurations,
 		m.semanticIndexRequests,
 		m.semanticIndexRequestDuration,
 		m.vectorizerRequests,

@@ -14,7 +14,7 @@ var now = time.Now
 
 func mapDocumentToInternal(in model.Document) document {
 	return document{
-		ID:          in.ID,
+		ID:          in.SourceID,
 		TextVector:  in.Vector,
 		LastUpdated: now(),
 	}

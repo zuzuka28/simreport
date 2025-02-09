@@ -9,9 +9,11 @@ package provider
 import (
 	"context"
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/minio/minio-go/v7"
 	"github.com/nats-io/nats.go"
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/httpinstumentation"
+	"github.com/zuzuka28/simreport/lib/minioutil"
 	server2 "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/event"
 	"github.com/zuzuka28/simreport/prj/semanticindex/api/nats/event/handler/indexer"
 	semanticindex3 "github.com/zuzuka28/simreport/prj/semanticindex/api/nats/micro/handler/semanticindex"
@@ -20,6 +22,7 @@ import (
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/model"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/document"
+	"github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/filestorage"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/semanticindex"
 	"github.com/zuzuka28/simreport/prj/semanticindex/internal/repository/vectorizer"
 	document2 "github.com/zuzuka28/simreport/prj/semanticindex/internal/service/document"
@@ -40,6 +43,11 @@ func InitElastic(contextContext context.Context, configConfig *config.Config) (*
 		return nil, err
 	}
 	return client, nil
+}
+
+func InitFilestorageRepository(client *minio.Client, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*filestorage.Repository, error) {
+	repository := filestorage.NewRepository(client, metricsMetrics)
+	return repository, nil
 }
 
 func InitDocumentRepository(conn *nats.Conn, metricsMetrics *metrics.Metrics) (*document.Repository, error) {
@@ -80,13 +88,13 @@ func InitSemanticIndexService(repository *semanticindex.Repository, service *vec
 	return semanticindexService, nil
 }
 
-func InitSemanticHandler(service *semanticindex2.Service, documentService *document2.Service) (*semanticindex3.Handler, error) {
-	handler := semanticindex3.NewHandler(service, documentService)
+func InitSemanticHandler(service *semanticindex2.Service, documentService *document2.Service, repository *filestorage.Repository) (*semanticindex3.Handler, error) {
+	handler := semanticindex3.NewHandler(service, documentService, repository)
 	return handler, nil
 }
 
-func InitIndexerHandler(service *semanticindex2.Service, documentService *document2.Service) (*indexer.Handler, error) {
-	handler := indexer.NewHandler(service, documentService)
+func InitIndexerHandler(service *semanticindex2.Service, documentService *document2.Service, repository *filestorage.Repository) (*indexer.Handler, error) {
+	handler := indexer.NewHandler(service, documentService, repository)
 	return handler, nil
 }
 
@@ -124,7 +132,15 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	handler, err := InitSemanticHandler(semanticindexService, documentService)
+	minioClient, err := ProvideS3(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	filestorageRepository, err := InitFilestorageRepository(minioClient, configConfig, metricsMetrics)
+	if err != nil {
+		return nil, err
+	}
+	handler, err := InitSemanticHandler(semanticindexService, documentService, filestorageRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -166,7 +182,15 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	handler, err := InitIndexerHandler(semanticindexService, documentService)
+	minioClient, err := ProvideS3(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	filestorageRepository, err := InitFilestorageRepository(minioClient, configConfig, metricsMetrics)
+	if err != nil {
+		return nil, err
+	}
+	handler, err := InitIndexerHandler(semanticindexService, documentService, filestorageRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -223,6 +247,7 @@ func ProvideConfig(path string) (*config.Config, error) {
 	}
 
 	cfg.Elastic.Transport = transport
+	cfg.S3.Transport = transport
 
 	return cfg, nil
 }
@@ -244,4 +269,23 @@ func ProvideNats(
 	})
 
 	return natsCli, err
+}
+
+//nolint:gochecknoglobals
+var (
+	s3Cli     *minio.Client
+	s3CliOnce sync.Once
+)
+
+func ProvideS3(
+	ctx context.Context,
+	cfg *config.Config,
+) (*minio.Client, error) {
+	var err error
+
+	s3CliOnce.Do(func() {
+		s3Cli, err = minioutil.NewClientWithStartup(ctx, cfg.S3)
+	})
+
+	return s3Cli, err
 }
