@@ -13,9 +13,13 @@ require (
 	github.com/nats-io/nats.go v1.38.0
 	github.com/oapi-codegen/nethttp-middleware v1.0.2
 	github.com/oapi-codegen/runtime v1.1.1
+	github.com/prometheus/client_golang v1.20.5
 	github.com/rs/cors v1.11.1
+	github.com/sergi/go-diff v1.3.1
 	github.com/urfave/cli/v2 v2.27.5
-	github.com/zuzuka28/simreport/lib v0.0.0-20250111110310-c2b67e053f97
+	github.com/zuzuka28/simreport/lib v0.0.0-20250208223041-01ffeab32c32
+	github.com/zuzuka28/simreport/prj/document v0.0.0-20250208223041-01ffeab32c32
+	github.com/zuzuka28/simreport/prj/similarityindex v0.0.0-20250208223041-01ffeab32c32
 	golang.org/x/sync v0.10.0
 	google.golang.org/protobuf v1.36.4
 )
@@ -23,6 +27,8 @@ require (
 require (
 	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
+	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/elastic/elastic-transport-go/v8 v8.6.0 // indirect
@@ -40,9 +46,13 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
+	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nats-io/nkeys v0.4.9 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
+	github.com/prometheus/client_model v0.6.1 // indirect
+	github.com/prometheus/common v0.55.0 // indirect
+	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
