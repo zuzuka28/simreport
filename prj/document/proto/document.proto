@@ -85,6 +85,7 @@ message SearchRequest {
   string name = 2;
   string version = 3;
   repeated string group_ids = 4;
+  repeated string source_ids = 5;
 }
 
 message SearchDocumentResponse {

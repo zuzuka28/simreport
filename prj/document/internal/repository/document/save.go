@@ -33,7 +33,7 @@ func (r *Repository) Save(ctx context.Context, cmd model.DocumentSaveCommand) er
 		r.cli.Index.WithContext(ctx),
 	)
 	if err != nil {
-		r.m.IncDocumentRepositoryRequests(op, esRes.Status(), time.Since(t).Seconds())
+		r.m.IncDocumentRepositoryRequests(op, metricsError, time.Since(t).Seconds())
 		return fmt.Errorf("index doc: %w", err)
 	}
 

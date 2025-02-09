@@ -98,6 +98,14 @@ func buildSearchQuery(query model.DocumentSearchQuery) ([]byte, error) {
 		})
 	}
 
+	if len(query.SourceID) > 0 {
+		filter = append(filter, map_{
+			"terms": map_{
+				"sourceID": query.SourceID,
+			},
+		})
+	}
+
 	if len(filter) > 0 {
 		searchQuery["query"] = map_{
 			"bool": map_{

@@ -15,6 +15,7 @@ func mapSearchRequestToQuery(
 		GroupID:  in.GetGroupIds(),
 		Name:     in.GetName(),
 		ParentID: in.GetParentId(),
+		SourceID: in.GetSourceIds(),
 		Version:  in.GetVersion(),
 	}
 }

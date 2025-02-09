@@ -21,7 +21,7 @@ func (r *Repository) Fetch(ctx context.Context, query model.DocumentQuery) (mode
 		r.cli.Get.WithContext(ctx),
 	)
 	if err != nil {
-		r.m.IncDocumentRepositoryRequests(op, esRes.Status(), time.Since(t).Seconds())
+		r.m.IncDocumentRepositoryRequests(op, metricsError, time.Since(t).Seconds())
 		return model.Document{}, fmt.Errorf("fetch document %s: %w", query.ID, err)
 	}
 
