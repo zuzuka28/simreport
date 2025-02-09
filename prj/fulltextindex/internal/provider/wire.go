@@ -9,8 +9,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/minio/minio-go/v7"
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/httpinstumentation"
+	"github.com/zuzuka28/simreport/lib/minioutil"
 	serverevent "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/event"
 	indexerevent "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/event/handler/indexer"
 	fulltextindexmicro "github.com/zuzuka28/simreport/prj/fulltextindex/api/nats/micro/handler/fulltextindex"
@@ -19,6 +21,7 @@ import (
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/model"
 	documentrepo "github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/document"
+	"github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/filestorage"
 	fulltextindexrepo "github.com/zuzuka28/simreport/prj/fulltextindex/internal/repository/fulltextindex"
 	documentsrv "github.com/zuzuka28/simreport/prj/fulltextindex/internal/service/document"
 	fulltextindexsrv "github.com/zuzuka28/simreport/prj/fulltextindex/internal/service/fulltextindex"
@@ -76,6 +79,7 @@ func ProvideConfig(path string) (*config.Config, error) {
 	}
 
 	cfg.Elastic.Transport = transport
+	cfg.S3.Transport = transport
 
 	return cfg, nil
 }
@@ -107,6 +111,36 @@ func ProvideNats(
 	})
 
 	return natsCli, err //nolint:wrapcheck
+}
+
+//nolint:gochecknoglobals
+var (
+	s3Cli     *minio.Client
+	s3CliOnce sync.Once
+)
+
+func ProvideS3(
+	ctx context.Context,
+	cfg *config.Config,
+) (*minio.Client, error) {
+	var err error
+
+	s3CliOnce.Do(func() {
+		s3Cli, err = minioutil.NewClientWithStartup(ctx, cfg.S3)
+	})
+
+	return s3Cli, err //nolint:wrapcheck
+}
+
+func InitFilestorageRepository(
+	_ *minio.Client,
+	_ *config.Config,
+	_ *metrics.Metrics,
+) (*filestorage.Repository, error) {
+	panic(wire.Build(
+		wire.Bind(new(filestorage.Metrics), new(*metrics.Metrics)),
+		filestorage.NewRepository,
+	))
 }
 
 func InitDocumentRepository(
@@ -152,10 +186,12 @@ func InitFulltextIndexService(
 func InitFulltextHandler(
 	_ *fulltextindexsrv.Service,
 	_ *documentsrv.Service,
+	_ *filestorage.Repository,
 ) (*fulltextindexmicro.Handler, error) {
 	panic(wire.Build(
 		wire.Bind(new(fulltextindexmicro.Service), new(*fulltextindexsrv.Service)),
 		wire.Bind(new(fulltextindexmicro.DocumentService), new(*documentsrv.Service)),
+		wire.Bind(new(fulltextindexmicro.Filestorage), new(*filestorage.Repository)),
 		fulltextindexmicro.NewHandler,
 	))
 }
@@ -163,10 +199,12 @@ func InitFulltextHandler(
 func InitIndexerHandler(
 	_ *fulltextindexsrv.Service,
 	_ *documentsrv.Service,
+	_ *filestorage.Repository,
 ) (*indexerevent.Handler, error) {
 	panic(wire.Build(
 		wire.Bind(new(indexerevent.Service), new(*fulltextindexsrv.Service)),
 		wire.Bind(new(indexerevent.DocumentService), new(*documentsrv.Service)),
+		wire.Bind(new(indexerevent.Filestorage), new(*filestorage.Repository)),
 		indexerevent.NewHandler,
 	))
 }
@@ -179,6 +217,9 @@ func InitNatsMicroAPI(
 		ProvideMetrics,
 		InitElastic,
 		ProvideNats,
+
+		ProvideS3,
+		InitFilestorageRepository,
 
 		InitDocumentRepository,
 		InitDocumentService,
@@ -202,6 +243,9 @@ func InitNatsEventAPI(
 		ProvideMetrics,
 		InitElastic,
 		ProvideNats,
+
+		ProvideS3,
+		InitFilestorageRepository,
 
 		InitDocumentRepository,
 		InitDocumentService,

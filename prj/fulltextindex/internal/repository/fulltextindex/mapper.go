@@ -24,7 +24,7 @@ func parseDocument(hit *elasticutil.Hit) (analyzedDocument, error) {
 
 func mapDocumentToInternal(in model.Document) analyzedDocument {
 	return analyzedDocument{
-		ID:          in.ID,
+		ID:          in.SourceID,
 		Text:        string(in.Text),
 		LastUpdated: now(),
 	}

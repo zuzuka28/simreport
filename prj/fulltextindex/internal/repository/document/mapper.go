@@ -14,7 +14,8 @@ func parseFetchDocumentResponse(in *pb.FetchDocumentResponse) model.Document {
 	return model.Document{
 		ID:       in.GetDocument().GetId(),
 		SourceID: in.GetDocument().GetSource().GetId(),
-		Text:     in.GetDocument().GetText().GetContent(),
+		TextID:   in.GetDocument().GetText().GetId(),
+		Text:     nil,
 	}
 }
 
@@ -56,9 +57,7 @@ func mapDocumentQueryToPb(
 ) *pb.FetchDocumentRequest {
 	return &pb.FetchDocumentRequest{
 		Id:          query.ID,
-		WithContent: true,
-		Include: []pb.DocumentQueryInclude{
-			pb.DocumentQueryInclude_DOCUMENT_QUERY_INCLUDE_TEXT,
-		},
+		WithContent: false,
+		Include:     nil,
 	}
 }

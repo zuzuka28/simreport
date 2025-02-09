@@ -8,6 +8,8 @@ import (
 	pb "github.com/zuzuka28/simreport/prj/similarityindex/pkg/pb/v1"
 )
 
+const bucketTexts = "texts"
+
 func (h *Handler) SearchSimilar(
 	ctx context.Context,
 	params *pb.SearchSimilarRequest,
@@ -20,6 +22,16 @@ func (h *Handler) SearchSimilar(
 	if err != nil {
 		return nil, fmt.Errorf("fetch source document: %w", err)
 	}
+
+	textfile, err := h.fs.Fetch(ctx, model.FileQuery{
+		Bucket: bucketTexts,
+		ID:     doc.TextID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("fetch document text: %w", err)
+	}
+
+	doc.Text = textfile.Content
 
 	res, err := h.s.SearchSimilar(ctx, model.DocumentSimilarQuery{
 		ID:   id,

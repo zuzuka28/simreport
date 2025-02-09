@@ -11,5 +11,11 @@ elastic:
       alias: ""
       shards: 1
       replics: 1
+s3:
+  endpoint: "localhost:9000"
+  accessKeyID: "minio"
+  secletAccessKey: "minio123"
+  buckets:
+    - texts
 fulltextRepo:
   index: "fulltext_index"
