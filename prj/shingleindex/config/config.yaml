@@ -3,3 +3,9 @@ metricsPort: 9090
 nats: nats://localhost:4222
 redis:
   dsn: redis://localhost:6379
+s3:
+  endpoint: "localhost:9000"
+  accessKeyID: "minio"
+  secletAccessKey: "minio123"
+  buckets:
+    - texts

@@ -8,29 +8,34 @@ package provider
 
 import (
 	"context"
+	"github.com/minio/minio-go/v7"
 	"github.com/nats-io/nats.go"
 	"github.com/redis/go-redis/v9"
+	"github.com/zuzuka28/simreport/lib/httpinstumentation"
+	"github.com/zuzuka28/simreport/lib/minioutil"
 	server2 "github.com/zuzuka28/simreport/prj/shingleindex/api/nats/event"
 	"github.com/zuzuka28/simreport/prj/shingleindex/api/nats/event/handler/indexer"
 	shingleindex3 "github.com/zuzuka28/simreport/prj/shingleindex/api/nats/micro/handler/shingleindex"
 	"github.com/zuzuka28/simreport/prj/shingleindex/api/nats/micro/server"
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/config"
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/metrics"
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/model"
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/repository/document"
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/repository/filestorage"
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/repository/shingleindex"
 	document2 "github.com/zuzuka28/simreport/prj/shingleindex/internal/service/document"
 	shingleindex2 "github.com/zuzuka28/simreport/prj/shingleindex/internal/service/shingleindex"
+	"net"
+	"net/http"
 	"sync"
+	"time"
 )
 
 // Injectors from wire.go:
 
-func InitConfig(path string) (*config.Config, error) {
-	configConfig, err := config.New(path)
-	if err != nil {
-		return nil, err
-	}
-	return configConfig, nil
+func InitFilestorageRepository(client *minio.Client, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*filestorage.Repository, error) {
+	repository := filestorage.NewRepository(client, metricsMetrics)
+	return repository, nil
 }
 
 func InitDocumentRepository(conn *nats.Conn, metricsMetrics *metrics.Metrics) (*document.Repository, error) {
@@ -61,13 +66,13 @@ func InitShingleIndexService(repository *shingleindex.Repository, service *docum
 	return shingleindexService, nil
 }
 
-func InitShingleHandler(service *shingleindex2.Service, documentService *document2.Service) (*shingleindex3.Handler, error) {
-	handler := shingleindex3.NewHandler(service, documentService)
+func InitShingleHandler(service *shingleindex2.Service, documentService *document2.Service, repository *filestorage.Repository) (*shingleindex3.Handler, error) {
+	handler := shingleindex3.NewHandler(service, documentService, repository)
 	return handler, nil
 }
 
-func InitIndexerHandler(service *shingleindex2.Service, documentService *document2.Service) (*indexer.Handler, error) {
-	handler := indexer.NewHandler(service, documentService)
+func InitIndexerHandler(service *shingleindex2.Service, documentService *document2.Service, repository *filestorage.Repository) (*indexer.Handler, error) {
+	handler := indexer.NewHandler(service, documentService, repository)
 	return handler, nil
 }
 
@@ -97,7 +102,15 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	handler, err := InitShingleHandler(shingleindexService, service)
+	minioClient, err := ProvideS3(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	filestorageRepository, err := InitFilestorageRepository(minioClient, configConfig, metricsMetrics)
+	if err != nil {
+		return nil, err
+	}
+	handler, err := InitShingleHandler(shingleindexService, service, filestorageRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +144,15 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	handler, err := InitIndexerHandler(shingleindexService, service)
+	minioClient, err := ProvideS3(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	filestorageRepository, err := InitFilestorageRepository(minioClient, configConfig, metricsMetrics)
+	if err != nil {
+		return nil, err
+	}
+	handler, err := InitIndexerHandler(shingleindexService, service, filestorageRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -153,6 +174,43 @@ func ProvideMetrics() *metrics.Metrics {
 	})
 
 	return metricsS
+}
+
+func ProvideConfig(path string) (*config.Config, error) {
+	cfg, err := config.New(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defaultTransportDialContext := func(
+		dialer *net.Dialer,
+	) func(context.Context, string, string) (net.Conn, error) {
+		return dialer.DialContext
+	}
+
+	transport := &httpinstumentation.InstumentedTransport{
+		Transport: &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: defaultTransportDialContext(&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}),
+			ForceAttemptHTTP2:     true,
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			TLSHandshakeTimeout:   10 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
+		},
+		ExtractAttrs: func(ctx context.Context) []any {
+			return []any{"request_id", ctx.Value(model.RequestIDKey)}
+		},
+		LogRequestBody:  true,
+		LogResponseBody: false,
+	}
+
+	cfg.S3.Transport = transport
+
+	return cfg, nil
 }
 
 //nolint:gochecknoglobals
@@ -183,4 +241,23 @@ func ProvideRedis(
 	}
 
 	return redis.NewClient(u), nil
+}
+
+//nolint:gochecknoglobals
+var (
+	s3Cli     *minio.Client
+	s3CliOnce sync.Once
+)
+
+func ProvideS3(
+	ctx context.Context,
+	cfg *config.Config,
+) (*minio.Client, error) {
+	var err error
+
+	s3CliOnce.Do(func() {
+		s3Cli, err = minioutil.NewClientWithStartup(ctx, cfg.S3)
+	})
+
+	return s3Cli, err
 }

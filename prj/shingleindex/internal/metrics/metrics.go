@@ -10,6 +10,8 @@ const (
 type Metrics struct {
 	documentRepositoryRequests        *prometheus.CounterVec
 	documentRepositoryRequestDuration *prometheus.HistogramVec
+	filestorageRequests               *prometheus.CounterVec
+	filestorageRequestDurations       *prometheus.HistogramVec
 	natsMicroRequests                 *prometheus.CounterVec
 	natsMicroRequestDurations         *prometheus.HistogramVec
 	natsMicroSizes                    *prometheus.HistogramVec
@@ -35,6 +37,31 @@ func New() *Metrics {
 				Subsystem: subsystem,
 				Name:      "document_repository_duration_seconds",
 				Help:      "Tracks request durations in document repository",
+				Buckets:   prometheus.ExponentialBuckets(0.1, 2, 10), //nolint:gomnd,mnd
+			},
+			[]string{
+				"op",
+				"status",
+			},
+		),
+		filestorageRequests: prometheus.NewCounterVec(
+			prometheus.CounterOpts{ //nolint:exhaustruct
+				Namespace: namespace,
+				Subsystem: subsystem,
+				Name:      "filestorage_requests_total",
+				Help:      "Tracks requests to filestorage",
+			},
+			[]string{
+				"op",
+				"status",
+			},
+		),
+		filestorageRequestDurations: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{ //nolint:exhaustruct
+				Namespace: namespace,
+				Subsystem: subsystem,
+				Name:      "filestorage_request_duration_seconds",
+				Help:      "Tracks request durations filestorage",
 				Buckets:   prometheus.ExponentialBuckets(0.1, 2, 10), //nolint:gomnd,mnd
 			},
 			[]string{
@@ -104,10 +131,22 @@ func (m *Metrics) IncNatsMicroRequest(op string, status string, size int, dur fl
 	m.natsMicroSizes.With(labels).Observe(float64(size))
 }
 
+func (m *Metrics) IncFilestorageRequests(op string, status string, dur float64) {
+	labels := prometheus.Labels{
+		"op":     op,
+		"status": status,
+	}
+
+	m.filestorageRequestDurations.With(labels).Observe(dur)
+	m.filestorageRequests.With(labels).Inc()
+}
+
 func (m *Metrics) Collectors() []prometheus.Collector {
 	return []prometheus.Collector{
 		m.documentRepositoryRequests,
 		m.documentRepositoryRequestDuration,
+		m.filestorageRequests,
+		m.filestorageRequestDurations,
 		m.natsMicroRequests,
 		m.natsMicroRequestDurations,
 		m.natsMicroSizes,

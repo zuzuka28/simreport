@@ -17,4 +17,11 @@ type (
 			query model.DocumentQuery,
 		) (model.Document, error)
 	}
+
+	Filestorage interface {
+		Fetch(
+			ctx context.Context,
+			query model.FileQuery,
+		) (model.File, error)
+	}
 )

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/zuzuka28/simreport/lib/minioutil"
 )
 
 type Redis struct {
@@ -11,10 +12,11 @@ type Redis struct {
 }
 
 type Config struct {
-	Port        int    `yaml:"port"`
-	MetricsPort int    `yaml:"metricsPort"`
-	Nats        string `yaml:"nats"`
-	Redis       Redis  `yaml:"redis"`
+	Port        int              `yaml:"port"`
+	MetricsPort int              `yaml:"metricsPort"`
+	Nats        string           `yaml:"nats"`
+	Redis       Redis            `yaml:"redis"`
+	S3          minioutil.Config `yaml:"s3"`
 }
 
 func New(path string) (*Config, error) {
