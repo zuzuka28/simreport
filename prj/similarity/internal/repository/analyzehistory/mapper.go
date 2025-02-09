@@ -116,7 +116,7 @@ func buildSearchQuery(query model.SimilarityHistoryQuery) ([]byte, error) {
 	if query.DocumentID != "" {
 		filter = append(filter, map_{
 			"term": map_{
-				"github.com/zuzuka28/simreport/prj/similarityID": query.DocumentID,
+				"similarityID": query.DocumentID,
 			},
 		})
 	}

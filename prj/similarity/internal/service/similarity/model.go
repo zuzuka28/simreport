@@ -14,6 +14,10 @@ const (
 
 type match struct {
 	*model.SimilarityMatch
+
+	docs []model.Document
+	textid   string
+
 	text     string
 	shingles map[string]struct{}
 }

@@ -27,14 +27,9 @@ func (s *Service) SearchSimilar(
 		return nil, fmt.Errorf("search sources: %w", err)
 	}
 
-	sources, err = s.processCandidateMatches(ctx, query, sources)
+	processed, err := s.processCandidateMatches(ctx, query, sources)
 	if err != nil {
 		return nil, fmt.Errorf("refine matches: %w", err)
-	}
-
-	res, err := s.expandSourcesToDocuments(ctx, sources)
-	if err != nil {
-		return nil, fmt.Errorf("expand matches: %w", err)
 	}
 
 	if err := s.hr.Save(ctx, model.SimilarityHistorySaveCommand{
@@ -42,13 +37,13 @@ func (s *Service) SearchSimilar(
 			Date:       now(),
 			DocumentID: query.ID,
 			ID:         genID(),
-			Matches:    res,
+			Matches:    processed,
 		},
 	}); err != nil {
 		return nil, fmt.Errorf("save history: %w", err)
 	}
 
-	return res, nil
+	return processed, nil
 }
 
 func (s *Service) prepareSearchQuery(
@@ -137,10 +132,53 @@ func (s *Service) searchSources(
 	return res, nil
 }
 
+func (s *Service) processCandidateMatches(
+	ctx context.Context,
+	query model.SimilarityQuery,
+	items []*model.SimilarityMatch,
+) ([]*model.SimilarityMatch, error) {
+	items = deduplicateByID(items)
+
+	docs, err := s.expandSourcesToDocuments(ctx, items)
+	if err != nil {
+		return nil, fmt.Errorf("expand sources: %w", err)
+	}
+
+	sources, err := s.fetchSourceTexts(ctx, docs)
+	if err != nil {
+		return nil, fmt.Errorf("fetch sources: %w", err)
+	}
+
+	highlighted := highlight(string(query.Item.Text.Content), sources)
+
+	reranked := rerank(string(query.Item.Text.Content), highlighted)
+
+	result := make([]*model.SimilarityMatch, 0, len(items))
+
+	for _, m := range reranked {
+		if m.Rate <= 0 {
+			continue
+		}
+
+		for _, d := range m.docs {
+			dm := *m
+			dm.ID = d.ID()
+
+			result = append(result, dm.SimilarityMatch)
+		}
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Rate > result[j].Rate
+	})
+
+	return result, nil
+}
+
 func (s *Service) expandSourcesToDocuments(
 	ctx context.Context,
 	items []*model.SimilarityMatch,
-) ([]*model.SimilarityMatch, error) {
+) (map[string]*match, error) {
 	srcToMatch := make(map[string]*model.SimilarityMatch)
 
 	for _, v := range items {
@@ -154,85 +192,44 @@ func (s *Service) expandSourcesToDocuments(
 		return nil, fmt.Errorf("retrieve document: %w", err)
 	}
 
-	result := make([]*model.SimilarityMatch, 0, len(docs))
+	result := make(map[string]*match)
 
 	for _, v := range docs {
-		m := *srcToMatch[v.SourceID]
-		m.ID = v.ID()
+		m, ok := result[v.SourceID]
+		if ok {
+			m.docs = append(m.docs, v)
+			continue
+		}
 
-		result = append(result, &m)
-	}
-
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].Rate > result[j].Rate
-	})
-
-	return result, nil
-}
-
-func (s *Service) processCandidateMatches(
-	ctx context.Context,
-	query model.SimilarityQuery,
-	items []*model.SimilarityMatch,
-) ([]*model.SimilarityMatch, error) {
-	items = deduplicateByID(items)
-
-	sources, err := s.fetchSourceTexts(ctx, items)
-	if err != nil {
-		return nil, fmt.Errorf("fetch sources: %w", err)
-	}
-
-	highlighted := highlight(string(query.Item.Text.Content), sources)
-
-	reranked := rerank(string(query.Item.Text.Content), highlighted)
-
-	result := make([]*model.SimilarityMatch, 0, len(items))
-
-	for _, v := range reranked {
-		if v.Rate > 0 {
-			result = append(result, v.SimilarityMatch)
+		result[v.SourceID] = &match{
+			SimilarityMatch: srcToMatch[v.SourceID],
+			docs:            []model.Document{v},
+			textid:          v.TextID,
+			text:            "",
+			shingles:        nil,
 		}
 	}
-
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].Rate > result[j].Rate
-	})
 
 	return result, nil
 }
 
 func (s *Service) fetchSourceTexts(
 	ctx context.Context,
-	matches []*model.SimilarityMatch,
+	matches map[string]*match,
 ) (map[string]*match, error) {
 	eg, egCtx := errgroup.WithContext(ctx)
-
-	result := make(map[string]*match, len(matches))
-	resultMu := &sync.Mutex{}
 
 	for _, v := range matches {
 		eg.Go(func() error {
 			f, err := s.fs.Fetch(egCtx, model.FileQuery{
 				Bucket: bucketTexts,
-				ID:     v.ID,
+				ID:     v.textid,
 			})
 			if err != nil {
 				return fmt.Errorf("fetch text: %w", err)
 			}
 
-			resultMu.Lock()
-			defer resultMu.Unlock()
-
-			result[v.ID] = &match{
-				SimilarityMatch: &model.SimilarityMatch{
-					ID:            v.ID,
-					Rate:          0,
-					Highlights:    nil,
-					SimilarImages: nil,
-				},
-				text:     string(f.Content),
-				shingles: nil,
-			}
+			matches[v.ID].text = string(f.Content)
 
 			return nil
 		})
@@ -242,5 +239,5 @@ func (s *Service) fetchSourceTexts(
 		return nil, fmt.Errorf("fetch texts: %w", err)
 	}
 
-	return result, nil
+	return matches, nil
 }

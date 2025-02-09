@@ -1,5 +1,5 @@
 port: 8080
-metricsPort: 9090
+metricsPort: 9091
 nats: nats://localhost:4222
 elastic:
   hosts:
