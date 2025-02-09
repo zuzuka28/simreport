@@ -2,8 +2,6 @@ package shingleindex
 
 import (
 	"hash/fnv"
-
-	"github.com/zuzuka28/simreport/prj/shingleindex/internal/model"
 )
 
 const (
@@ -12,15 +10,9 @@ const (
 	seed         = 42
 )
 
-type documentMatch struct {
-	*model.DocumentSimilarMatch
-	*model.MinhashSimilarMatch
-	text     string
-	shingles map[string]struct{}
-}
-
+//nolint:gochecknoglobals
 var hasher = func(b []byte) uint64 {
 	h := fnv.New64a()
-	h.Write(b)
+	_, _ = h.Write(b)
 	return h.Sum64()
 }

@@ -10,7 +10,6 @@ require (
 	github.com/nats-io/nats.go v1.38.0
 	github.com/prometheus/client_golang v1.20.5
 	github.com/redis/go-redis/v9 v9.7.0
-	github.com/sergi/go-diff v1.3.1
 	github.com/urfave/cli/v2 v2.27.5
 	github.com/zuzuka28/simreport/lib v0.0.0-20250208223041-01ffeab32c32
 	github.com/zuzuka28/simreport/prj/document v0.0.0-20250203230002-1b1a027f43c9
