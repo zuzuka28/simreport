@@ -53,7 +53,7 @@ func mapDocumentToMinhashSaveCommand(
 	}
 
 	return model.MinhashSaveCommand{
-		DocumentID: in.Item.ID,
+		DocumentID: in.Item.SourceID,
 		Minhash:    mh,
 	}
 }
