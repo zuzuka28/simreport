@@ -17,12 +17,20 @@ func NewMiddleware() pb.Middleware {
 
 			h(ctx, lreq)
 
-			slog.Info(
-				"request processed",
+			attrs := []any{
 				"request_id", ctx.Value(model.RequestIDKey),
 				"status", lreq.Status,
 				"response_size_bytes", lreq.ResponseSize,
 				"elapsed_time", time.Since(lreq.Start),
+			}
+
+			if lreq.ErrorDescription != "" {
+				attrs = append(attrs, "error", lreq.ErrorDescription)
+			}
+
+			slog.Info(
+				"request processed",
+				attrs...,
 			)
 		}
 	}
@@ -30,17 +38,19 @@ func NewMiddleware() pb.Middleware {
 
 type loggedRequest struct {
 	micro.Request
-	Status       string
-	ResponseSize int
-	Start        time.Time
+	Status           string
+	ResponseSize     int
+	Start            time.Time
+	ErrorDescription string
 }
 
 func newLoggedRequest(msg micro.Request) *loggedRequest {
 	return &loggedRequest{
-		Request:      msg,
-		Status:       "",
-		ResponseSize: 0,
-		Start:        time.Now(),
+		Request:          msg,
+		Status:           "",
+		ResponseSize:     0,
+		Start:            time.Now(),
+		ErrorDescription: "",
 	}
 }
 
@@ -54,6 +64,7 @@ func (m *loggedRequest) Respond(data []byte, opts ...micro.RespondOpt) error {
 func (m *loggedRequest) Error(code, description string, data []byte, opts ...micro.RespondOpt) error {
 	m.Status = code
 	m.ResponseSize = len(data)
+	m.ErrorDescription = string(data)
 
 	return m.Request.Error(code, description, data, opts...) //nolint:wrapcheck
 }
