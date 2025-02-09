@@ -64,14 +64,12 @@ message UploadDocumentRequest {
 }
 
 message UploadDocumentResponse {
-  Error error = 1;
   string document_id = 2;
 }
 
 message SearchAttributeRequest { string attribute = 1; }
 
 message SearchAttributeResponse {
-  Error error = 1;
   repeated Attribute items = 2;
 }
 
@@ -89,15 +87,5 @@ message SearchRequest {
 }
 
 message SearchDocumentResponse {
-  Error error = 1;
-  repeated DocumentSummary documents = 2;
-}
-
-message DocumentSummary {
-  repeated string group_ids = 1;
-  string parent_id = 2;
-  int64 version = 3;
-  string id = 4;
-  string name = 5;
-  string last_updated = 6;
+  repeated Document documents = 2;
 }

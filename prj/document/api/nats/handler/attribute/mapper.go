@@ -32,7 +32,6 @@ func mapSearchAttributeToPb(
 	}
 
 	return &pb.SearchAttributeResponse{
-		Error: nil,
 		Items: attrs,
 	}
 }

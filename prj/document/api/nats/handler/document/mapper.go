@@ -23,25 +23,12 @@ func mapSearchRequestToQuery(
 func mapDocumentsToSearchResponse(
 	in []model.Document,
 ) *pb.SearchDocumentResponse {
-	docs := make([]*pb.DocumentSummary, 0, len(in))
-
+	docs := make([]*pb.Document, 0, len(in))
 	for _, v := range in {
-		v := v
-
-		docID := v.ID()
-
-		docs = append(docs, &pb.DocumentSummary{
-			GroupIds:    v.GroupID,
-			Id:          docID,
-			LastUpdated: v.LastUpdated.Format(time.RFC3339),
-			Name:        v.Name,
-			ParentId:    v.ParentID,
-			Version:     int64(v.Version),
-		})
+		docs = append(docs, mapDocumentToPb(false, v))
 	}
 
 	return &pb.SearchDocumentResponse{
-		Error:     nil,
 		Documents: docs,
 	}
 }
@@ -76,7 +63,6 @@ func mapUploadCommandToResponse(
 	doc *model.Document,
 ) *pb.UploadDocumentResponse {
 	return &pb.UploadDocumentResponse{
-		Error:      nil,
 		DocumentId: doc.ID(),
 	}
 }
@@ -104,7 +90,7 @@ func mapFetchDocumentRequestToQuery(
 }
 
 func mapDocumentToPb(
-	q model.DocumentQuery,
+	withContent bool,
 	in model.Document,
 ) *pb.Document {
 	imgs := make([]*pb.File, 0, len(in.Images))
@@ -135,7 +121,7 @@ func mapDocumentToPb(
 		Images: imgs,
 	}
 
-	if !q.WithContent {
+	if !withContent {
 		return doc
 	}
 
@@ -154,11 +140,11 @@ func mapDocumentToPb(
 }
 
 func mapFetchDocumentResponseToPb(
-	q model.DocumentQuery,
+	withContent bool,
 	in model.Document,
 ) *pb.FetchDocumentResponse {
 	return &pb.FetchDocumentResponse{
 		Error:    nil,
-		Document: mapDocumentToPb(q, in),
+		Document: mapDocumentToPb(withContent, in),
 	}
 }
