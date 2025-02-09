@@ -12,27 +12,30 @@ type (
 			ctx context.Context,
 			query model.DocumentQuery,
 		) (model.Document, error)
+		Search(
+			ctx context.Context,
+			query model.DocumentSearchQuery,
+		) ([]model.Document, error)
 	}
 
-	ShingleIndexService interface {
+	IndexingService interface {
 		SearchSimilar(
 			ctx context.Context,
 			query model.SimilarityQuery,
 		) ([]*model.SimilarityMatch, error)
 	}
 
-	FulltextIndexService interface {
-		SearchSimilar(
-			ctx context.Context,
-			query model.SimilarityQuery,
-		) ([]*model.SimilarityMatch, error)
-	}
+	ShingleIndexService IndexingService
 
-	SemanticIndexService interface {
-		SearchSimilar(
+	FulltextIndexService IndexingService
+
+	SemanticIndexService IndexingService
+
+	Filestorage interface {
+		Fetch(
 			ctx context.Context,
-			query model.SimilarityQuery,
-		) ([]*model.SimilarityMatch, error)
+			query model.FileQuery,
+		) (model.File, error)
 	}
 
 	HistoryRepository interface {

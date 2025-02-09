@@ -12,5 +12,9 @@ type (
 			ctx context.Context,
 			query model.DocumentQuery,
 		) (model.Document, error)
+		Search(
+			ctx context.Context,
+			query model.DocumentSearchQuery,
+		) ([]model.Document, error)
 	}
 )

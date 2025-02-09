@@ -9,9 +9,11 @@ package provider
 import (
 	"context"
 	"github.com/elastic/go-elasticsearch/v8"
+	"github.com/minio/minio-go/v7"
 	"github.com/nats-io/nats.go"
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/httpinstumentation"
+	"github.com/zuzuka28/simreport/lib/minioutil"
 	similarity3 "github.com/zuzuka28/simreport/prj/similarity/api/nats/handler/similarity"
 	server2 "github.com/zuzuka28/simreport/prj/similarity/api/nats/server"
 	"github.com/zuzuka28/simreport/prj/similarity/api/rest/server"
@@ -21,6 +23,7 @@ import (
 	"github.com/zuzuka28/simreport/prj/similarity/internal/model"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/analyzehistory"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/document"
+	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/filestorage"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/similarityindexclient"
 	document2 "github.com/zuzuka28/simreport/prj/similarity/internal/service/document"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/service/fulltextindex"
@@ -36,6 +39,11 @@ import (
 )
 
 // Injectors from wire.go:
+
+func InitFilestorageRepository(client *minio.Client, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*filestorage.Repository, error) {
+	repository := filestorage.NewRepository(client, metricsMetrics)
+	return repository, nil
+}
 
 func InitDocumentRepository(conn *nats.Conn, metricsMetrics *metrics.Metrics) (*document.Repository, error) {
 	repository := document.NewRepository(conn, metricsMetrics)
@@ -109,9 +117,9 @@ func InitAnalyzeHistoryRepository(client *elasticsearch.Client, configConfig *co
 	return repository, nil
 }
 
-func InitAnalyzeService(configConfig *config.Config, service *document2.Service, shingleindexService *shingleindex.Service, fulltextindexService *fulltextindex.Service, semanticindexService *semanticindex.Service, repository *analyzehistory.Repository) (*similarity.Service, error) {
+func InitAnalyzeService(configConfig *config.Config, service *document2.Service, shingleindexService *shingleindex.Service, fulltextindexService *fulltextindex.Service, semanticindexService *semanticindex.Service, repository *analyzehistory.Repository, filestorageRepository *filestorage.Repository) (*similarity.Service, error) {
 	opts := ProvideAnalyzeServiceOpts()
-	similarityService := similarity.NewService(opts, service, shingleindexService, fulltextindexService, semanticindexService, repository)
+	similarityService := similarity.NewService(opts, service, filestorageRepository, shingleindexService, fulltextindexService, semanticindexService, repository)
 	return similarityService, nil
 }
 
@@ -159,7 +167,15 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	similarityService, err := InitAnalyzeService(configConfig, service, shingleindexService, fulltextindexService, semanticindexService, analyzehistoryRepository)
+	minioClient, err := ProvideS3(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	filestorageRepository, err := InitFilestorageRepository(minioClient, configConfig, metricsMetrics)
+	if err != nil {
+		return nil, err
+	}
+	similarityService, err := InitAnalyzeService(configConfig, service, shingleindexService, fulltextindexService, semanticindexService, analyzehistoryRepository, filestorageRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -216,7 +232,15 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	similarityService, err := InitAnalyzeService(configConfig, service, shingleindexService, fulltextindexService, semanticindexService, analyzehistoryRepository)
+	minioClient, err := ProvideS3(contextContext, configConfig)
+	if err != nil {
+		return nil, err
+	}
+	filestorageRepository, err := InitFilestorageRepository(minioClient, configConfig, metricsMetrics)
+	if err != nil {
+		return nil, err
+	}
+	similarityService, err := InitAnalyzeService(configConfig, service, shingleindexService, fulltextindexService, semanticindexService, analyzehistoryRepository, filestorageRepository)
 	if err != nil {
 		return nil, err
 	}
@@ -288,6 +312,7 @@ func ProvideConfig(path string) (*config.Config, error) {
 	}
 
 	cfg.Elastic.Transport = transport
+	cfg.S3.Transport = transport
 
 	return cfg, nil
 }
@@ -328,6 +353,25 @@ func ProvideNats(
 	})
 
 	return natsCli, err
+}
+
+//nolint:gochecknoglobals
+var (
+	s3Cli     *minio.Client
+	s3CliOnce sync.Once
+)
+
+func ProvideS3(
+	ctx context.Context,
+	cfg *config.Config,
+) (*minio.Client, error) {
+	var err error
+
+	s3CliOnce.Do(func() {
+		s3Cli, err = minioutil.NewClientWithStartup(ctx, cfg.S3)
+	})
+
+	return s3Cli, err
 }
 
 func ProvideAnalyzeServiceOpts() similarity.Opts {

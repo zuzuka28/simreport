@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/minio/minio-go/v7"
 	analyzenatsapi "github.com/zuzuka28/simreport/prj/similarity/api/nats/handler/similarity"
 	servernats "github.com/zuzuka28/simreport/prj/similarity/api/nats/server"
 	serverhttp "github.com/zuzuka28/simreport/prj/similarity/api/rest/server"
@@ -20,6 +21,7 @@ import (
 	"github.com/zuzuka28/simreport/prj/similarity/internal/model"
 	analyzehistoryrepo "github.com/zuzuka28/simreport/prj/similarity/internal/repository/analyzehistory"
 	documentrepo "github.com/zuzuka28/simreport/prj/similarity/internal/repository/document"
+	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/filestorage"
 	similarityindexrepo "github.com/zuzuka28/simreport/prj/similarity/internal/repository/similarityindexclient"
 	documentsrv "github.com/zuzuka28/simreport/prj/similarity/internal/service/document"
 	fulltextindexsrv "github.com/zuzuka28/simreport/prj/similarity/internal/service/fulltextindex"
@@ -29,6 +31,7 @@ import (
 
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/httpinstumentation"
+	"github.com/zuzuka28/simreport/lib/minioutil"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/google/wire"
@@ -97,6 +100,7 @@ func ProvideConfig(path string) (*config.Config, error) {
 	}
 
 	cfg.Elastic.Transport = transport
+	cfg.S3.Transport = transport
 
 	return cfg, nil
 }
@@ -137,6 +141,36 @@ func ProvideNats(
 	})
 
 	return natsCli, err //nolint:wrapcheck
+}
+
+//nolint:gochecknoglobals
+var (
+	s3Cli     *minio.Client
+	s3CliOnce sync.Once
+)
+
+func ProvideS3(
+	ctx context.Context,
+	cfg *config.Config,
+) (*minio.Client, error) {
+	var err error
+
+	s3CliOnce.Do(func() {
+		s3Cli, err = minioutil.NewClientWithStartup(ctx, cfg.S3)
+	})
+
+	return s3Cli, err //nolint:wrapcheck
+}
+
+func InitFilestorageRepository(
+	_ *minio.Client,
+	_ *config.Config,
+	_ *metrics.Metrics,
+) (*filestorage.Repository, error) {
+	panic(wire.Build(
+		wire.Bind(new(filestorage.Metrics), new(*metrics.Metrics)),
+		filestorage.NewRepository,
+	))
 }
 
 func InitDocumentRepository(
@@ -234,6 +268,7 @@ func InitAnalyzeService(
 	_ *fulltextindexsrv.Service,
 	_ *semanticindexsrv.Service,
 	_ *analyzehistoryrepo.Repository,
+	_ *filestorage.Repository,
 ) (*analyzesrv.Service, error) {
 	panic(wire.Build(
 		ProvideAnalyzeServiceOpts,
@@ -241,6 +276,7 @@ func InitAnalyzeService(
 		wire.Bind(new(analyzesrv.ShingleIndexService), new(*shingleindexsrv.Service)),
 		wire.Bind(new(analyzesrv.FulltextIndexService), new(*fulltextindexsrv.Service)),
 		wire.Bind(new(analyzesrv.SemanticIndexService), new(*semanticindexsrv.Service)),
+		wire.Bind(new(analyzesrv.Filestorage), new(*filestorage.Repository)),
 		wire.Bind(new(analyzesrv.HistoryRepository), new(*analyzehistoryrepo.Repository)),
 		analyzesrv.NewService,
 	))
@@ -264,6 +300,9 @@ func InitRestAPI(
 		ProvideSpec,
 		ProvideElastic,
 		ProvideNats,
+
+		ProvideS3,
+		InitFilestorageRepository,
 
 		InitDocumentRepository,
 		InitDocumentService,
@@ -304,6 +343,9 @@ func InitNatsAPI(
 		ProvideMetrics,
 		ProvideElastic,
 		ProvideNats,
+
+		ProvideS3,
+		InitFilestorageRepository,
 
 		InitDocumentRepository,
 		InitDocumentService,

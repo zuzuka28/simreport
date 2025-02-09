@@ -17,9 +17,26 @@ var errInternal = errors.New("internal error")
 const idPartsCount = 2
 
 func parseFetchDocumentResponse(in *pb.FetchDocumentResponse) (model.Document, error) {
-	raw := in.GetDocument()
+	return mapDocumentToModel(in.GetDocument())
+}
 
-	if in == nil {
+func parseSearchDocumentsResponse(in *pb.SearchDocumentResponse) ([]model.Document, error) {
+	items := make([]model.Document, 0, len(in.GetDocuments()))
+
+	for _, v := range in.GetDocuments() {
+		doc, err := mapDocumentToModel(v)
+		if err != nil {
+			return nil, fmt.Errorf("parse document: %w", errInternal)
+		}
+
+		items = append(items, doc)
+	}
+
+	return items, nil
+}
+
+func mapDocumentToModel(raw *pb.Document) (model.Document, error) {
+	if raw == nil {
 		return model.Document{}, nil //nolint:exhaustruct
 	}
 
@@ -128,5 +145,17 @@ func mapDocumentQueryToPb(
 		Id:          query.ID,
 		WithContent: query.WithContent,
 		Include:     include,
+	}
+}
+
+func mapDocumentSearchQueryToPb(
+	in model.DocumentSearchQuery,
+) *pb.SearchRequest {
+	return &pb.SearchRequest{
+		ParentId:  in.ParentID,
+		Name:      in.Name,
+		Version:   in.Version,
+		GroupIds:  in.GroupID,
+		SourceIds: in.SourceID,
 	}
 }
