@@ -12,6 +12,8 @@ services:
         target: /config/config.yaml
     networks:
       - simrep_infra
+    volumes:
+      - ../../prj/document/config/mappings:/mappings
 
   document-api-nats:
     build:
@@ -24,6 +26,8 @@ services:
         target: /config/config.yaml
     networks:
       - simrep_infra
+    volumes:
+      - ../../prj/document/config/mappings:/mappings
 
   document-processing:
     build:
@@ -36,6 +40,8 @@ services:
         target: /config/config.yaml
     networks:
       - simrep_infra
+    volumes:
+      - ../../prj/document/config/mappings:/mappings
 
   similarity-api-rest:
     build:
@@ -48,6 +54,8 @@ services:
         target: /config/config.yaml
     networks:
       - simrep_infra
+    volumes:
+      - ../../prj/similarity/config/mappings:/mappings
 
   similarity-api-nats:
     build:
@@ -60,6 +68,8 @@ services:
         target: /config/config.yaml
     networks:
       - simrep_infra
+    volumes:
+      - ../../prj/similarity/config/mappings:/mappings
 
   fulltextindex-api:
     build:
@@ -72,6 +82,8 @@ services:
         target: /config/config.yaml
     networks:
       - simrep_infra
+    volumes:
+      - ../../prj/fulltextindex/config/mappings:/mappings
 
   fulltextindex-processing:
     build:
@@ -84,6 +96,8 @@ services:
         target: /config/config.yaml
     networks:
       - simrep_infra
+    volumes:
+      - ../../prj/fulltextindex/config/mappings:/mappings
 
   vectorizer:
     build:
@@ -108,6 +122,10 @@ services:
         target: /config/config.yaml
     networks:
       - simrep_infra
+    volumes:
+      - ../../prj/semanticindex/config/mappings:/mappings
+    depends_on:
+      - vectorizer
 
   semanticindex-processing:
     build:
@@ -120,6 +138,10 @@ services:
         target: /config/config.yaml
     networks:
       - simrep_infra
+    volumes:
+      - ../../prj/semanticindex/config/mappings:/mappings
+    depends_on:
+      - vectorizer
 
   shingleindex-api:
     build:
@@ -132,6 +154,8 @@ services:
         target: /config/config.yaml
     networks:
       - simrep_infra
+    volumes:
+      - ../../prj/shingleindex/config/mappings:/mappings
 
   shingleindex-processing:
     build:
@@ -144,6 +168,8 @@ services:
         target: /config/config.yaml
     networks:
       - simrep_infra
+    volumes:
+      - ../../prj/shingleindex/config/mappings:/mappings
 
   tgbot:
     build:
@@ -156,6 +182,8 @@ services:
         target: /config/config.yaml
     networks:
       - simrep_infra
+    volumes:
+      - ../../prj/tgbot/config/mappings:/mappings
 
 configs:
   document-api-rest-config:
