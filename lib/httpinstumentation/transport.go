@@ -49,8 +49,13 @@ func (it *InstumentedTransport) RoundTrip(req *http.Request) (*http.Response, er
 
 	attrs = append(attrs,
 		"elapsed_time", time.Since(t),
-		"response_status", res.StatusCode,
 	)
+
+	if res != nil {
+		attrs = append(attrs,
+			"response_status", res.StatusCode,
+		)
+	}
 
 	if it.LogResponseBody && res != nil && res.Body != nil && res.Body != http.NoBody {
 		defer res.Body.Close()

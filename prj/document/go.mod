@@ -16,7 +16,7 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	github.com/rs/cors v1.11.1
 	github.com/urfave/cli/v2 v2.27.5
-	github.com/zuzuka28/simreport/lib v0.0.0-20250111110310-c2b67e053f97
+	github.com/zuzuka28/simreport/lib v0.0.0-20250209135057-12eb9de65916
 	golang.org/x/sync v0.10.0
 	google.golang.org/protobuf v1.36.4
 )
