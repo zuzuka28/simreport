@@ -37,116 +37,125 @@ services:
     networks:
       - simrep_infra
 
-  # similarity-api-rest:
-  #   build:
-  #     context: ../../prj/similarity
-  #     dockerfile: build/docker/Dockerfile
-  #   image: zuzuka28/similarity:latest
-  #   command: ["--config", "/config/config.yaml", "run-api"]
-  #   configs:
-  #     - source: similarity-api-rest-config
-  #       target: /config/config.yaml
-  #   networks:
-  #     - infra_network
-  #
-  # similarity-api-nats:
-  #   build:
-  #     context: ../../prj/similarity
-  #     dockerfile: build/docker/Dockerfile
-  #   image: zuzuka28/similarity:latest
-  #   command: ["--config", "/config/config.yaml", "run-intapi"]
-  #   configs:
-  #     - source: similarity-api-nats-config
-  #       target: /config/config.yaml
-  #   networks:
-  #     - infra_network
-  #
-  # fulltextindex-api:
-  #   build:
-  #     context: ../../prj/fulltextindex
-  #     dockerfile: build/docker/Dockerfile
-  #   image: zuzuka28/fulltextindex:latest
-  #   command: ["--config", "/config/config.yaml", "run-api"]
-  #   configs:
-  #     - source: fulltextindex-api-config
-  #       target: /config/config.yaml
-  #   networks:
-  #     - infra_network
-  #
-  # fulltextindex-processing:
-  #   build:
-  #     context: ../../prj/fulltextindex
-  #     dockerfile: build/docker/Dockerfile
-  #   image: zuzuka28/fulltextindex:latest
-  #   command:
-  #     ["--config", "/config/config.yaml", "run-async-processing"]
-  #   configs:
-  #     - source: fulltextindex-processing-config
-  #       target: /config/config.yaml
-  #   networks:
-  #     - infra_network
-  #
-  # vectorizer:
-  #   build:
-  #     context: ../../prj/vectorizer
-  #     dockerfile: build/docker/Dockerfile
-  #   image: zuzuka28/vectorizer:latest
-  #   command: ["python", "-m", "src.api.run"]
-  #   configs:
-  #     - source: vectorizer-config
-  #       target: /config/config.yaml
-  #   networks:
-  #     - infra_network
-  #
-  # semanticindex-api:
-  #   build:
-  #     context: ../../prj/semanticindex
-  #     dockerfile: build/docker/Dockerfile
-  #   image: zuzuka28/semanticindex:latest
-  #   command: ["--config", "/config/config.yaml", "run-api"]
-  #   configs:
-  #     - source: semanticindex-api-config
-  #       target: /config/config.yaml
-  #   networks:
-  #     - infra_network
-  #
-  # semanticindex-processing:
-  #   build:
-  #     context: ../../prj/semanticindex
-  #     dockerfile: build/docker/Dockerfile
-  #   image: zuzuka28/semanticindex:latest
-  #   command:
-  #     ["--config", "/config/config.yaml", "run-async-processing"]
-  #   configs:
-  #     - source: semanticindex-processing-config
-  #       target: /config/config.yaml
-  #   networks:
-  #     - infra_network
-  #
-  # shingleindex-api:
-  #   build:
-  #     context: ../../prj/shingleindex
-  #     dockerfile: build/docker/Dockerfile
-  #   image: zuzuka28/shingleindex:latest
-  #   command: ["--config", "/config/config.yaml", "run-api"]
-  #   configs:
-  #     - source: shingleindex-api-config
-  #       target: /config/config.yaml
-  #   networks:
-  #     - infra_network
-  #
-  # shingleindex-processing:
-  #   build:
-  #     context: ../../prj/shingleindex
-  #     dockerfile: build/docker/Dockerfile
-  #   image: zuzuka28/shingleindex:latest
-  #   command:
-  #     ["--config", "/config/config.yaml", "run-async-processing"]
-  #   configs:
-  #     - source: shingleindex-processing-config
-  #       target: /config/config.yaml
-  #   networks:
-  #     - infra_network
+  similarity-api-rest:
+    build:
+      context: ../../prj/similarity
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/similarity:latest
+    command: ["--config", "/config/config.yaml", "run-api"]
+    configs:
+      - source: similarity-api-rest-config
+        target: /config/config.yaml
+    networks:
+      - simrep_infra
+
+  similarity-api-nats:
+    build:
+      context: ../../prj/similarity
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/similarity:latest
+    command: ["--config", "/config/config.yaml", "run-intapi"]
+    configs:
+      - source: similarity-api-nats-config
+        target: /config/config.yaml
+    networks:
+      - simrep_infra
+
+  fulltextindex-api:
+    build:
+      context: ../../prj/fulltextindex
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/fulltextindex:latest
+    command: ["--config", "/config/config.yaml", "run-api"]
+    configs:
+      - source: fulltextindex-api-config
+        target: /config/config.yaml
+    networks:
+      - simrep_infra
+
+  fulltextindex-processing:
+    build:
+      context: ../../prj/fulltextindex
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/fulltextindex:latest
+    command: ["--config", "/config/config.yaml", "run-async-processing"]
+    configs:
+      - source: fulltextindex-processing-config
+        target: /config/config.yaml
+    networks:
+      - simrep_infra
+
+  vectorizer:
+    build:
+      context: ../../prj/vectorizer
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/vectorizer:latest
+    command: ["python", "-m", "src.api.run"]
+    configs:
+      - source: vectorizer-config
+        target: /config/config.yaml
+    networks:
+      - simrep_infra
+
+  semanticindex-api:
+    build:
+      context: ../../prj/semanticindex
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/semanticindex:latest
+    command: ["--config", "/config/config.yaml", "run-api"]
+    configs:
+      - source: semanticindex-api-config
+        target: /config/config.yaml
+    networks:
+      - simrep_infra
+
+  semanticindex-processing:
+    build:
+      context: ../../prj/semanticindex
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/semanticindex:latest
+    command: ["--config", "/config/config.yaml", "run-async-processing"]
+    configs:
+      - source: semanticindex-processing-config
+        target: /config/config.yaml
+    networks:
+      - simrep_infra
+
+  shingleindex-api:
+    build:
+      context: ../../prj/shingleindex
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/shingleindex:latest
+    command: ["--config", "/config/config.yaml", "run-api"]
+    configs:
+      - source: shingleindex-api-config
+        target: /config/config.yaml
+    networks:
+      - simrep_infra
+
+  shingleindex-processing:
+    build:
+      context: ../../prj/shingleindex
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/shingleindex:latest
+    command: ["--config", "/config/config.yaml", "run-async-processing"]
+    configs:
+      - source: shingleindex-processing-config
+        target: /config/config.yaml
+    networks:
+      - simrep_infra
+
+  tgbot:
+    build:
+      context: ../../prj/tgbot
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/tgbot:latest
+    command: ["--config", "/config/config.yaml"]
+    configs:
+      - source: tgbot-config
+        target: /config/config.yaml
+    networks:
+      - simrep_infra
 
 configs:
   document-api-rest-config:
@@ -173,6 +182,8 @@ configs:
     file: ./configs/shingleindex.yaml
   shingleindex-processing-config:
     file: ./configs/shingleindex.yaml
+  tgbot-config:
+    file: ./configs/tgbot.yaml
 
 networks:
   simrep_infra:

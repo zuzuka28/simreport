@@ -1,0 +1,19 @@
+metricsPort: ${METRICS_PORT}
+
+bot:
+  token: ${TGBOT_TOKEN}
+
+elastic:
+  hosts:
+    - ${ELASTIC_HOSTS}
+  startupIndex:
+    - index: "${ELASTIC_USERSTATE_INDEX}"
+      updateMapping: ${ELASTIC_UPDATE_MAPPING_USERSTATE_INDEX}
+      createMapping: ${ELASTIC_CREATE_MAPPING_USERSTATE_INDEX}
+      mappingPath: "${ELASTIC_MAPPING_PATH_USERSTATE_INDEX}"
+      alias: "${ELASTIC_ALIAS_USERSTATE_INDEX}"
+      shards: ${ELASTIC_SHARDS_USERSTATE_INDEX}
+      replics: ${ELASTIC_REPLICAS_USERSTATE_INDEX}
+
+userStateRepo:
+  index: "${USERSTATE_REPO_INDEX}"
