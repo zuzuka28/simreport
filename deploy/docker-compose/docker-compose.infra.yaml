@@ -1,0 +1,140 @@
+version: "3.7"
+
+services:
+  minio:
+    image: minio/minio
+    volumes:
+      - minio_vol:/data
+    command: server --console-address ":9001" /data
+    environment:
+      MINIO_ACCESS_KEY: minio
+      MINIO_SECRET_KEY: minio123
+    networks:
+      - infra_network
+
+  miniomc:
+    image: minio/mc
+    links:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc config host rm local;
+      /usr/bin/mc config host add --quiet --api s3v4 local http://minio:9000 minio minio123;
+      /usr/bin/mc mb local/anysave;
+      /usr/bin/mc anonymous set public local/anysave;
+      /usr/bin/mc mb local/images;
+      /usr/bin/mc anonymous set public local/images;
+      /usr/bin/mc mb local/texts;
+      /usr/bin/mc anonymous set public local/texts;
+      "
+    networks:
+      - infra_network
+
+  elasticsearch:
+    image: elasticsearch:8.15.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - elastic_vol:/usr/share/elasticsearch/data
+    networks:
+      - infra_network
+
+  kibana:
+    image: kibana:8.15.2
+    container_name: kibana
+    ports:
+      - 5601:5601
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+        reservations:
+          cpus: "1.0"
+    depends_on:
+      - elasticsearch
+
+  nats1:
+    image: docker.io/nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats1_vol:/data
+    command:
+      - "--name=nats1"
+      - "--cluster_name=c1"
+      - "--cluster=nats://nats1:6222"
+      - "--routes=nats-route://nats1:6222,nats-route://nats2:6222,nats-route://nats3:6222"
+      - "--http_port=8222"
+      - "--js"
+      - "--sd=/data"
+    networks:
+      - infra_network
+
+  nats2:
+    image: docker.io/nats
+    ports:
+      - "4223:4222"
+      - "8223:8222"
+    volumes:
+      - nats2_vol:/data
+    command:
+      - "--name=nats2"
+      - "--cluster_name=c1"
+      - "--cluster=nats://nats2:6222"
+      - "--routes=nats-route://nats1:6222,nats-route://nats2:6222,nats-route://nats3:6222"
+      - "--http_port=8222"
+      - "--js"
+      - "--sd=/data"
+    networks:
+      - infra_network
+
+  nats3:
+    image: docker.io/nats
+    ports:
+      - "4224:4222"
+      - "8224:8222"
+    volumes:
+      - nats3_vol:/data
+    command:
+      - "--name=nats3"
+      - "--cluster_name=c1"
+      - "--cluster=nats://nats3:6222"
+      - "--routes=nats-route://nats1:6222,nats-route://nats2:6222,nats-route://nats3:6222"
+      - "--http_port=8222"
+      - "--js"
+      - "--sd=/data"
+    networks:
+      - infra_network
+
+  tika:
+    image: tika
+    build:
+      context: tika
+      args:
+        - TIKA_VERSION=3.0.0
+    networks:
+      - infra_network
+
+  redis:
+    image: redis:latest
+    volumes:
+      - redis_vol:/data
+    networks:
+      - infra_network
+
+volumes:
+  elastic_vol:
+  minio_vol:
+  nats1_vol:
+  nats2_vol:
+  nats3_vol:
+  redis_vol:
+
+networks:
+  infra_network:

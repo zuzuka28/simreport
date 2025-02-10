@@ -1,0 +1,15 @@
+port: ${PORT}
+
+metricsPort: ${METRICS_PORT}
+
+redis:
+  dsn: ${REDIS_DSN}
+
+s3:
+  endpoint: "${S3_ENDPOINT}"
+  accessKeyID: "${S3_ACCESS_KEY}"
+  secletAccessKey: "${S3_SECRET_KEY}"
+  buckets:
+    - ${S3_BUCKET_TEXTS}
+
+nats: ${NATS_URL}

@@ -1,0 +1,177 @@
+version: "3.7"
+
+services:
+  document-api-rest:
+    build:
+      context: ../../prj/document
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/document:latest
+    command: ["--config", "/config/config.yaml", "run-api"]
+    configs:
+      - source: document-api-rest-config
+        target: /config/config.yaml
+
+  document-api-nats:
+    build:
+      context: ../../prj/document
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/document:latest
+    command: ["--config", "/config/config.yaml", "run-intapi"]
+    configs:
+      - source: document-api-nats-config
+        target: /config/config.yaml
+    networks:
+      - infra_network
+
+  document-processing:
+    build:
+      context: ../../prj/document
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/document:latest
+    command: ["--config", "/config/config.yaml", "run-async-processing"]
+    configs:
+      - source: document-processing-config
+        target: /config/config.yaml
+    networks:
+      - infra_network
+
+  similarity-api-rest:
+    build:
+      context: ../../prj/similarity
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/similarity:latest
+    command: ["--config", "/config/config.yaml", "run-api"]
+    configs:
+      - source: similarity-api-rest-config
+        target: /config/config.yaml
+    networks:
+      - infra_network
+
+  similarity-api-nats:
+    build:
+      context: ../../prj/similarity
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/similarity:latest
+    command: ["--config", "/config/config.yaml", "run-intapi"]
+    configs:
+      - source: similarity-api-nats-config
+        target: /config/config.yaml
+    networks:
+      - infra_network
+
+  fulltextindex-api:
+    build:
+      context: ../../prj/fulltextindex
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/fulltextindex:latest
+    command: ["--config", "/config/config.yaml", "run-api"]
+    configs:
+      - source: fulltextindex-api-config
+        target: /config/config.yaml
+    networks:
+      - infra_network
+
+  fulltextindex-processing:
+    build:
+      context: ../../prj/fulltextindex
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/fulltextindex:latest
+    command:
+      ["--config", "/config/config.yaml", "run-async-processing"]
+    configs:
+      - source: fulltextindex-processing-config
+        target: /config/config.yaml
+    networks:
+      - infra_network
+
+  vectorizer:
+    build:
+      context: ../../prj/vectorizer
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/vectorizer:latest
+    command: ["python", "-m", "src.api.run"]
+    configs:
+      - source: vectorizer-config
+        target: /config/config.yaml
+    networks:
+      - infra_network
+
+  semanticindex-api:
+    build:
+      context: ../../prj/semanticindex
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/semanticindex:latest
+    command: ["--config", "/config/config.yaml", "run-api"]
+    configs:
+      - source: semanticindex-api-config
+        target: /config/config.yaml
+    networks:
+      - infra_network
+
+  semanticindex-processing:
+    build:
+      context: ../../prj/semanticindex
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/semanticindex:latest
+    command:
+      ["--config", "/config/config.yaml", "run-async-processing"]
+    configs:
+      - source: semanticindex-processing-config
+        target: /config/config.yaml
+    networks:
+      - infra_network
+
+  shingleindex-api:
+    build:
+      context: ../../prj/shingleindex
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/shingleindex:latest
+    command: ["--config", "/config/config.yaml", "run-api"]
+    configs:
+      - source: shingleindex-api-config
+        target: /config/config.yaml
+    networks:
+      - infra_network
+
+  shingleindex-processing:
+    build:
+      context: ../../prj/shingleindex
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/shingleindex:latest
+    command:
+      ["--config", "/config/config.yaml", "run-async-processing"]
+    configs:
+      - source: shingleindex-processing-config
+        target: /config/config.yaml
+    networks:
+      - infra_network
+
+configs:
+  document-api-rest-config:
+    file: ./configs/document.yaml
+  document-api-nats-config:
+    file: ./configs/document.yaml
+  document-processing-config:
+    file: ./configs/document.yaml
+  similarity-api-rest-config:
+    file: ./configs/similarity.yaml
+  similarity-api-nats-config:
+    file: ./configs/similarity.yaml
+  fulltextindex-api-config:
+    file: ./configs/fulltextindex.yaml
+  fulltextindex-processing-config:
+    file: ./configs/fulltextindex.yaml
+  vectorizer-config:
+    file: ./configs/vectorizer.yaml
+  semanticindex-api-config:
+    file: ./configs/semanticindex.yaml
+  semanticindex-processing-config:
+    file: ./configs/semanticindex.yaml
+  shingleindex-api-config:
+    file: ./configs/shingleindex.yaml
+  shingleindex-processing-config:
+    file: ./configs/shingleindex.yaml
+
+networks:
+  infra_network:
+    external: true

@@ -1,0 +1,28 @@
+metricsPort: ${METRICS_PORT}
+
+s3:
+  endpoint: "${S3_ENDPOINT}"
+  accessKeyID: "${S3_ACCESS_KEY}"
+  secletAccessKey: "${S3_SECRET_KEY}"
+  buckets:
+    - ${S3_BUCKET_TEXTS}
+
+elastic:
+  hosts:
+    - ${ELASTIC_HOSTS}
+  startupIndex:
+    - index: "${ELASTIC_SEMANTIC_INDEX}"
+      updateMapping: ${ELASTIC_UPDATE_MAPPING_SEMANTIC_INDEX}
+      createMapping: ${ELASTIC_CREATE_MAPPING_SEMANTIC_INDEX}
+      mappingPath: "${ELASTIC_MAPPING_PATH_SEMANTIC_INDEX}"
+      alias: "${ELASTIC_ALIAS_SEMANTIC_INDEX}"
+      shards: ${ELASTIC_SHARDS_SEMANTIC_INDEX}
+      replics: ${ELASTIC_REPLICAS_SEMANTIC_INDEX}
+
+nats: ${NATS_URL}
+
+semanticRepo:
+  index: "${SEMANTIC_REPO_INDEX}"
+
+vectorizerRepo:
+  host: ${VECTORIZER_REPO_HOST}
