@@ -12,7 +12,7 @@ func NewClientWithStartup(ctx context.Context, opts Config) (*minio.Client, erro
 	cli, err := minio.New(opts.Endpoint, &minio.Options{ //nolint:exhaustruct
 		Creds: credentials.NewStaticV4(
 			opts.AccessKeyID,
-			opts.SecletAccessKey,
+			opts.SecretAccessKey,
 			"",
 		),
 		Secure:    false,

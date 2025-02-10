@@ -5,7 +5,7 @@ import "net/http"
 type Config struct {
 	Endpoint        string   `yaml:"endpoint"`
 	AccessKeyID     string   `yaml:"accessKeyID"`
-	SecletAccessKey string   `yaml:"secletAccessKey"`
+	SecretAccessKey string   `yaml:"secretAccessKey"`
 	Buckets         []string `yaml:"buckets"`
 
 	Transport http.RoundTripper `yaml:"-"`
