@@ -6,6 +6,6 @@ redis:
 s3:
   endpoint: "localhost:9000"
   accessKeyID: "minio"
-  secletAccessKey: "minio123"
+  secretAccessKey: "minio123"
   buckets:
     - texts
