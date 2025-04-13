@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	openapi "github.com/zuzuka28/simreport/prj/document/api/rest/gen"
+	openapi "github.com/zuzuka28/simreport/prj/document/internal/handler/rest/gen"
 )
 
 //nolint:revive,stylecheck

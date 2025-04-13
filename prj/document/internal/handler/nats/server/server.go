@@ -8,9 +8,9 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/micro"
 
-	"github.com/zuzuka28/simreport/prj/document/api/nats/middleware/logging"
-	metricsmw "github.com/zuzuka28/simreport/prj/document/api/nats/middleware/metrics"
-	"github.com/zuzuka28/simreport/prj/document/api/nats/middleware/reqid"
+	"github.com/zuzuka28/simreport/prj/document/internal/handler/nats/middleware/logging"
+	metricsmw "github.com/zuzuka28/simreport/prj/document/internal/handler/nats/middleware/metrics"
+	"github.com/zuzuka28/simreport/prj/document/internal/handler/nats/middleware/reqid"
 	pb "github.com/zuzuka28/simreport/prj/document/pkg/pb/v1"
 )
 

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	openapi "github.com/zuzuka28/simreport/prj/document/api/rest/gen"
+	openapi "github.com/zuzuka28/simreport/prj/document/internal/handler/rest/gen"
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
 )
 

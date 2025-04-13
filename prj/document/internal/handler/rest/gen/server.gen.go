@@ -4,14 +4,21 @@
 package openapi
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
+	"path"
+	"strings"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gorilla/mux"
 	"github.com/oapi-codegen/runtime"
 	strictnethttp "github.com/oapi-codegen/runtime/strictmiddleware/nethttp"
@@ -638,4 +645,95 @@ func (sh *strictHandler) GetDocumentIdDownload(w http.ResponseWriter, r *http.Re
 	} else if response != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
 	}
+}
+
+// Base64 encoded, gzipped, json marshaled Swagger object
+var swaggerSpec = []string{
+
+	"H4sIAAAAAAAC/8RXS4/bNhD+K8K0R67ltunFRQ+bblvspQhi7ClZFGNxbDOQSIYcbWIs9N8LUqYl2VKi",
+	"7m7Tmx7DeXzfvPgIhams0aTZw+oRLDqsiMnFtxtT1BVpvpXhTWlYgUXegwCNFcEK5FHgbyVBgKOPtXIk",
+	"YcWuJgG+2FOF4SgfbBD37JTeQdM0Qdhboz1FQ9fMTm1qprfk65LDp8JoJh0f0dpSFcjK6PyDNzp863Rb",
+	"Zyw5Vq0mxVQNH753tIUVfJd3kebtaZ+f7EIjkpPoHB6g6T6YzQcqOHjdCHiN8i19rMk/x0lyzrgxXMZt",
+	"Jhr+MvyHqbX8dpbXhK7YP5uUlCbziUkhr+uqQneYTc+a3AO531OU3walO1salOu6KMj7F4Dp9mau7SYV",
+	"2bCKLlWXuKFyRKuAByxrGrfX1fO7o4Ikfn/hjOjX8Kk+hk5g378vm+tEx0ydZ8eFpZ0ztW1hPKXbReTD",
+	"hBKg5KhYiZ7vrESm+H9rXIUceh8yXbGqCMTlobY/jmiz6KYYFvBAzqs2R47/lGbakRujv6vOCbifBMJL",
+	"OT6dtqleJv1OZRCfyRdOWY7KT7xnbLI6KgHREbJROiTDCBtPQuIZTPUz+RTN/UgBC1B6a6IWxSX1Q1yr",
+	"SpXoFB+y6ze30DMJy8Vy8UPwwljSaBWs4KfFcrEEEcdzDC8fFJs1LdAB5tiLwkSHN8Zz1zNat8nzayMP",
+	"/6qLzZqwie5mCFDYFM63gR+Xyym1J7n8fGVoBLyac643wBsBP8850h8qbdPNE6u5jzX4ZYxP7aqV/W+A",
+	"HjaDl0J5sAD8TxAfK30WxHepK0xDXNUlK4uO89A5riQyzkd52LpeCuXhAvEUmFvIHnv7eJNL80kn5HY0",
+	"0k6vy9J88lmSU3qXoT42VpJZUpZtDplinylJmtVWkVuAOOPgT+LusnCTDIvBfeLdeECdSN67bzT340BO",
+	"1IopmPjKsyOshmx+dTwE5CbGTEKGZOZbcrZ1WQYde0J5vCT91np0daO8NV6xOq9a+oyVjc0dmbHYB9W/",
+	"ZFtVUhi2v75PAgtpis/vYczDmBKvvp4SFzeFuCGmLQkSMSdqo+5/AgAA//8pLchRBA4AAA==",
+}
+
+// GetSwagger returns the content of the embedded swagger specification file
+// or error if failed to decode
+func decodeSpec() ([]byte, error) {
+	zipped, err := base64.StdEncoding.DecodeString(strings.Join(swaggerSpec, ""))
+	if err != nil {
+		return nil, fmt.Errorf("error base64 decoding spec: %w", err)
+	}
+	zr, err := gzip.NewReader(bytes.NewReader(zipped))
+	if err != nil {
+		return nil, fmt.Errorf("error decompressing spec: %w", err)
+	}
+	var buf bytes.Buffer
+	_, err = buf.ReadFrom(zr)
+	if err != nil {
+		return nil, fmt.Errorf("error decompressing spec: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+var rawSpec = decodeSpecCached()
+
+// a naive cached of a decoded swagger spec
+func decodeSpecCached() func() ([]byte, error) {
+	data, err := decodeSpec()
+	return func() ([]byte, error) {
+		return data, err
+	}
+}
+
+// Constructs a synthetic filesystem for resolving external references when loading openapi specifications.
+func PathToRawSpec(pathToFile string) map[string]func() ([]byte, error) {
+	res := make(map[string]func() ([]byte, error))
+	if len(pathToFile) > 0 {
+		res[pathToFile] = rawSpec
+	}
+
+	return res
+}
+
+// GetSwagger returns the Swagger specification corresponding to the generated code
+// in this file. The external references of Swagger specification are resolved.
+// The logic of resolving external references is tightly connected to "import-mapping" feature.
+// Externally referenced files must be embedded in the corresponding golang packages.
+// Urls can be supported but this task was out of the scope.
+func GetSwagger() (swagger *openapi3.T, err error) {
+	resolvePath := PathToRawSpec("")
+
+	loader := openapi3.NewLoader()
+	loader.IsExternalRefsAllowed = true
+	loader.ReadFromURIFunc = func(loader *openapi3.Loader, url *url.URL) ([]byte, error) {
+		pathToFile := url.String()
+		pathToFile = path.Clean(pathToFile)
+		getSpec, ok := resolvePath[pathToFile]
+		if !ok {
+			err1 := fmt.Errorf("path not found: %s", pathToFile)
+			return nil, err1
+		}
+		return getSpec()
+	}
+	var specData []byte
+	specData, err = rawSpec()
+	if err != nil {
+		return
+	}
+	swagger, err = loader.LoadFromData(specData)
+	if err != nil {
+		return
+	}
+	return
 }
