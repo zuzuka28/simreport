@@ -8,6 +8,7 @@ from nltk.corpus import words as nltk_words
 
 
 nltk.download("punkt")
+nltk.download("punkt_tab")
 nltk.download("words")
 
 
@@ -31,174 +32,168 @@ class SentenceAugmentor:
         :param text: Входной текст.
         :return: Список предложений.
         """
-        return sent_tokenize(text)
+        return sent_tokenize(text, language=self.language)
 
-    def random_deletion(
-        self, sentences: List[str], augmentation_rate: float = 0.1
-    ) -> List[str]:
+    def random_deletion(self, text: str, augmentation_rate: float = 0.1) -> str:
         """
-        Удаляет случайные предложения.
+        Удаляет случайные предложения из текста.
 
-        :param sentences: Список предложений.
+        :param text: Входной текст.
         :param augmentation_rate: Процент аугментации (от 0 до 1).
-        :return: Измененный список предложений.
+        :return: Измененный текст.
         """
-        if not sentences:
-            return sentences
-        num_to_delete: int = int(len(sentences) * augmentation_rate)
+        sentences = self.split_into_sentences(text)
+        if not sentences or len(sentences) <= 1:
+            return text
+
+        num_to_delete = max(int(len(sentences) * augmentation_rate), 1)
         for _ in range(num_to_delete):
             if len(sentences) == 0:
                 break
-            del_idx: int = random.randint(0, len(sentences) - 1)
+            del_idx = random.randint(0, len(sentences) - 1)
             del sentences[del_idx]
-        return sentences
+        return " ".join(sentences)
 
-    def random_truncation(
-        self, sentences: List[str], augmentation_rate: float = 0.1
-    ) -> List[str]:
+    def random_truncation(self, text: str, augmentation_rate: float = 0.1) -> str:
         """
-        Усекает случайные предложения.
+        Усекает случайные предложения в тексте.
 
-        :param sentences: Список предложений.
+        :param text: Входной текст.
         :param augmentation_rate: Процент аугментации (от 0 до 1).
-        :return: Измененный список предложений.
+        :return: Измененный текст.
         """
+        sentences = self.split_into_sentences(text)
         if not sentences:
-            return sentences
-        num_to_truncate: int = int(len(sentences) * augmentation_rate)
+            return text
+        num_to_truncate = int(len(sentences) * augmentation_rate)
         for _ in range(num_to_truncate):
-            trunc_idx: int = random.randint(0, len(sentences) - 1)
+            trunc_idx = random.randint(0, len(sentences) - 1)
             sentences[trunc_idx] = sentences[trunc_idx][
                 : random.randint(1, len(sentences[trunc_idx]) - 1)
             ]
-        return sentences
+        return " ".join(sentences)
 
-    def random_prefix(
-        self, sentences: List[str], augmentation_rate: float = 0.1
-    ) -> List[str]:
+    def random_prefix(self, text: str, augmentation_rate: float = 0.1) -> str:
         """
-        Добавляет случайный префикс к случайным предложениям.
+        Добавляет случайный префикс к случайным предложениям в тексте.
 
-        :param sentences: Список предложений.
+        :param text: Входной текст.
         :param augmentation_rate: Процент аугментации (от 0 до 1).
-        :return: Измененный список предложений.
+        :return: Измененный текст.
         """
+        sentences = self.split_into_sentences(text)
         if not sentences:
-            return sentences
-        num_to_prefix: int = int(len(sentences) * augmentation_rate)
+            return text
+        num_to_prefix = int(len(sentences) * augmentation_rate)
         for _ in range(num_to_prefix):
-            idx: int = random.randint(0, len(sentences) - 1)
+            idx = random.randint(0, len(sentences) - 1)
             sentences[idx] = self.prefix + sentences[idx]
-        return sentences
+        return " ".join(sentences)
 
-    def random_suffix(
-        self, sentences: List[str], augmentation_rate: float = 0.1
-    ) -> List[str]:
+    def random_suffix(self, text: str, augmentation_rate: float = 0.1) -> str:
         """
-        Добавляет случайный суффикс к случайным предложениям.
+        Добавляет случайный суффикс к случайным предложениям в тексте.
 
-        :param sentences: Список предложений.
+        :param text: Входной текст.
         :param augmentation_rate: Процент аугментации (от 0 до 1).
-        :return: Измененный список предложений.
+        :return: Измененный текст.
         """
+        sentences = self.split_into_sentences(text)
         if not sentences:
-            return sentences
-        num_to_suffix: int = int(len(sentences) * augmentation_rate)
+            return text
+        num_to_suffix = int(len(sentences) * augmentation_rate)
         for _ in range(num_to_suffix):
-            idx: int = random.randint(0, len(sentences) - 1)
+            idx = random.randint(0, len(sentences) - 1)
             sentences[idx] = sentences[idx] + self.suffix
-        return sentences
+        return " ".join(sentences)
 
-    def random_insertion(
-        self, sentences: List[str], augmentation_rate: float = 0.1
-    ) -> List[str]:
+    def random_insertion(self, text: str, augmentation_rate: float = 0.1) -> str:
         """
-        Вставляет случайные предложения в случайные позиции.
+        Вставляет случайные предложения в случайные позиции в тексте.
 
-        :param sentences: Список предложений.
+        :param text: Входной текст.
         :param augmentation_rate: Процент аугментации (от 0 до 1).
-        :return: Измененный список предложений.
+        :return: Измененный текст.
         """
-        num_to_insert: int = int(len(sentences) * augmentation_rate)
+        sentences = self.split_into_sentences(text)
+        num_to_insert = int(len(sentences) * augmentation_rate)
         for _ in range(num_to_insert):
-            insert_idx: int = random.randint(0, len(sentences))
+            insert_idx = random.randint(0, len(sentences))
             sentences.insert(insert_idx, self.inserted_sentence)
-        return sentences
+        return " ".join(sentences)
 
-    def repeat_sentence(
-        self, sentences: List[str], augmentation_rate: float = 0.1
-    ) -> List[str]:
+    def repeat_sentence(self, text: str, augmentation_rate: float = 0.1) -> str:
         """
-        Повторяет случайные предложения.
+        Повторяет случайные предложения в тексте.
 
-        :param sentences: Список предложений.
+        :param text: Входной текст.
         :param augmentation_rate: Процент аугментации (от 0 до 1).
-        :return: Измененный список предложений.
+        :return: Измененный текст.
         """
+        sentences = self.split_into_sentences(text)
         if not sentences:
-            return sentences
-        num_to_repeat: int = int(len(sentences) * augmentation_rate)
+            return text
+        num_to_repeat = max(int(len(sentences) * augmentation_rate), 1)
         for _ in range(num_to_repeat):
-            repeat_idx: int = random.randint(0, len(sentences) - 1)
+            repeat_idx = random.randint(0, len(sentences) - 1)
             sentences.append(sentences[repeat_idx])
-        return sentences
+        return " ".join(sentences)
 
     def lowercase_uppercase_sentence(
-        self, sentences: List[str], augmentation_rate: float = 0.1
-    ) -> List[str]:
+        self, text: str, augmentation_rate: float = 0.1
+    ) -> str:
         """
         Преобразует случайные предложения в нижний или верхний регистр.
 
-        :param sentences: Список предложений.
+        :param text: Входной текст.
         :param augmentation_rate: Процент аугментации (от 0 до 1).
-        :return: Измененный список предложений.
+        :return: Измененный текст.
         """
+        sentences = self.split_into_sentences(text)
         if not sentences:
-            return sentences
-        num_to_change: int = int(len(sentences) * augmentation_rate)
+            return text
+        num_to_change = int(len(sentences) * augmentation_rate)
         for _ in range(num_to_change):
-            idx: int = random.randint(0, len(sentences) - 1)
+            idx = random.randint(0, len(sentences) - 1)
             if sentences[idx].islower():
                 sentences[idx] = sentences[idx].upper()
             else:
                 sentences[idx] = sentences[idx].lower()
-        return sentences
+        return " ".join(sentences)
 
-    def random_substitution(
-        self, sentences: List[str], augmentation_rate: float = 0.1
-    ) -> List[str]:
+    def random_substitution(self, text: str, augmentation_rate: float = 0.1) -> str:
         """
         Заменяет случайные предложения на заданное.
 
-        :param sentences: Список предложений.
+        :param text: Входной текст.
         :param augmentation_rate: Процент аугментации (от 0 до 1).
-        :return: Измененный список предложений.
+        :return: Измененный текст.
         """
+        sentences = self.split_into_sentences(text)
         if not sentences:
-            return sentences
-        num_to_substitute: int = int(len(sentences) * augmentation_rate)
+            return text
+        num_to_substitute = int(len(sentences) * augmentation_rate)
         for _ in range(num_to_substitute):
-            sub_idx: int = random.randint(0, len(sentences) - 1)
+            sub_idx = random.randint(0, len(sentences) - 1)
             sentences[sub_idx] = self.substituted_sentence
-        return sentences
+        return " ".join(sentences)
 
-    def neighboring_swap(
-        self, sentences: List[str], augmentation_rate: float = 0.1
-    ) -> List[str]:
+    def neighboring_swap(self, text: str, augmentation_rate: float = 0.1) -> str:
         """
-        Меняет местами соседние предложения.
+        Меняет местами соседние предложения в тексте.
 
-        :param sentences: Список предложений.
+        :param text: Входной текст.
         :param augmentation_rate: Процент аугментации (от 0 до 1).
-        :return: Измененный список предложений.
+        :return: Измененный текст.
         """
+        sentences = self.split_into_sentences(text)
         if len(sentences) < 2:
-            return sentences
-        num_to_swap: int = int(len(sentences) * augmentation_rate)
+            return text
+        num_to_swap = max(int(len(sentences) * augmentation_rate), 1)
         for _ in range(num_to_swap):
-            idx: int = random.randint(0, len(sentences) - 2)
+            idx = random.randint(0, len(sentences) - 2)
             sentences[idx], sentences[idx + 1] = sentences[idx + 1], sentences[idx]
-        return sentences
+        return " ".join(sentences)
 
 
 class WordAugmentor:
@@ -209,7 +204,11 @@ class WordAugmentor:
         :param language: Язык текста (по умолчанию 'en' для английского).
         """
         self.language = language
+
         self.english_words: Set[str] = set(nltk_words.words())
+
+        self.words = self.english_words
+
         self.punctuation: str = string.punctuation
 
     def split_into_words(self, text: str) -> List[str]:
@@ -251,11 +250,20 @@ class WordAugmentor:
         words: List[str] = self.split_into_words(text)
         if not words:
             return text
+
         num_to_insert: int = int(len(words) * augmentation_rate)
-        for _ in range(num_to_insert):
-            insert_idx: int = random.randint(0, len(words))
-            new_word: str = random.choice(list(self.english_words))
-            words.insert(insert_idx, new_word)
+        if num_to_insert == 0:
+            return text
+
+        new_words: List[str] = random.choices(list(self.words), k=num_to_insert)
+
+        insert_indices: List[int] = sorted(
+            random.sample(range(len(words) + 1), num_to_insert)
+        )
+
+        for idx, word in zip(insert_indices, new_words):
+            words.insert(idx, word)
+
         return " ".join(words)
 
     def random_substitution(self, text: str, augmentation_rate: float = 0.1) -> str:
@@ -267,13 +275,20 @@ class WordAugmentor:
         :return: Измененный текст.
         """
         words: List[str] = self.split_into_words(text)
-        if len(words) == 0:
+        if not words:
             return text
+
         num_to_substitute: int = int(len(words) * augmentation_rate)
-        for _ in range(num_to_substitute):
-            sub_idx: int = random.randint(0, len(words) - 1)
-            new_word: str = random.choice(list(self.english_words))
-            words[sub_idx] = new_word
+        if num_to_substitute == 0:
+            return text
+
+        sub_indices = random.sample(range(len(words)), num_to_substitute)
+
+        new_words = random.choices(list(self.words), k=num_to_substitute)
+
+        for idx, new_word in zip(sub_indices, new_words):
+            words[idx] = new_word
+
         return " ".join(words)
 
     def repeat_word(self, text: str, augmentation_rate: float = 0.1) -> str:
@@ -310,7 +325,7 @@ class WordAugmentor:
         num_to_change: int = int(len(words) * augmentation_rate)
         for _ in range(num_to_change):
             idx: int = random.randint(n - 1, len(words) - 1)
-            new_word: str = random.choice(list(self.english_words))
+            new_word: str = random.choice(list(self.words))
             words[idx] = new_word
         return " ".join(words)
 
@@ -346,7 +361,6 @@ class CharacterAugmentor:
         self.language_alphabets: Dict[str, str] = {
             "en": string.ascii_lowercase + string.ascii_uppercase,
             "ru": "абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ",
-            # Добавьте другие языки по мере необходимости
         }
         self.qwerty_map: Dict[str, str] = {
             "q": "w",
@@ -396,6 +410,86 @@ class CharacterAugmentor:
             "B": "N",
             "N": "M",
         }
+        self.qwerty_ru_map = {
+            "й": "ц",
+            "ц": "й",
+            "у": "к",
+            "к": "у",
+            "е": "н",
+            "н": "е",
+            "г": "ш",
+            "ш": "г",
+            "щ": "з",
+            "з": "щ",
+            "х": "ъ",
+            "ъ": "х",
+            "ф": "ы",
+            "ы": "ф",
+            "в": "в",
+            "а": "а",
+            "п": "р",
+            "р": "п",
+            "о": "о",
+            "л": "д",
+            "д": "л",
+            "ж": "э",
+            "э": "ж",
+            "я": "я",
+            "ч": "с",
+            "с": "ч",
+            "м": "ь",
+            "ь": "м",
+            "и": "и",
+            "т": "т",
+            "ь": "м",
+            "м": "ь",
+            "б": "ю",
+            "ю": "б",
+            "ю": "б",
+            "б": "ю",
+            "ё": "ё",
+            "Й": "Ц",
+            "Ц": "Й",
+            "У": "К",
+            "К": "У",
+            "Е": "Н",
+            "Н": "Е",
+            "Г": "Ш",
+            "Ш": "Г",
+            "Щ": "З",
+            "З": "Щ",
+            "Х": "Ъ",
+            "Ъ": "Х",
+            "Ф": "Ы",
+            "Ы": "Ф",
+            "В": "В",
+            "А": "А",
+            "П": "Р",
+            "Р": "П",
+            "О": "О",
+            "Л": "Д",
+            "Д": "Л",
+            "Ж": "Э",
+            "Э": "Ж",
+            "Я": "Я",
+            "Ч": "С",
+            "С": "Ч",
+            "М": "Ь",
+            "Ь": "М",
+            "И": "И",
+            "Т": "Т",
+            "Ь": "М",
+            "М": "Ь",
+            "Б": "Ю",
+            "Ю": "Б",
+            "Ю": "Б",
+            "Б": "Ю",
+            "Ё": "Ё",
+        }
+
+        if language == "russian":
+            self.qwerty_map = self.qwerty_ru_map
+
         self.homoglyphs: Dict[str, str] = {
             "a": "ɑ",
             "A": "А",
