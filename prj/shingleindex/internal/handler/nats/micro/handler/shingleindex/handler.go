@@ -1,11 +1,5 @@
 package shingleindex
 
-import (
-	"time"
-)
-
-const requestTimeout = 60 * time.Second
-
 type Handler struct {
 	s  Service
 	ds DocumentService

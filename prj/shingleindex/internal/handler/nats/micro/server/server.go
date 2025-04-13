@@ -8,9 +8,9 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/micro"
 
-	"github.com/zuzuka28/simreport/prj/shingleindex/api/nats/micro/middleware/logging"
-	metricsmw "github.com/zuzuka28/simreport/prj/shingleindex/api/nats/micro/middleware/metrics"
-	"github.com/zuzuka28/simreport/prj/shingleindex/api/nats/micro/middleware/reqid"
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/handler/nats/micro/middleware/logging"
+	metricsmw "github.com/zuzuka28/simreport/prj/shingleindex/internal/handler/nats/micro/middleware/metrics"
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/handler/nats/micro/middleware/reqid"
 	pb "github.com/zuzuka28/simreport/prj/similarityindex/pkg/pb/v1"
 )
 
