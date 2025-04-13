@@ -3,7 +3,7 @@ package server
 import (
 	"context"
 
-	openapi "github.com/zuzuka28/simreport/prj/similarity/api/rest/gen"
+	openapi "github.com/zuzuka28/simreport/prj/similarity/internal/handler/rest/gen"
 )
 
 type (

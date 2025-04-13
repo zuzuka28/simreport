@@ -14,11 +14,11 @@ import (
 	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/httpinstumentation"
 	"github.com/zuzuka28/simreport/lib/minioutil"
-	similarity3 "github.com/zuzuka28/simreport/prj/similarity/api/nats/handler/similarity"
-	server2 "github.com/zuzuka28/simreport/prj/similarity/api/nats/server"
-	"github.com/zuzuka28/simreport/prj/similarity/api/rest/server"
-	similarity2 "github.com/zuzuka28/simreport/prj/similarity/api/rest/server/handler/similarity"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/config"
+	similarity3 "github.com/zuzuka28/simreport/prj/similarity/internal/handler/nats/handler/similarity"
+	server2 "github.com/zuzuka28/simreport/prj/similarity/internal/handler/nats/server"
+	"github.com/zuzuka28/simreport/prj/similarity/internal/handler/rest/server"
+	similarity2 "github.com/zuzuka28/simreport/prj/similarity/internal/handler/rest/server/handler/similarity"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/model"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/repository/analyzehistory"
@@ -30,10 +30,8 @@ import (
 	"github.com/zuzuka28/simreport/prj/similarity/internal/service/semanticindex"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/service/shingleindex"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/service/similarity"
-	"io"
 	"net"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 )
@@ -130,10 +128,6 @@ func InitAnalyzeHandler(service *similarity.Service) *similarity2.Handler {
 
 func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*server.Server, error) {
 	int2 := configConfig.Port
-	v, err := ProvideSpec()
-	if err != nil {
-		return nil, err
-	}
 	conn, err := ProvideNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
@@ -182,7 +176,6 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	handler := InitAnalyzeHandler(similarityService)
 	opts := server.Opts{
 		Port:           int2,
-		Spec:           v,
 		AnalyzeHandler: handler,
 		Metrics:        metricsMetrics,
 	}
@@ -263,20 +256,6 @@ func ProvideMetrics() *metrics.Metrics {
 	})
 
 	return metricsS
-}
-
-func ProvideSpec() ([]byte, error) {
-	f, err := os.Open("./api/rest/doc/openapi.yaml")
-	if err != nil {
-		return nil, err
-	}
-
-	spec, err := io.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return spec, nil
 }
 
 func ProvideConfig(path string) (*config.Config, error) {

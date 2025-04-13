@@ -4,19 +4,17 @@ package provider
 
 import (
 	"context"
-	"io"
 	"net"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/minio/minio-go/v7"
-	analyzenatsapi "github.com/zuzuka28/simreport/prj/similarity/api/nats/handler/similarity"
-	servernats "github.com/zuzuka28/simreport/prj/similarity/api/nats/server"
-	serverhttp "github.com/zuzuka28/simreport/prj/similarity/api/rest/server"
-	analyzeapi "github.com/zuzuka28/simreport/prj/similarity/api/rest/server/handler/similarity"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/config"
+	analyzenatsapi "github.com/zuzuka28/simreport/prj/similarity/internal/handler/nats/handler/similarity"
+	servernats "github.com/zuzuka28/simreport/prj/similarity/internal/handler/nats/server"
+	serverhttp "github.com/zuzuka28/simreport/prj/similarity/internal/handler/rest/server"
+	analyzeapi "github.com/zuzuka28/simreport/prj/similarity/internal/handler/rest/server/handler/similarity"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/model"
 	analyzehistoryrepo "github.com/zuzuka28/simreport/prj/similarity/internal/repository/analyzehistory"
@@ -50,20 +48,6 @@ func ProvideMetrics() *metrics.Metrics {
 	})
 
 	return metricsS
-}
-
-func ProvideSpec() ([]byte, error) {
-	f, err := os.Open("./api/rest/doc/openapi.yaml")
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-
-	spec, err := io.ReadAll(f)
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-
-	return spec, nil
 }
 
 func ProvideConfig(path string) (*config.Config, error) {
@@ -297,7 +281,6 @@ func InitRestAPI(
 ) (*serverhttp.Server, error) {
 	panic(wire.Build(
 		ProvideMetrics,
-		ProvideSpec,
 		ProvideElastic,
 		ProvideNats,
 

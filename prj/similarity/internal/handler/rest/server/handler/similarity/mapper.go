@@ -1,7 +1,7 @@
 package similarity
 
 import (
-	openapi "github.com/zuzuka28/simreport/prj/similarity/api/rest/gen"
+	openapi "github.com/zuzuka28/simreport/prj/similarity/internal/handler/rest/gen"
 	"github.com/zuzuka28/simreport/prj/similarity/internal/model"
 )
 

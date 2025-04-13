@@ -1,5 +1,5 @@
 generate_api:
-	oapi-codegen --generate gorilla,types,strict-server api/rest/doc/openapi.yaml > api/rest/gen/server.gen.go
+	oapi-codegen --generate gorilla,types,strict-server,embedded-spec api/rest/openapi.yaml > internal/handler/rest/gen/server.gen.go
 
 generate_proto:
 	protoc proto/similarity.proto --go_out=. --natsmicro_out=.

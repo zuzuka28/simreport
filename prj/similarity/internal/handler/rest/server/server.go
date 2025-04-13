@@ -7,15 +7,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/gorilla/mux"
 	openapimw "github.com/oapi-codegen/nethttp-middleware"
 	"github.com/rs/cors"
-	openapi "github.com/zuzuka28/simreport/prj/similarity/api/rest/gen"
-	"github.com/zuzuka28/simreport/prj/similarity/api/rest/middleware/logging"
-	metricsmw "github.com/zuzuka28/simreport/prj/similarity/api/rest/middleware/metrics"
-	"github.com/zuzuka28/simreport/prj/similarity/api/rest/middleware/reqid"
+	openapi "github.com/zuzuka28/simreport/prj/similarity/internal/handler/rest/gen"
+	"github.com/zuzuka28/simreport/prj/similarity/internal/handler/rest/middleware/logging"
+	metricsmw "github.com/zuzuka28/simreport/prj/similarity/internal/handler/rest/middleware/metrics"
+	"github.com/zuzuka28/simreport/prj/similarity/internal/handler/rest/middleware/reqid"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -33,7 +32,6 @@ type Server struct {
 type Opts struct {
 	Port int
 
-	Spec           []byte
 	AnalyzeHandler SimilarityHandler
 
 	Metrics Metrics
@@ -42,7 +40,7 @@ type Opts struct {
 func New(
 	opts Opts,
 ) (*Server, error) {
-	spec, err := openapi3.NewLoader().LoadFromData(opts.Spec)
+	spec, err := openapi.GetSwagger()
 	if err != nil {
 		return nil, fmt.Errorf("load spec: %w", err)
 	}
