@@ -135,7 +135,7 @@ func InitAttributeHandler(service *attribute2.Service) *attribute3.Handler {
 	return handler
 }
 
-func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*server.Server, error) {
+func InitRestAPI(contextContext context.Context, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*server.Server, error) {
 	int2 := configConfig.Port
 	client, err := InitTika(contextContext, configConfig)
 	if err != nil {
@@ -145,7 +145,6 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	metricsMetrics := ProvideMetrics()
 	repository, err := InitFilestorageRepository(minioClient, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
@@ -211,7 +210,7 @@ func InitAttributeNatsHandler(service *attribute2.Service) *attribute4.Handler {
 	return handler
 }
 
-func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*server2.Server, error) {
+func InitNatsAPI(contextContext context.Context, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*server2.Server, error) {
 	conn, err := ProvideNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
@@ -224,7 +223,6 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config) (*
 	if err != nil {
 		return nil, err
 	}
-	metricsMetrics := ProvideMetrics()
 	repository, err := InitFilestorageRepository(minioClient, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
@@ -272,7 +270,7 @@ func InitFileSavedHandler(service *document2.Service) (*filesaved.Handler, error
 	return handler, nil
 }
 
-func InitDocumentPipeline(contextContext context.Context, configConfig *config.Config) (*documentpipeline.Service, error) {
+func InitDocumentPipeline(contextContext context.Context, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*documentpipeline.Service, error) {
 	conn, err := ProvideNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
@@ -285,7 +283,6 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 	if err != nil {
 		return nil, err
 	}
-	metricsMetrics := ProvideMetrics()
 	repository, err := InitDocumentStatusRepository(contextContext, jetStream, metricsMetrics)
 	if err != nil {
 		return nil, err
@@ -332,18 +329,8 @@ func InitDocumentPipeline(contextContext context.Context, configConfig *config.C
 
 // wire.go:
 
-//nolint:gochecknoglobals
-var (
-	metricsS    *metrics.Metrics
-	metricsOnce sync.Once
-)
-
 func ProvideMetrics() *metrics.Metrics {
-	metricsOnce.Do(func() {
-		metricsS = metrics.New()
-	})
-
-	return metricsS
+	return metrics.New()
 }
 
 func ProvideConfig(path string) (*config.Config, error) {

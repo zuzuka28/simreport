@@ -20,7 +20,7 @@ func RunRESTAPI(ctx context.Context, cfg *Config, opts ...AppOpt) error {
 		appopts.reg.MustRegister(m.Collectors()...)
 	}
 
-	svc, err := provider.InitRestAPI(ctx, cfg)
+	svc, err := provider.InitRestAPI(ctx, cfg, m)
 	if err != nil {
 		return fmt.Errorf("provide api: %w", err)
 	}

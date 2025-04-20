@@ -20,7 +20,7 @@ func RunAsyncProcessing(ctx context.Context, cfg *Config, opts ...AppOpt) error 
 		appopts.reg.MustRegister(m.Collectors()...)
 	}
 
-	svc, err := provider.InitDocumentPipeline(ctx, cfg)
+	svc, err := provider.InitDocumentPipeline(ctx, cfg, m)
 	if err != nil {
 		return fmt.Errorf("provide document pipeline: %w", err)
 	}

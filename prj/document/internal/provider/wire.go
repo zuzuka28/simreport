@@ -42,20 +42,9 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 )
 
-//nolint:gochecknoglobals
-var (
-	metricsS    *metrics.Metrics
-	metricsOnce sync.Once
-)
-
 func ProvideMetrics() *metrics.Metrics {
-	metricsOnce.Do(func() {
-		metricsS = metrics.New()
-	})
-
-	return metricsS
+	return metrics.New()
 }
-
 
 func ProvideConfig(path string) (*config.Config, error) {
 	cfg, err := config.New(path)
@@ -320,9 +309,9 @@ func InitAttributeHandler(
 func InitRestAPI(
 	_ context.Context,
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*serverhttp.Server, error) {
 	panic(wire.Build(
-		ProvideMetrics,
 		ProvideS3,
 		ProvideElastic,
 		ProvideNats,
@@ -376,9 +365,9 @@ func InitAttributeNatsHandler(
 func InitNatsAPI(
 	_ context.Context,
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*servernats.Server, error) {
 	panic(wire.Build(
-		ProvideMetrics,
 		ProvideS3,
 		ProvideElastic,
 		ProvideNats,
@@ -432,9 +421,9 @@ func ProvideDocumentPipelineStages(
 func InitDocumentPipeline(
 	_ context.Context,
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*documentpipeline.Service, error) {
 	panic(wire.Build(
-		ProvideMetrics,
 		ProvideS3,
 		ProvideElastic,
 		ProvideNats,
