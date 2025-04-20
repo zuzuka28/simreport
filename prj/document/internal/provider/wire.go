@@ -5,10 +5,8 @@ package provider
 import (
 	"context"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 
@@ -58,19 +56,6 @@ func ProvideMetrics() *metrics.Metrics {
 	return metricsS
 }
 
-func ProvideSpec() ([]byte, error) {
-	f, err := os.Open("./api/rest/doc/openapi.yaml")
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-
-	spec, err := io.ReadAll(f)
-	if err != nil {
-		return nil, err //nolint:wrapcheck
-	}
-
-	return spec, nil
-}
 
 func ProvideConfig(path string) (*config.Config, error) {
 	cfg, err := config.New(path)
@@ -338,7 +323,6 @@ func InitRestAPI(
 ) (*serverhttp.Server, error) {
 	panic(wire.Build(
 		ProvideMetrics,
-		ProvideSpec,
 		ProvideS3,
 		ProvideElastic,
 		ProvideNats,

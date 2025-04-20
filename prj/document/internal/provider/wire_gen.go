@@ -36,10 +36,8 @@ import (
 	"github.com/zuzuka28/simreport/prj/document/internal/service/documentpipeline"
 	"github.com/zuzuka28/simreport/prj/document/internal/service/documentpipeline/handler/filesaved"
 	documentstatus2 "github.com/zuzuka28/simreport/prj/document/internal/service/documentstatus"
-	"io"
 	"net"
 	"net/http"
-	"os"
 	"sync"
 	"time"
 )
@@ -139,10 +137,6 @@ func InitAttributeHandler(service *attribute2.Service) *attribute3.Handler {
 
 func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*server.Server, error) {
 	int2 := configConfig.Port
-	v, err := ProvideSpec()
-	if err != nil {
-		return nil, err
-	}
 	client, err := InitTika(contextContext, configConfig)
 	if err != nil {
 		return nil, err
@@ -196,7 +190,6 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config) (*
 	attributeHandler := InitAttributeHandler(attributeService)
 	opts := server.Opts{
 		Port:             int2,
-		Spec:             v,
 		DocumentHandler:  handler,
 		AttributeHandler: attributeHandler,
 		Metrics:          metricsMetrics,
@@ -351,20 +344,6 @@ func ProvideMetrics() *metrics.Metrics {
 	})
 
 	return metricsS
-}
-
-func ProvideSpec() ([]byte, error) {
-	f, err := os.Open("./api/rest/doc/openapi.yaml")
-	if err != nil {
-		return nil, err
-	}
-
-	spec, err := io.ReadAll(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return spec, nil
 }
 
 func ProvideConfig(path string) (*config.Config, error) {

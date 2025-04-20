@@ -18,23 +18,23 @@ func main() {
 				Usage: "path to the config file",
 			},
 		},
-		Action: runApp,
+		Before: doBefore,
 		Commands: []*cli.Command{
 			{
 				Name:   "run-api",
 				Usage:  "run document rest api",
-				Action: runRestServer,
+				Action: runRESTAPICommand,
 			},
 
 			{
 				Name:   "run-intapi",
 				Usage:  "run document nats api",
-				Action: runNatsServer,
+				Action: runNATSAPICommand,
 			},
 			{
 				Name:   "run-async-processing",
 				Usage:  "run document parse api",
-				Action: runAsyncProcessing,
+				Action: runAsyncProcessingCommand,
 			},
 		},
 	}

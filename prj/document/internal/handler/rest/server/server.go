@@ -33,7 +33,6 @@ type Server struct {
 type Opts struct {
 	Port int
 
-	Spec             []byte
 	DocumentHandler  DocumentHandler
 	AttributeHandler AttributeHandler
 
