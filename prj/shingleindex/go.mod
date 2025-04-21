@@ -3,15 +3,15 @@ module github.com/zuzuka28/simreport/prj/shingleindex
 go 1.23.2
 
 require (
+	github.com/elastic/go-elasticsearch/v8 v8.17.0
 	github.com/google/uuid v1.6.0
 	github.com/google/wire v0.6.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/minio/minio-go/v7 v7.0.85
 	github.com/nats-io/nats.go v1.39.0
 	github.com/prometheus/client_golang v1.20.5
-	github.com/redis/go-redis/v9 v9.7.0
 	github.com/urfave/cli/v2 v2.27.5
-	github.com/zuzuka28/simreport/lib v0.0.0-20250210075529-bc41f7ec08c0
+	github.com/zuzuka28/simreport/lib v0.0.0-20250421211429-392263a21586
 	github.com/zuzuka28/simreport/prj/document v0.0.0-20250210075529-bc41f7ec08c0
 	github.com/zuzuka28/simreport/prj/similarityindex v0.0.0-20250210075529-bc41f7ec08c0
 )
@@ -21,9 +21,11 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.6 // indirect
-	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
+	github.com/elastic/elastic-transport-go/v8 v8.6.0 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
+	github.com/go-logr/logr v1.4.2 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
@@ -39,6 +41,9 @@ require (
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
+	go.opentelemetry.io/otel v1.28.0 // indirect
+	go.opentelemetry.io/otel/metric v1.28.0 // indirect
+	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect

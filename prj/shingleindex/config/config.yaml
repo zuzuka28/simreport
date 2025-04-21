@@ -9,3 +9,16 @@ s3:
   secretAccessKey: "minio123"
   buckets:
     - texts
+elastic:
+  hosts:
+    - http://localhost:9200/
+  startupIndex:
+    - index: "shingle_index"
+      updateMapping: true
+      createMapping: true
+      mappingPath: "config/mappings/shingle_index.json"
+      alias: ""
+      shards: 1
+      replics: 1
+shingleRepo:
+  index: "shingle_index"

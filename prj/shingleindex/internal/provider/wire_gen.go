@@ -8,9 +8,10 @@ package provider
 
 import (
 	"context"
+	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/minio/minio-go/v7"
 	"github.com/nats-io/nats.go"
-	"github.com/redis/go-redis/v9"
+	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/httpinstumentation"
 	"github.com/zuzuka28/simreport/lib/minioutil"
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/config"
@@ -33,6 +34,15 @@ import (
 
 // Injectors from wire.go:
 
+func InitElastic(contextContext context.Context, configConfig *config.Config) (*elasticsearch.Client, error) {
+	elasticutilConfig := configConfig.Elastic
+	client, err := elasticutil.NewClientWithStartup(contextContext, elasticutilConfig)
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
 func InitFilestorageRepository(client *minio.Client, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*filestorage.Repository, error) {
 	repository := filestorage.NewRepository(client, metricsMetrics)
 	return repository, nil
@@ -48,18 +58,14 @@ func InitDocumentService(repository *document.Repository) (*document2.Service, e
 	return service, nil
 }
 
-func InitShingleIndexRepository(client *redis.Client, configConfig *config.Config) (*shingleindex.Repository, error) {
-	opts := _wireOptsValue
+func InitShingleIndexRepository(client *elasticsearch.Client, configConfig *config.Config) (*shingleindex.Repository, error) {
+	opts := configConfig.ShingleRepo
 	repository, err := shingleindex.NewRepository(opts, client)
 	if err != nil {
 		return nil, err
 	}
 	return repository, nil
 }
-
-var (
-	_wireOptsValue = shingleindex.Opts{}
-)
 
 func InitShingleIndexService(repository *shingleindex.Repository, service *document2.Service) (*shingleindex2.Service, error) {
 	shingleindexService := shingleindex2.NewService(repository, service)
@@ -81,7 +87,7 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	client, err := ProvideRedis(configConfig)
+	client, err := InitElastic(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +128,7 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	client, err := ProvideRedis(configConfig)
+	client, err := InitElastic(contextContext, configConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -218,17 +224,6 @@ func ProvideNats(
 	})
 
 	return natsCli, err
-}
-
-func ProvideRedis(
-	cfg *config.Config,
-) (*redis.Client, error) {
-	u, err := redis.ParseURL(cfg.Redis.DSN)
-	if err != nil {
-		return nil, err
-	}
-
-	return redis.NewClient(u), nil
 }
 
 //nolint:gochecknoglobals

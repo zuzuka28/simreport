@@ -9,7 +9,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/minio/minio-go/v7"
+	"github.com/zuzuka28/simreport/lib/elasticutil"
 	"github.com/zuzuka28/simreport/lib/httpinstumentation"
 	"github.com/zuzuka28/simreport/lib/minioutil"
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/config"
@@ -27,7 +29,6 @@ import (
 
 	"github.com/google/wire"
 	"github.com/nats-io/nats.go"
-	"github.com/redis/go-redis/v9"
 )
 
 func ProvideMetrics() *metrics.Metrics {
@@ -72,6 +73,16 @@ func ProvideConfig(path string) (*config.Config, error) {
 	return cfg, nil
 }
 
+func InitElastic(
+	_ context.Context,
+	_ *config.Config,
+) (*elasticsearch.Client, error) {
+	panic(wire.Build(
+		wire.FieldsOf(new(*config.Config), "Elastic"),
+		elasticutil.NewClientWithStartup,
+	))
+}
+
 //nolint:gochecknoglobals
 var (
 	natsCli     *nats.Conn
@@ -89,17 +100,6 @@ func ProvideNats(
 	})
 
 	return natsCli, err //nolint:wrapcheck
-}
-
-func ProvideRedis(
-	cfg *config.Config,
-) (*redis.Client, error) {
-	u, err := redis.ParseURL(cfg.Redis.DSN)
-	if err != nil {
-		return nil, err
-	}
-
-	return redis.NewClient(u), nil
 }
 
 //nolint:gochecknoglobals
@@ -152,11 +152,11 @@ func InitDocumentService(
 }
 
 func InitShingleIndexRepository(
-	_ *redis.Client,
+	_ *elasticsearch.Client,
 	_ *config.Config,
 ) (*shingleindexrepo.Repository, error) {
 	panic(wire.Build(
-		wire.Value(shingleindexrepo.Opts{}),
+		wire.FieldsOf(new(*config.Config), "ShingleRepo"),
 		shingleindexrepo.NewRepository,
 	))
 }
@@ -204,8 +204,8 @@ func InitNatsMicroAPI(
 	_ *metrics.Metrics,
 ) (*servermicro.Server, error) {
 	panic(wire.Build(
-		ProvideRedis,
 		ProvideNats,
+		InitElastic,
 
 		ProvideS3,
 		InitFilestorageRepository,
@@ -230,8 +230,8 @@ func InitNatsEventAPI(
 	_ *metrics.Metrics,
 ) (*serverevent.Server, error) {
 	panic(wire.Build(
-		ProvideRedis,
 		ProvideNats,
+		InitElastic,
 
 		ProvideS3,
 		InitFilestorageRepository,
