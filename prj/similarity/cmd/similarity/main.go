@@ -18,18 +18,18 @@ func main() {
 				Usage: "path to the config file",
 			},
 		},
-		Action: runApp,
+		Before: doBefore,
 		Commands: []*cli.Command{
 			{
 				Name:   "run-api",
-				Usage:  "run document rest api",
-				Action: runRestServer,
+				Usage:  "run similarity rest api",
+				Action: runRESTAPICommand,
 			},
 
 			{
 				Name:   "run-intapi",
-				Usage:  "run document nats api",
-				Action: runNatsServer,
+				Usage:  "run similarity nats api",
+				Action: runNATSAPICommand,
 			},
 		},
 	}

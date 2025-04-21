@@ -36,18 +36,8 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-//nolint:gochecknoglobals
-var (
-	metricsS    *metrics.Metrics
-	metricsOnce sync.Once
-)
-
 func ProvideMetrics() *metrics.Metrics {
-	metricsOnce.Do(func() {
-		metricsS = metrics.New()
-	})
-
-	return metricsS
+	return metrics.New()
 }
 
 func ProvideConfig(path string) (*config.Config, error) {
@@ -278,9 +268,9 @@ func InitAnalyzeHandler(
 func InitRestAPI(
 	_ context.Context,
 	_ *config.Config,
+  	_ *metrics.Metrics,
 ) (*serverhttp.Server, error) {
 	panic(wire.Build(
-		ProvideMetrics,
 		ProvideElastic,
 		ProvideNats,
 
@@ -321,9 +311,9 @@ func InitAnalyzeNatsHandler(
 func InitNatsAPI(
 	_ context.Context,
 	_ *config.Config,
+  	_ *metrics.Metrics,
 ) (*servernats.Server, error) {
 	panic(wire.Build(
-		ProvideMetrics,
 		ProvideElastic,
 		ProvideNats,
 
