@@ -1,6 +1,7 @@
 package metrics
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -29,7 +30,7 @@ func NewMetricsServer(
 	}
 }
 
-func (server *Server) Start() error {
+func (server *Server) Start(context.Context) error {
 	mux := http.DefaultServeMux
 
 	http.Handle("/metrics", promhttp.HandlerFor(server.reg, promhttp.HandlerOpts{ //nolint:exhaustruct

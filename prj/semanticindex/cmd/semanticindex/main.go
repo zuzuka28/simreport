@@ -18,17 +18,17 @@ func main() {
 				Usage: "path to the config file",
 			},
 		},
-		Action: runApp,
+		Before: doBefore,
 		Commands: []*cli.Command{
 			{
-				Name:   "run-api",
+				Name:   "run-intapi",
 				Usage:  "run semanticindex nats api",
-				Action: runMicroServer,
+				Action: runNATSAPICommand,
 			},
 			{
 				Name:   "run-async-processing",
-				Usage:  "run semantictindex parse api",
-				Action: runAsyncProcessing,
+				Usage:  "run semanticindex parse api",
+				Action: runAsyncProcessingCommand,
 			},
 		},
 	}

@@ -98,7 +98,7 @@ func InitIndexerHandler(service *semanticindex2.Service, documentService *docume
 	return handler, nil
 }
 
-func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Config) (*server.Server, error) {
+func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*server.Server, error) {
 	conn, err := ProvideNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
@@ -107,7 +107,6 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	metricsMetrics := ProvideMetrics()
 	repository, err := InitSemanticIndexRepository(client, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
@@ -148,7 +147,7 @@ func InitNatsMicroAPI(contextContext context.Context, configConfig *config.Confi
 	return serverServer, nil
 }
 
-func InitNatsEventAPI(contextContext context.Context, configConfig *config.Config) (*server2.Server, error) {
+func InitNatsEventAPI(contextContext context.Context, configConfig *config.Config, metricsMetrics *metrics.Metrics) (*server2.Server, error) {
 	conn, err := ProvideNats(contextContext, configConfig)
 	if err != nil {
 		return nil, err
@@ -157,7 +156,6 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 	if err != nil {
 		return nil, err
 	}
-	metricsMetrics := ProvideMetrics()
 	repository, err := InitSemanticIndexRepository(client, configConfig, metricsMetrics)
 	if err != nil {
 		return nil, err
@@ -200,18 +198,8 @@ func InitNatsEventAPI(contextContext context.Context, configConfig *config.Confi
 
 // wire.go:
 
-//nolint:gochecknoglobals
-var (
-	metricsS    *metrics.Metrics
-	metricsOnce sync.Once
-)
-
 func ProvideMetrics() *metrics.Metrics {
-	metricsOnce.Do(func() {
-		metricsS = metrics.New()
-	})
-
-	return metricsS
+	return metrics.New()
 }
 
 func ProvideConfig(path string) (*config.Config, error) {
