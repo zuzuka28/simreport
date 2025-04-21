@@ -38,11 +38,7 @@ var (
 )
 
 func ProvideMetrics() *metrics.Metrics {
-	metricsOnce.Do(func() {
-		metricsS = metrics.New()
-	})
-
-	return metricsS
+	return metrics.New()
 }
 
 func ProvideConfig(path string) (*config.Config, error) {
@@ -212,9 +208,9 @@ func InitIndexerHandler(
 func InitNatsMicroAPI(
 	_ context.Context,
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*servermicro.Server, error) {
 	panic(wire.Build(
-		ProvideMetrics,
 		InitElastic,
 		ProvideNats,
 
@@ -238,9 +234,9 @@ func InitNatsMicroAPI(
 func InitNatsEventAPI(
 	_ context.Context,
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*serverevent.Server, error) {
 	panic(wire.Build(
-		ProvideMetrics,
 		InitElastic,
 		ProvideNats,
 

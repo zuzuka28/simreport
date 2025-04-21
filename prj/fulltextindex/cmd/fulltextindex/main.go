@@ -18,17 +18,17 @@ func main() {
 				Usage: "path to the config file",
 			},
 		},
-		Action: runApp,
+		Before: doBefore,
 		Commands: []*cli.Command{
 			{
-				Name:   "run-api",
+				Name:   "run-intapi",
 				Usage:  "run fulltextindex nats api",
-				Action: runMicroServer,
+				Action: runNATSAPICommand,
 			},
 			{
 				Name:   "run-async-processing",
 				Usage:  "run fulltextindex parse api",
-				Action: runAsyncProcessing,
+				Action: runAsyncProcessingCommand,
 			},
 		},
 	}
