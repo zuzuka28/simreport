@@ -14,7 +14,6 @@ require (
 	github.com/zuzuka28/simreport/lib v0.0.0-20250210075529-bc41f7ec08c0
 	github.com/zuzuka28/simreport/prj/document v0.0.0-20250210075529-bc41f7ec08c0
 	github.com/zuzuka28/simreport/prj/similarityindex v0.0.0-20250210075529-bc41f7ec08c0
-	golang.org/x/sync v0.11.0
 )
 
 require (

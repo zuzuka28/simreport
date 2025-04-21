@@ -12,11 +12,11 @@ import (
 	"github.com/minio/minio-go/v7"
 	"github.com/zuzuka28/simreport/lib/httpinstumentation"
 	"github.com/zuzuka28/simreport/lib/minioutil"
+	"github.com/zuzuka28/simreport/prj/shingleindex/internal/config"
 	serverevent "github.com/zuzuka28/simreport/prj/shingleindex/internal/handler/nats/event"
 	indexerevent "github.com/zuzuka28/simreport/prj/shingleindex/internal/handler/nats/event/handler/indexer"
 	shingleindexmicro "github.com/zuzuka28/simreport/prj/shingleindex/internal/handler/nats/micro/handler/shingleindex"
 	servermicro "github.com/zuzuka28/simreport/prj/shingleindex/internal/handler/nats/micro/server"
-	"github.com/zuzuka28/simreport/prj/shingleindex/internal/config"
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/metrics"
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/model"
 	documentrepo "github.com/zuzuka28/simreport/prj/shingleindex/internal/repository/document"
@@ -30,18 +30,8 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-//nolint:gochecknoglobals
-var (
-	metricsS    *metrics.Metrics
-	metricsOnce sync.Once
-)
-
 func ProvideMetrics() *metrics.Metrics {
-	metricsOnce.Do(func() {
-		metricsS = metrics.New()
-	})
-
-	return metricsS
+	return metrics.New()
 }
 
 func ProvideConfig(path string) (*config.Config, error) {
@@ -211,9 +201,9 @@ func InitIndexerHandler(
 func InitNatsMicroAPI(
 	_ context.Context,
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*servermicro.Server, error) {
 	panic(wire.Build(
-		ProvideMetrics,
 		ProvideRedis,
 		ProvideNats,
 
@@ -237,9 +227,9 @@ func InitNatsMicroAPI(
 func InitNatsEventAPI(
 	_ context.Context,
 	_ *config.Config,
+	_ *metrics.Metrics,
 ) (*serverevent.Server, error) {
 	panic(wire.Build(
-		ProvideMetrics,
 		ProvideRedis,
 		ProvideNats,
 
