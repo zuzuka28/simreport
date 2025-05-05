@@ -1,10 +1,10 @@
 module github.com/zuzuka28/simreport/util/protonatsmicrogen
 
-go 1.23.2
+go 1.24
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
-	google.golang.org/protobuf v1.36.4
+	google.golang.org/protobuf v1.36.5
 )
 
 require (
@@ -15,9 +15,9 @@ require (
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
-	github.com/rogpeppe/go-internal v1.12.0 // indirect
+	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
+	github.com/stretchr/testify v1.10.0 // indirect
+	golang.org/x/crypto v0.33.0 // indirect
 )

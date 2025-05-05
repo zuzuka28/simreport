@@ -1,13 +1,14 @@
-go 1.23.2
+go 1.24.0
 
 use (
 	./lib
+	./prj/allinone
 	./prj/document
+	./prj/fulltextindex
+	./prj/semanticindex
+	./prj/shingleindex
 	./prj/similarity
 	./prj/similarityindex
-	./prj/fulltextindex
-	./prj/shingleindex
-	./prj/semanticindex
 	./prj/tgbot
 	./util/protonatsmicrogen
 )
