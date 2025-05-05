@@ -1,0 +1,42 @@
+port: 8000
+metricsPort: 9000
+nats: nats://localhost:4222
+elastic:
+  hosts:
+    - http://localhost:9200/
+  indexopts: []
+s3:
+  endpoint: "localhost:9000"
+  accessKeyID: "minio"
+  secretAccessKey: "minio123"
+  buckets: []
+documentService:
+  port: 0
+  metricsPort: 0
+  tika: http://localhost:9998
+  attributeRepo:
+    index: "document"
+  documentRepo:
+    index: "document"
+similarityService:
+  port: 0
+  metricsPort: 0
+  analyzeHistoryRepo:
+    index: "analyze_history"
+shingleIndexService:
+  port: 0
+  metricsPort: 0
+  shingleRepo:
+    index: "shingle_index"
+fulltextIndexService:
+  port: 0
+  metricsPort: 0
+  fulltextRepo:
+    index: "fulltext_index"
+semanticIndexService:
+  port: 0
+  metricsPort: 0
+  semanticRepo:
+    index: "semantic_index"
+  vectorizerRepo:
+    host: http://localhost:8081
