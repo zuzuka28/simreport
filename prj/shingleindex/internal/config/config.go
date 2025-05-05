@@ -9,10 +9,6 @@ import (
 	"github.com/zuzuka28/simreport/prj/shingleindex/internal/repository/shingleindex"
 )
 
-type Redis struct {
-	DSN string `json:"dsn"`
-}
-
 type Config struct {
 	Port        int                `yaml:"port"`
 	MetricsPort int                `yaml:"metricsPort"`
