@@ -26,7 +26,7 @@ paths:
         "404":
           $ref: "#/components/responses/DocumentNotFound"
 
-  /document/upload:
+  /upload:
     post:
       requestBody:
         required: true
@@ -56,7 +56,7 @@ paths:
         "500":
           $ref: "#/components/responses/ServerError"
 
-  /document/search:
+  /search:
     post:
       requestBody:
         required: true

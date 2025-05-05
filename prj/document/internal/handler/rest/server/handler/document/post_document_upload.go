@@ -8,13 +8,13 @@ import (
 	"github.com/zuzuka28/simreport/prj/document/internal/model"
 )
 
-func (h *Handler) PostDocumentUpload(
+func (h *Handler) PostUpload(
 	ctx context.Context,
-	params openapi.PostDocumentUploadRequestObject,
-) (openapi.PostDocumentUploadResponseObject, error) {
+	params openapi.PostUploadRequestObject,
+) (openapi.PostUploadResponseObject, error) {
 	cmd, err := mapUploadRequestToCommand(params)
 	if err != nil {
-		return openapi.PostDocumentUpload400JSONResponse{}, nil
+		return openapi.PostUpload400JSONResponse{}, nil
 	}
 
 	doc, err := h.s.Save(ctx, cmd)

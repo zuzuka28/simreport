@@ -21,7 +21,7 @@ var errNoBody = errors.New("no body")
 var errNilPart = errors.New("nil part")
 
 func mapSearchRequestToQuery(
-	in openapi.PostDocumentSearchRequestObject,
+	in openapi.PostSearchRequestObject,
 ) (model.DocumentSearchQuery, error) {
 	if in.Body == nil {
 		return model.DocumentSearchQuery{}, errNoBody
@@ -37,7 +37,7 @@ func mapSearchRequestToQuery(
 
 func mapDocumentsToSearchResponse(
 	in []model.Document,
-) openapi.PostDocumentSearch200JSONResponse {
+) openapi.PostSearch200JSONResponse {
 	docs := make([]openapi.DocumentSummary, 0, len(in))
 
 	for _, v := range in {
@@ -55,7 +55,7 @@ func mapDocumentsToSearchResponse(
 		})
 	}
 
-	return openapi.PostDocumentSearch200JSONResponse{
+	return openapi.PostSearch200JSONResponse{
 		SearchResultJSONResponse: openapi.SearchResultJSONResponse{
 			Documents: &docs,
 		},
@@ -154,7 +154,7 @@ func (f *documentUploadForm) Parse(reader *multipart.Reader) (model.Document, er
 }
 
 func mapUploadRequestToCommand(
-	in openapi.PostDocumentUploadRequestObject,
+	in openapi.PostUploadRequestObject,
 ) (model.DocumentSaveCommand, error) {
 	uploadForm := newDocumentUploadForm()
 
@@ -172,10 +172,10 @@ func mapUploadRequestToCommand(
 
 func mapUploadCommandToResponse(
 	doc *model.Document,
-) openapi.PostDocumentUpload200JSONResponse {
+) openapi.PostUpload200JSONResponse {
 	docID := doc.ID()
 
-	return openapi.PostDocumentUpload200JSONResponse{
+	return openapi.PostUpload200JSONResponse{
 		UploadSuccessJSONResponse: openapi.UploadSuccessJSONResponse(
 			openapi.UploadSuccess{
 				DocumentID: &docID,

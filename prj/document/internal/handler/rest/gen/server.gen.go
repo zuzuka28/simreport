@@ -99,11 +99,11 @@ type UploadSuccess struct {
 // PostAttributeJSONRequestBody defines body for PostAttribute for application/json ContentType.
 type PostAttributeJSONRequestBody = AttributeRequest
 
-// PostDocumentSearchJSONRequestBody defines body for PostDocumentSearch for application/json ContentType.
-type PostDocumentSearchJSONRequestBody = SearchRequest
+// PostSearchJSONRequestBody defines body for PostSearch for application/json ContentType.
+type PostSearchJSONRequestBody = SearchRequest
 
-// PostDocumentUploadMultipartRequestBody defines body for PostDocumentUpload for multipart/form-data ContentType.
-type PostDocumentUploadMultipartRequestBody = UploadRequest
+// PostUploadMultipartRequestBody defines body for PostUpload for multipart/form-data ContentType.
+type PostUploadMultipartRequestBody = UploadRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -111,11 +111,11 @@ type ServerInterface interface {
 	// (POST /attribute)
 	PostAttribute(w http.ResponseWriter, r *http.Request)
 
-	// (POST /document/search)
-	PostDocumentSearch(w http.ResponseWriter, r *http.Request)
+	// (POST /search)
+	PostSearch(w http.ResponseWriter, r *http.Request)
 
-	// (POST /document/upload)
-	PostDocumentUpload(w http.ResponseWriter, r *http.Request)
+	// (POST /upload)
+	PostUpload(w http.ResponseWriter, r *http.Request)
 	// Download document
 	// (GET /{document_id}/download)
 	GetDocumentIdDownload(w http.ResponseWriter, r *http.Request, documentId DocumentId)
@@ -144,11 +144,11 @@ func (siw *ServerInterfaceWrapper) PostAttribute(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
-// PostDocumentSearch operation middleware
-func (siw *ServerInterfaceWrapper) PostDocumentSearch(w http.ResponseWriter, r *http.Request) {
+// PostSearch operation middleware
+func (siw *ServerInterfaceWrapper) PostSearch(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostDocumentSearch(w, r)
+		siw.Handler.PostSearch(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -158,11 +158,11 @@ func (siw *ServerInterfaceWrapper) PostDocumentSearch(w http.ResponseWriter, r *
 	handler.ServeHTTP(w, r)
 }
 
-// PostDocumentUpload operation middleware
-func (siw *ServerInterfaceWrapper) PostDocumentUpload(w http.ResponseWriter, r *http.Request) {
+// PostUpload operation middleware
+func (siw *ServerInterfaceWrapper) PostUpload(w http.ResponseWriter, r *http.Request) {
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostDocumentUpload(w, r)
+		siw.Handler.PostUpload(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -312,9 +312,9 @@ func HandlerWithOptions(si ServerInterface, options GorillaServerOptions) http.H
 
 	r.HandleFunc(options.BaseURL+"/attribute", wrapper.PostAttribute).Methods("POST")
 
-	r.HandleFunc(options.BaseURL+"/document/search", wrapper.PostDocumentSearch).Methods("POST")
+	r.HandleFunc(options.BaseURL+"/search", wrapper.PostSearch).Methods("POST")
 
-	r.HandleFunc(options.BaseURL+"/document/upload", wrapper.PostDocumentUpload).Methods("POST")
+	r.HandleFunc(options.BaseURL+"/upload", wrapper.PostUpload).Methods("POST")
 
 	r.HandleFunc(options.BaseURL+"/{document_id}/download", wrapper.GetDocumentIdDownload).Methods("GET")
 
@@ -380,61 +380,61 @@ func (response PostAttribute500JSONResponse) VisitPostAttributeResponse(w http.R
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostDocumentSearchRequestObject struct {
-	Body *PostDocumentSearchJSONRequestBody
+type PostSearchRequestObject struct {
+	Body *PostSearchJSONRequestBody
 }
 
-type PostDocumentSearchResponseObject interface {
-	VisitPostDocumentSearchResponse(w http.ResponseWriter) error
+type PostSearchResponseObject interface {
+	VisitPostSearchResponse(w http.ResponseWriter) error
 }
 
-type PostDocumentSearch200JSONResponse struct{ SearchResultJSONResponse }
+type PostSearch200JSONResponse struct{ SearchResultJSONResponse }
 
-func (response PostDocumentSearch200JSONResponse) VisitPostDocumentSearchResponse(w http.ResponseWriter) error {
+func (response PostSearch200JSONResponse) VisitPostSearchResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostDocumentSearch400JSONResponse struct{ BadRequestJSONResponse }
+type PostSearch400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response PostDocumentSearch400JSONResponse) VisitPostDocumentSearchResponse(w http.ResponseWriter) error {
+func (response PostSearch400JSONResponse) VisitPostSearchResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostDocumentSearch500JSONResponse struct{ ServerErrorJSONResponse }
+type PostSearch500JSONResponse struct{ ServerErrorJSONResponse }
 
-func (response PostDocumentSearch500JSONResponse) VisitPostDocumentSearchResponse(w http.ResponseWriter) error {
+func (response PostSearch500JSONResponse) VisitPostSearchResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostDocumentUploadRequestObject struct {
+type PostUploadRequestObject struct {
 	Body *multipart.Reader
 }
 
-type PostDocumentUploadResponseObject interface {
-	VisitPostDocumentUploadResponse(w http.ResponseWriter) error
+type PostUploadResponseObject interface {
+	VisitPostUploadResponse(w http.ResponseWriter) error
 }
 
-type PostDocumentUpload200JSONResponse struct{ UploadSuccessJSONResponse }
+type PostUpload200JSONResponse struct{ UploadSuccessJSONResponse }
 
-func (response PostDocumentUpload200JSONResponse) VisitPostDocumentUploadResponse(w http.ResponseWriter) error {
+func (response PostUpload200JSONResponse) VisitPostUploadResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 
 	return json.NewEncoder(w).Encode(response)
 }
 
-type PostDocumentUpload400JSONResponse struct{ BadRequestJSONResponse }
+type PostUpload400JSONResponse struct{ BadRequestJSONResponse }
 
-func (response PostDocumentUpload400JSONResponse) VisitPostDocumentUploadResponse(w http.ResponseWriter) error {
+func (response PostUpload400JSONResponse) VisitPostUploadResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(400)
 
@@ -489,11 +489,11 @@ type StrictServerInterface interface {
 	// (POST /attribute)
 	PostAttribute(ctx context.Context, request PostAttributeRequestObject) (PostAttributeResponseObject, error)
 
-	// (POST /document/search)
-	PostDocumentSearch(ctx context.Context, request PostDocumentSearchRequestObject) (PostDocumentSearchResponseObject, error)
+	// (POST /search)
+	PostSearch(ctx context.Context, request PostSearchRequestObject) (PostSearchResponseObject, error)
 
-	// (POST /document/upload)
-	PostDocumentUpload(ctx context.Context, request PostDocumentUploadRequestObject) (PostDocumentUploadResponseObject, error)
+	// (POST /upload)
+	PostUpload(ctx context.Context, request PostUploadRequestObject) (PostUploadResponseObject, error)
 	// Download document
 	// (GET /{document_id}/download)
 	GetDocumentIdDownload(ctx context.Context, request GetDocumentIdDownloadRequestObject) (GetDocumentIdDownloadResponseObject, error)
@@ -559,11 +559,11 @@ func (sh *strictHandler) PostAttribute(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// PostDocumentSearch operation middleware
-func (sh *strictHandler) PostDocumentSearch(w http.ResponseWriter, r *http.Request) {
-	var request PostDocumentSearchRequestObject
+// PostSearch operation middleware
+func (sh *strictHandler) PostSearch(w http.ResponseWriter, r *http.Request) {
+	var request PostSearchRequestObject
 
-	var body PostDocumentSearchJSONRequestBody
+	var body PostSearchJSONRequestBody
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
 		return
@@ -571,18 +571,18 @@ func (sh *strictHandler) PostDocumentSearch(w http.ResponseWriter, r *http.Reque
 	request.Body = &body
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostDocumentSearch(ctx, request.(PostDocumentSearchRequestObject))
+		return sh.ssi.PostSearch(ctx, request.(PostSearchRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostDocumentSearch")
+		handler = middleware(handler, "PostSearch")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostDocumentSearchResponseObject); ok {
-		if err := validResponse.VisitPostDocumentSearchResponse(w); err != nil {
+	} else if validResponse, ok := response.(PostSearchResponseObject); ok {
+		if err := validResponse.VisitPostSearchResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -590,9 +590,9 @@ func (sh *strictHandler) PostDocumentSearch(w http.ResponseWriter, r *http.Reque
 	}
 }
 
-// PostDocumentUpload operation middleware
-func (sh *strictHandler) PostDocumentUpload(w http.ResponseWriter, r *http.Request) {
-	var request PostDocumentUploadRequestObject
+// PostUpload operation middleware
+func (sh *strictHandler) PostUpload(w http.ResponseWriter, r *http.Request) {
+	var request PostUploadRequestObject
 
 	if reader, err := r.MultipartReader(); err != nil {
 		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode multipart body: %w", err))
@@ -602,18 +602,18 @@ func (sh *strictHandler) PostDocumentUpload(w http.ResponseWriter, r *http.Reque
 	}
 
 	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
-		return sh.ssi.PostDocumentUpload(ctx, request.(PostDocumentUploadRequestObject))
+		return sh.ssi.PostUpload(ctx, request.(PostUploadRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "PostDocumentUpload")
+		handler = middleware(handler, "PostUpload")
 	}
 
 	response, err := handler(r.Context(), w, r, request)
 
 	if err != nil {
 		sh.options.ResponseErrorHandlerFunc(w, r, err)
-	} else if validResponse, ok := response.(PostDocumentUploadResponseObject); ok {
-		if err := validResponse.VisitPostDocumentUploadResponse(w); err != nil {
+	} else if validResponse, ok := response.(PostUploadResponseObject); ok {
+		if err := validResponse.VisitPostUploadResponse(w); err != nil {
 			sh.options.ResponseErrorHandlerFunc(w, r, err)
 		}
 	} else if response != nil {
@@ -650,20 +650,20 @@ func (sh *strictHandler) GetDocumentIdDownload(w http.ResponseWriter, r *http.Re
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

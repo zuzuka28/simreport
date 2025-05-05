@@ -12,14 +12,14 @@ type (
 	}
 
 	DocumentHandler interface {
-		PostDocumentSearch(
+		PostSearch(
 			ctx context.Context,
-			request openapi.PostDocumentSearchRequestObject,
-		) (openapi.PostDocumentSearchResponseObject, error)
-		PostDocumentUpload(
+			request openapi.PostSearchRequestObject,
+		) (openapi.PostSearchResponseObject, error)
+		PostUpload(
 			ctx context.Context,
-			request openapi.PostDocumentUploadRequestObject,
-		) (openapi.PostDocumentUploadResponseObject, error)
+			request openapi.PostUploadRequestObject,
+		) (openapi.PostUploadResponseObject, error)
 		GetDocumentIdDownload(
 			ctx context.Context,
 			params openapi.GetDocumentIdDownloadRequestObject,
