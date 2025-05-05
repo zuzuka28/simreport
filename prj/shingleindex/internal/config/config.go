@@ -10,7 +10,6 @@ import (
 )
 
 type Config struct {
-	Port        int                `yaml:"port"`
 	MetricsPort int                `yaml:"metricsPort"`
 	Nats        string             `yaml:"nats"`
 	Elastic     elasticutil.Config `yaml:"elastic"`
