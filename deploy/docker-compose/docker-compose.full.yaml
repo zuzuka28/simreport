@@ -1,6 +1,119 @@
 version: "3.7"
-
 services:
+  minio:
+    image: minio/minio
+    volumes:
+      - minio_vol:/data
+    command: server --console-address ":9001" /data
+    environment:
+      MINIO_ACCESS_KEY: ${S3_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${S3_SECRET_KEY}
+    healthcheck:
+      test: timeout 5s bash -c ':> /dev/tcp/127.0.0.1/9000' || exit 1
+      start_period: 5s
+      interval: 10s
+      timeout: 5s
+      retries: 2
+  elasticsearch:
+    image: elasticsearch:8.15.2
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    volumes:
+      - elastic_vol:/usr/share/elasticsearch/data
+    healthcheck:
+      test: curl --silent http://localhost:9200 >/dev/null; if [[ $$? == 52 ]]; then echo 0; else echo 1; fi
+      interval: 30s
+      timeout: 10s
+      retries: 5
+  nats1:
+    image: docker.io/nats
+    hostname: nats1
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+      - "6222:6222"
+    volumes:
+      - nats1_vol:/data
+    command:
+      - "--name=nats1"
+      - "--cluster_name=c1"
+      - "--cluster=nats://nats1:6222"
+      - "--routes=nats://nats1:6222,nats://nats2:6222,nats://nats3:6222"
+      - "--http_port=8222"
+      - "--js"
+      - "--sd=/data"
+  nats2:
+    image: docker.io/nats
+    hostname: nats2
+    ports:
+      - "4223:4222"
+      - "8223:8222"
+      - "6223:6222"
+    volumes:
+      - nats2_vol:/data
+    command:
+      - "--name=nats2"
+      - "--cluster_name=c1"
+      - "--cluster=nats://nats2:6222"
+      - "--routes=nats://nats1:6222,nats://nats2:6222,nats://nats3:6222"
+      - "--http_port=8222"
+      - "--js"
+      - "--sd=/data"
+  nats3:
+    image: docker.io/nats
+    hostname: nats3
+    ports:
+      - "4224:4222"
+      - "8224:8222"
+      - "6224:6222"
+    volumes:
+      - nats3_vol:/data
+    command:
+      - "--name=nats3"
+      - "--cluster_name=c1"
+      - "--cluster=nats://nats3:6222"
+      - "--routes=nats://nats1:6222,nats://nats2:6222,nats://nats3:6222"
+      - "--http_port=8222"
+      - "--js"
+      - "--sd=/data"
+  jetstream-waiter:
+    image: natsio/nats-box:latest
+    depends_on:
+      - nats1
+    restart: "no"
+    command: >
+      sh -c "echo 'Waiting JetStream...'; timeout 60 sh -c '
+        until nats -s nats1:4222 stream ls >/dev/null 2>&1; do
+          echo \"JetStream not ready, retry after 2 seconds...\";
+          sleep 2;
+        done
+      '; if [ \$? -eq 0 ]; then
+        echo 'JetStream ready!';
+        exit 0;
+      else
+        echo 'JetStream timeout';
+        exit 1;
+      fi "
+
+  tika:
+    image: zuzuka28/simrep_tika
+    build:
+      context: ../../thirdparty/tika
+      dockerfile: build/Dockerfile
+      args:
+        - TIKA_VERSION=3.0.0
+  vectorizer:
+    build:
+      context: ../../prj/vectorizer
+      dockerfile: build/docker/Dockerfile
+    image: zuzuka28/simrep_vectorizer:latest
+    command: ["python", "-m", "src.api.run"]
+    configs:
+      - source: vectorizer-config
+        target: /config/config.yaml
   allinone_backend:
     build:
       context: ../../prj/allinone
@@ -12,17 +125,17 @@ services:
         target: /config/config.yaml
     volumes:
       - ../../prj/document/config/mappings:/mappings
-
-  vectorizer:
-    build:
-      context: ../../prj/vectorizer
-      dockerfile: build/docker/Dockerfile
-    image: zuzuka28/simrep_vectorizer:latest
-    command: ["python", "-m", "src.api.run"]
-    configs:
-      - source: vectorizer-config
-        target: /config/config.yaml
-
+    depends_on:
+      minio:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      jetstream-waiter:
+        condition: service_completed_successfully
+      vectorizer:
+        condition: service_started
+      tika:
+        condition: service_started
   tgbot:
     build:
       context: ../../prj/tgbot
@@ -34,82 +147,9 @@ services:
         target: /config/config.yaml
     volumes:
       - ../../prj/tgbot/config/mappings:/mappings
-
-  minio:
-    image: minio/minio
-    volumes:
-      - minio_vol:/data
-    command: server --console-address ":9001" /data
-    environment:
-      MINIO_ACCESS_KEY: ${S3_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${S3_SECRET_KEY}
-
-  elasticsearch:
-    image: elasticsearch:8.15.2
-    container_name: elasticsearch
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
-    volumes:
-      - elastic_vol:/usr/share/elasticsearch/data
-
-  nats1:
-    image: docker.io/nats
-    ports:
-      - "4222:4222"
-      - "8222:8222"
-    volumes:
-      - nats1_vol:/data
-    command:
-      - "--name=nats1"
-      - "--cluster_name=c1"
-      - "--cluster=nats://nats1:6222"
-      - "--routes=nats-route://nats1:6222,nats-route://nats2:6222,nats-route://nats3:6222"
-      - "--http_port=8222"
-      - "--js"
-      - "--sd=/data"
-
-  nats2:
-    image: docker.io/nats
-    ports:
-      - "4223:4222"
-      - "8223:8222"
-    volumes:
-      - nats2_vol:/data
-    command:
-      - "--name=nats2"
-      - "--cluster_name=c1"
-      - "--cluster=nats://nats2:6222"
-      - "--routes=nats-route://nats1:6222,nats-route://nats2:6222,nats-route://nats3:6222"
-      - "--http_port=8222"
-      - "--js"
-      - "--sd=/data"
-
-  nats3:
-    image: docker.io/nats
-    ports:
-      - "4224:4222"
-      - "8224:8222"
-    volumes:
-      - nats3_vol:/data
-    command:
-      - "--name=nats3"
-      - "--cluster_name=c1"
-      - "--cluster=nats://nats3:6222"
-      - "--routes=nats-route://nats1:6222,nats-route://nats2:6222,nats-route://nats3:6222"
-      - "--http_port=8222"
-      - "--js"
-      - "--sd=/data"
-
-  tika:
-    image: zuzuka28/simrep_tika
-    build:
-      context: ../../thirdparty/tika
-      dockerfile: build/Dockerfile
-      args:
-        - TIKA_VERSION=3.0.0
-
+    depends_on:
+      allinone_backend:
+        condition: service_started
 configs:
   allinone_backend-config:
     file: ./configs/allinone_backend.yaml
@@ -117,7 +157,6 @@ configs:
     file: ./configs/vectorizer.yaml
   tgbot-config:
     file: ./configs/tgbot.yaml
-
 volumes:
   elastic_vol:
   minio_vol:
