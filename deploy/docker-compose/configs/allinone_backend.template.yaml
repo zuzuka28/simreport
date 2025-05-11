@@ -1,0 +1,30 @@
+port: ${PORT}
+metricsPort: ${METRICS_PORT}
+nats: ${NATS_URL}
+elastic:
+  hosts:
+    - ${ELASTIC_HOSTS}
+s3:
+  endpoint: ${S3_ENDPOINT}
+  accessKeyID: ${S3_ACCESS_KEY}
+  secretAccessKey: ${S3_SECRET_KEY}
+documentService:
+  tika: ${TIKA_URL}
+  attributeRepo:
+    index: "simrep_document"
+  documentRepo:
+    index: "simrep_document"
+similarityService:
+  analyzeHistoryRepo:
+    index: "simrep_analyze_history"
+shingleIndexService:
+  shingleRepo:
+    index: "simrep_shingle_index"
+fulltextIndexService:
+  fulltextRepo:
+    index: "simrep_fulltext_index"
+semanticIndexService:
+  semanticRepo:
+    index: "simrep_semantic_index"
+  vectorizerRepo:
+    host: ${VECTORIZER_REPO_HOST}
