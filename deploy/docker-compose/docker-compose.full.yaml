@@ -43,8 +43,6 @@ services:
     environment:
       MINIO_ACCESS_KEY: ${S3_ACCESS_KEY}
       MINIO_SECRET_KEY: ${S3_SECRET_KEY}
-    networks:
-      - infra_network
 
   elasticsearch:
     image: elasticsearch:8.15.2
@@ -105,15 +103,18 @@ services:
       - "--sd=/data"
 
   tika:
-    image: tika
+    image: zuzuka28/simrep_tika
     build:
-      context: tika
+      context: ../../thirdparty/tika
+      dockerfile: build/Dockerfile
       args:
         - TIKA_VERSION=3.0.0
 
 configs:
   allinone_backend-config:
     file: ./configs/allinone_backend.yaml
+  vectorizer-config:
+    file: ./configs/vectorizer.yaml
   tgbot-config:
     file: ./configs/tgbot.yaml
 
