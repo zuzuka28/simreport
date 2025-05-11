@@ -12,10 +12,12 @@ import (
 )
 
 type Config struct {
-	Port               int                 `yaml:"port"`
-	MetricsPort        int                 `yaml:"metricsPort"`
+	Port        int `yaml:"port"`
+	MetricsPort int `yaml:"metricsPort"`
+
 	Nats               string              `yaml:"nats"`
 	Elastic            elasticutil.Config  `yaml:"elastic"`
+	EnabledIndices     []string            `yaml:"enabledIndices"`
 	S3                 minioutil.Config    `yaml:"s3"`
 	AnalyzeHistoryRepo analyzehistory.Opts `yaml:"analyzeHistoryRepo"`
 }

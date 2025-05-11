@@ -1,5 +1,9 @@
 port: 8080
 metricsPort: 9091
+enabledIndices:
+  - shingleindex
+  - fulltextindex
+  - semantic
 nats: nats://localhost:4222
 elastic:
   hosts:

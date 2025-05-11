@@ -1,11 +1,11 @@
 generate_api:
-	oapi-codegen --generate gorilla,types,strict-server,embedded-spec api/rest/openapi.yaml > internal/handler/rest/gen/server.gen.go
+	go tool oapi-codegen --generate gorilla,types,strict-server,embedded-spec api/rest/openapi.yaml > internal/handler/rest/gen/server.gen.go
 
 generate_proto:
 	protoc proto/similarity.proto --go_out=. --natsmicro_out=.
 
 wire:
-	wire ./...
+	go tool wire ./...
 
 startup_env:
 	docker-compose -f build/docker-compose.yaml up -d

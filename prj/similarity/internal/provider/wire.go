@@ -4,8 +4,10 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 
@@ -235,21 +237,55 @@ func ProvideAnalyzeServiceOpts() analyzesrv.Opts {
 	return analyzesrv.Opts{}
 }
 
+func provideAnalyzeServiceSearchIndices(
+	cfg *config.Config,
+	conn *nats.Conn,
+	m *metrics.Metrics,
+) ([]analyzesrv.IndexingService, error) {
+	var indices []analyzesrv.IndexingService
+
+	if slices.Contains(cfg.EnabledIndices, "shingleindex") {
+		srv, err := InitShingleIndexService(conn, m)
+		if err != nil {
+			return nil, fmt.Errorf("init shingle index: %w", err)
+		}
+
+		indices = append(indices, srv)
+	}
+
+	if slices.Contains(cfg.EnabledIndices, "fulltextindex") {
+		srv, err := InitFulltextIndexService(conn, m)
+		if err != nil {
+			return nil, fmt.Errorf("init fulltext index: %w", err)
+		}
+
+		indices = append(indices, srv)
+	}
+
+	if slices.Contains(cfg.EnabledIndices, "semanticindex") {
+		srv, err := InitSemanticIndexService(conn, m)
+		if err != nil {
+			return nil, fmt.Errorf("init semantic index: %w", err)
+		}
+
+		indices = append(indices, srv)
+	}
+
+	return indices, nil
+}
+
 func InitAnalyzeService(
 	_ *config.Config,
+	_ *nats.Conn,
 	_ *documentsrv.Service,
-	_ *shingleindexsrv.Service,
-	_ *fulltextindexsrv.Service,
-	_ *semanticindexsrv.Service,
 	_ *analyzehistoryrepo.Repository,
 	_ *filestorage.Repository,
+	_ *metrics.Metrics,
 ) (*analyzesrv.Service, error) {
 	panic(wire.Build(
 		ProvideAnalyzeServiceOpts,
 		wire.Bind(new(analyzesrv.DocumentService), new(*documentsrv.Service)),
-		wire.Bind(new(analyzesrv.ShingleIndexService), new(*shingleindexsrv.Service)),
-		wire.Bind(new(analyzesrv.FulltextIndexService), new(*fulltextindexsrv.Service)),
-		wire.Bind(new(analyzesrv.SemanticIndexService), new(*semanticindexsrv.Service)),
+		provideAnalyzeServiceSearchIndices,
 		wire.Bind(new(analyzesrv.Filestorage), new(*filestorage.Repository)),
 		wire.Bind(new(analyzesrv.HistoryRepository), new(*analyzehistoryrepo.Repository)),
 		analyzesrv.NewService,
@@ -268,7 +304,7 @@ func InitAnalyzeHandler(
 func InitRestAPI(
 	_ context.Context,
 	_ *config.Config,
-  	_ *metrics.Metrics,
+	_ *metrics.Metrics,
 ) (*serverhttp.Server, error) {
 	panic(wire.Build(
 		ProvideElastic,
@@ -279,12 +315,6 @@ func InitRestAPI(
 
 		InitDocumentRepository,
 		InitDocumentService,
-
-		InitShingleIndexService,
-
-		InitFulltextIndexService,
-
-		InitSemanticIndexService,
 
 		InitAnalyzeHistoryRepository,
 
@@ -311,7 +341,7 @@ func InitAnalyzeNatsHandler(
 func InitNatsAPI(
 	_ context.Context,
 	_ *config.Config,
-  	_ *metrics.Metrics,
+	_ *metrics.Metrics,
 ) (*servernats.Server, error) {
 	panic(wire.Build(
 		ProvideElastic,
@@ -322,12 +352,6 @@ func InitNatsAPI(
 
 		InitDocumentRepository,
 		InitDocumentService,
-
-		InitShingleIndexService,
-
-		InitFulltextIndexService,
-
-		InitSemanticIndexService,
 
 		InitAnalyzeHistoryRepository,
 

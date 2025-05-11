@@ -15,29 +15,23 @@ var (
 type Opts struct{}
 
 type Service struct {
-	ds         DocumentService
-	fs         Filestorage
-	shingleis  ShingleIndexService
-	fulltextis FulltextIndexService
-	semanticis SemanticIndexService
-	hr         HistoryRepository
+	ds      DocumentService
+	fs      Filestorage
+	indices []IndexingService
+	hr      HistoryRepository
 }
 
 func NewService(
 	_ Opts,
 	ds DocumentService,
 	fs Filestorage,
-	shingleis ShingleIndexService,
-	fulltextis FulltextIndexService,
-	semanticis SemanticIndexService,
+	indices []IndexingService,
 	hr HistoryRepository,
 ) *Service {
 	return &Service{
-		ds:         ds,
-		fs:         fs,
-		shingleis:  shingleis,
-		fulltextis: fulltextis,
-		semanticis: semanticis,
-		hr:         hr,
+		ds:      ds,
+		fs:      fs,
+		indices: indices,
+		hr:      hr,
 	}
 }

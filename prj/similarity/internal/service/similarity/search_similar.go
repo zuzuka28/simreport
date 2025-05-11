@@ -79,47 +79,21 @@ func (s *Service) searchSources(
 		resMu sync.Mutex
 	)
 
-	eg.Go(func() error {
-		r, err := s.shingleis.SearchSimilar(egCtx, query)
-		if err != nil {
-			return fmt.Errorf("shingle similar: %w", err)
-		}
+	for _, index := range s.indices {
+		eg.Go(func() error {
+			r, err := index.SearchSimilar(egCtx, query)
+			if err != nil {
+				return fmt.Errorf("search similar: %w", err)
+			}
 
-		resMu.Lock()
-		defer resMu.Unlock()
+			resMu.Lock()
+			defer resMu.Unlock()
 
-		res = append(res, r...)
+			res = append(res, r...)
 
-		return nil
-	})
-
-	eg.Go(func() error {
-		r, err := s.fulltextis.SearchSimilar(egCtx, query)
-		if err != nil {
-			return fmt.Errorf("fulltext similar: %w", err)
-		}
-
-		resMu.Lock()
-		defer resMu.Unlock()
-
-		res = append(res, r...)
-
-		return nil
-	})
-
-	eg.Go(func() error {
-		r, err := s.semanticis.SearchSimilar(egCtx, query)
-		if err != nil {
-			return fmt.Errorf("semantic similar: %w", err)
-		}
-
-		resMu.Lock()
-		defer resMu.Unlock()
-
-		res = append(res, r...)
-
-		return nil
-	})
+			return nil
+		})
+	}
 
 	if err := eg.Wait(); err != nil {
 		return nil, fmt.Errorf("search similar: %w", err)

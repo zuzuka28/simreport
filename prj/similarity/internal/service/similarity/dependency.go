@@ -25,12 +25,6 @@ type (
 		) ([]*model.SimilarityMatch, error)
 	}
 
-	ShingleIndexService IndexingService
-
-	FulltextIndexService IndexingService
-
-	SemanticIndexService IndexingService
-
 	Filestorage interface {
 		Fetch(
 			ctx context.Context,

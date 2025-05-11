@@ -8,6 +8,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/minio/minio-go/v7"
 	"github.com/nats-io/nats.go"
@@ -32,6 +33,7 @@ import (
 	"github.com/zuzuka28/simreport/prj/similarity/internal/service/similarity"
 	"net"
 	"net/http"
+	"slices"
 	"sync"
 	"time"
 )
@@ -115,9 +117,13 @@ func InitAnalyzeHistoryRepository(client *elasticsearch.Client, configConfig *co
 	return repository, nil
 }
 
-func InitAnalyzeService(configConfig *config.Config, service *document2.Service, shingleindexService *shingleindex.Service, fulltextindexService *fulltextindex.Service, semanticindexService *semanticindex.Service, repository *analyzehistory.Repository, filestorageRepository *filestorage.Repository) (*similarity.Service, error) {
+func InitAnalyzeService(configConfig *config.Config, conn *nats.Conn, service *document2.Service, repository *analyzehistory.Repository, filestorageRepository *filestorage.Repository, metricsMetrics *metrics.Metrics) (*similarity.Service, error) {
 	opts := ProvideAnalyzeServiceOpts()
-	similarityService := similarity.NewService(opts, service, filestorageRepository, shingleindexService, fulltextindexService, semanticindexService, repository)
+	v, err := provideAnalyzeServiceSearchIndices(configConfig, conn, metricsMetrics)
+	if err != nil {
+		return nil, err
+	}
+	similarityService := similarity.NewService(opts, service, filestorageRepository, v, repository)
 	return similarityService, nil
 }
 
@@ -140,18 +146,6 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config, me
 	if err != nil {
 		return nil, err
 	}
-	shingleindexService, err := InitShingleIndexService(conn, metricsMetrics)
-	if err != nil {
-		return nil, err
-	}
-	fulltextindexService, err := InitFulltextIndexService(conn, metricsMetrics)
-	if err != nil {
-		return nil, err
-	}
-	semanticindexService, err := InitSemanticIndexService(conn, metricsMetrics)
-	if err != nil {
-		return nil, err
-	}
 	client, err := ProvideElastic(contextContext, configConfig)
 	if err != nil {
 		return nil, err
@@ -168,7 +162,7 @@ func InitRestAPI(contextContext context.Context, configConfig *config.Config, me
 	if err != nil {
 		return nil, err
 	}
-	similarityService, err := InitAnalyzeService(configConfig, service, shingleindexService, fulltextindexService, semanticindexService, analyzehistoryRepository, filestorageRepository)
+	similarityService, err := InitAnalyzeService(configConfig, conn, service, analyzehistoryRepository, filestorageRepository, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -203,18 +197,6 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config, me
 	if err != nil {
 		return nil, err
 	}
-	shingleindexService, err := InitShingleIndexService(conn, metricsMetrics)
-	if err != nil {
-		return nil, err
-	}
-	fulltextindexService, err := InitFulltextIndexService(conn, metricsMetrics)
-	if err != nil {
-		return nil, err
-	}
-	semanticindexService, err := InitSemanticIndexService(conn, metricsMetrics)
-	if err != nil {
-		return nil, err
-	}
 	client, err := ProvideElastic(contextContext, configConfig)
 	if err != nil {
 		return nil, err
@@ -231,7 +213,7 @@ func InitNatsAPI(contextContext context.Context, configConfig *config.Config, me
 	if err != nil {
 		return nil, err
 	}
-	similarityService, err := InitAnalyzeService(configConfig, service, shingleindexService, fulltextindexService, semanticindexService, analyzehistoryRepository, filestorageRepository)
+	similarityService, err := InitAnalyzeService(configConfig, conn, service, analyzehistoryRepository, filestorageRepository, metricsMetrics)
 	if err != nil {
 		return nil, err
 	}
@@ -343,4 +325,41 @@ func ProvideS3(
 
 func ProvideAnalyzeServiceOpts() similarity.Opts {
 	return similarity.Opts{}
+}
+
+func provideAnalyzeServiceSearchIndices(
+	cfg *config.Config,
+	conn *nats.Conn,
+	m *metrics.Metrics,
+) ([]similarity.IndexingService, error) {
+	var indices []similarity.IndexingService
+
+	if slices.Contains(cfg.EnabledIndices, "shingleindex") {
+		srv, err := InitShingleIndexService(conn, m)
+		if err != nil {
+			return nil, fmt.Errorf("init shingle index: %w", err)
+		}
+
+		indices = append(indices, srv)
+	}
+
+	if slices.Contains(cfg.EnabledIndices, "fulltextindex") {
+		srv, err := InitFulltextIndexService(conn, m)
+		if err != nil {
+			return nil, fmt.Errorf("init fulltext index: %w", err)
+		}
+
+		indices = append(indices, srv)
+	}
+
+	if slices.Contains(cfg.EnabledIndices, "semanticindex") {
+		srv, err := InitSemanticIndexService(conn, m)
+		if err != nil {
+			return nil, fmt.Errorf("init semantic index: %w", err)
+		}
+
+		indices = append(indices, srv)
+	}
+
+	return indices, nil
 }
