@@ -1,4 +1,5 @@
 metricsPort: ${METRICS_PORT}
+nats: ${NATS_URL}
 bot:
   token: ${TGBOT_TOKEN}
 elastic:

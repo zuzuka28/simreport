@@ -1,4 +1,5 @@
 metricsPort: 9090
+nats: nats://localhost:4222
 bot:
   token:
 elastic:
