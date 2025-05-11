@@ -16,5 +16,5 @@ TAG="$(date +'%Y-%m-%d_%H-%M')_$(git rev-parse HEAD)"
 
 docker build \
     -f "./prj/${SERVICE_NAME}/build/docker/Dockerfile" \
-    -t "${REGISTRY}/${SERVICE_NAME}":"${TAG}"  \
+    -t "${REGISTRY}/simrep_${SERVICE_NAME}":"${TAG}"  \
     "prj/${SERVICE_NAME}"

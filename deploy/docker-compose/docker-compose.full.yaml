@@ -5,7 +5,7 @@ services:
     build:
       context: ../../prj/allinone
       dockerfile: build/docker/Dockerfile
-    image: zuzuka28/simrep_backend:latest
+    image: zuzuka28/simrep_allinone:latest
     command: ["--config", "/config/config.yaml"]
     configs:
       - source: allinone_backend-config
