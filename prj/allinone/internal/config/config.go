@@ -90,10 +90,6 @@ func getDocumentServiceConfig(cfg Config) (documentcmd.Config, error) {
 	port := result.Port
 
 	if port == 0 {
-		port = cfg.Port
-	}
-
-	if port == 0 {
 		apiPort, err := getFreePort()
 		if err != nil {
 			return documentcmd.Config{}, fmt.Errorf("get free port for API: %w", err)
@@ -115,10 +111,6 @@ func getSimilarityServiceConfig(cfg Config) (similaritycmd.Config, error) {
 	result.S3 = cfg.S3
 
 	port := result.Port
-
-	if port == 0 {
-		port = cfg.Port
-	}
 
 	if port == 0 {
 		apiPort, err := getFreePort()
