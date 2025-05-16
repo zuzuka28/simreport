@@ -4,6 +4,7 @@ use (
 	./lib
 	./prj/allinone
 	./prj/document
+	./prj/frontend
 	./prj/fulltextindex
 	./prj/semanticindex
 	./prj/shingleindex
