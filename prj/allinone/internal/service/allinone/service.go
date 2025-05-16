@@ -57,7 +57,7 @@ func (s *Service) Start(ctx context.Context) error {
 			s.reg,
 		)
 
-		return documentcmd.RunAsyncProcessing(
+		return documentcmd.RunNATSAPI(
 			egCtx,
 			&s.cfg.DocumentService,
 			documentcmd.WithPrometheusRegistrer(reg),

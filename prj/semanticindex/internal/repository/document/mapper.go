@@ -14,7 +14,8 @@ func parseFetchDocumentResponse(in *pb.FetchDocumentResponse) model.Document {
 	return model.Document{
 		ID:       in.GetDocument().GetId(),
 		SourceID: in.GetDocument().GetSource().GetId(),
-		Text:     in.GetDocument().GetText().GetContent(),
+		TextID:   in.GetDocument().GetText().GetId(),
+		Text:     nil,
 		Vector:   nil,
 	}
 }
