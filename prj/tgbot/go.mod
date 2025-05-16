@@ -10,9 +10,9 @@ require (
 	github.com/nats-io/nats.go v1.42.0
 	github.com/prometheus/client_golang v1.22.0
 	github.com/urfave/cli/v2 v2.27.6
-	github.com/zuzuka28/simreport/lib v0.0.0-20250210075529-bc41f7ec08c0
-	github.com/zuzuka28/simreport/prj/document v0.0.0-20250210075529-bc41f7ec08c0
-	github.com/zuzuka28/simreport/prj/similarity v0.0.0-20250210075529-bc41f7ec08c0
+	github.com/zuzuka28/simreport/lib v0.0.0-20250516124558-c37dcf0442f7
+	github.com/zuzuka28/simreport/prj/document v0.0.0-20250516124558-c37dcf0442f7
+	github.com/zuzuka28/simreport/prj/similarity v0.0.0-20250516124558-c37dcf0442f7
 	gopkg.in/telebot.v4 v4.0.0-beta.4
 	gopkg.in/yaml.v2 v2.4.0
 )
